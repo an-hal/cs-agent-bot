@@ -1,0 +1,51 @@
+name: Development
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  IMAGE: ${{ vars.ARTIFACT_REGISTRY_CONTAINER }}/${{ vars.IMAGE_NAME }}
+
+jobs:
+  build:
+    name: Build
+    runs-on: [self-hosted, backend]
+    concurrency:
+      group: build-${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: true # Cancel if still build image
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Build image
+        run: >
+          gcloud builds submit --config ./build/cloudbuild.yaml
+          --gcs-log-dir gs://cloudbuild-sejutacita-id/logs
+          --gcs-source-staging-dir gs://cloudbuild-sejutacita-id/source
+          --substitutions _IMAGE_TAG=${{ env.IMAGE }}:devel-${{ github.run_id }},_IMAGE_TAG_LATEST=${{ env.IMAGE }}:devel-latest
+
+  deploy:
+    name: Deploy
+    needs: [build]
+    runs-on: [self-hosted, backend]
+    environment: development
+    concurrency:
+      group: deploy-${{ github.workflow }}-${{ github.ref_name }}
+      cancel-in-progress: false # Don't cancel if deploying
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      - name: Deploy with helm
+        run: >
+          helm secrets upgrade ${{ vars.RELEASE_NAME }} ./.helm
+          --install
+          --atomic
+          --history-max 2
+          --namespace ${{ vars.K8_DEV_NAMESPACE }}
+          --set image.repository=${{ env.IMAGE }}
+          --set image.tag=devel-${{ github.run_id }}
+          --set image.pullPolicy=Always
+          --set nodeSelector=null
+          -f ./.helm//secrets.dev.yaml
+          -f ./.helm/values.dev.yaml

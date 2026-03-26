@@ -1,0 +1,498 @@
+basePath: /v1/payment-gateway
+definitions:
+  apperror.FieldError:
+    properties:
+      field:
+        type: string
+      message:
+        type: string
+    type: object
+  example.CreateRequest:
+    properties:
+      description:
+        maxLength: 1000
+        type: string
+      name:
+        maxLength: 255
+        minLength: 1
+        type: string
+      status:
+        enum:
+        - active
+        - inactive
+        - pending
+        type: string
+    required:
+    - name
+    type: object
+  payment.CancelRequest:
+    properties:
+      reason:
+        maxLength: 500
+        type: string
+    type: object
+  payment.CreateRequest:
+    properties:
+      amount:
+        type: number
+      currency:
+        type: string
+      customer:
+        $ref: '#/definitions/payment.CustomerRequest'
+      description:
+        maxLength: 1000
+        type: string
+      expires_at:
+        type: string
+      external_id:
+        maxLength: 255
+        type: string
+      failure_url:
+        type: string
+      metadata:
+        additionalProperties: {}
+        type: object
+      payment_channel:
+        type: string
+      payment_method:
+        enum:
+        - EWALLET
+        - VIRTUAL_ACCOUNT
+        - QR_CODE
+        type: string
+      success_url:
+        type: string
+    required:
+    - amount
+    - currency
+    - external_id
+    - payment_method
+    type: object
+  payment.CustomerRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      phone:
+        type: string
+    type: object
+  response.StandardResponse:
+    properties:
+      data: {}
+      errorCode:
+        type: string
+      message:
+        type: string
+      requestId:
+        type: string
+      stackTrace:
+        type: string
+      status:
+        description: '"success" or "error"'
+        type: string
+      traceId:
+        type: string
+      validationErrors:
+        items:
+          $ref: '#/definitions/apperror.FieldError'
+        type: array
+    type: object
+  response.StandardResponseWithMeta:
+    properties:
+      data: {}
+      errorCode:
+        type: string
+      message:
+        type: string
+      meta: {}
+      requestId:
+        type: string
+      stackTrace:
+        type: string
+      status:
+        description: '"success" or "error"'
+        type: string
+      traceId:
+        type: string
+      validationErrors:
+        items:
+          $ref: '#/definitions/apperror.FieldError'
+        type: array
+    type: object
+host: api-dev.sejutacita.id
+info:
+  contact:
+    name: Dealls Engineering
+    url: https://github.com/Sejutacita
+  description: API service for payment gateway orchestration using Clean Architecture
+  title: Payment Gateway API
+  version: "1.0"
+paths:
+  /example/list:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves paginated examples from the database
+      parameters:
+      - description: 'Offset for pagination (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      - description: 'Limit per page (default: 10, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponseWithMeta'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Get list of examples
+      tags:
+      - example
+  /example/one:
+    delete:
+      consumes:
+      - application/json
+      description: Soft deletes an example by its UUID
+      parameters:
+      - description: Example ID (UUID)
+        in: query
+        name: id_eq
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Delete an example
+      tags:
+      - example
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a single example by its UUID
+      parameters:
+      - description: Example ID (UUID)
+        in: query
+        name: id_eq
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Get example by ID
+      tags:
+      - example
+    post:
+      consumes:
+      - application/json
+      description: Creates a new example with the provided name, description, and
+        status
+      parameters:
+      - description: Example data to create
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/example.CreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Create a new example
+      tags:
+      - example
+  /payment/list:
+    get:
+      consumes:
+      - application/json
+      description: Lists all payments for the authenticated service with pagination
+      parameters:
+      - description: 'Offset for pagination (default: 0)'
+        in: query
+        name: offset
+        type: integer
+      - description: 'Limit per page (default: 10, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponseWithMeta'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - APIKeyAuth: []
+      summary: List payments
+      tags:
+      - payment
+  /payment/one:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a payment by internal ID or external ID (exactly one
+        required)
+      parameters:
+      - description: Payment ID (UUID)
+        in: query
+        name: id_eq
+        type: string
+      - description: External ID
+        in: query
+        name: external_id_eq
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - APIKeyAuth: []
+      summary: Get payment by ID
+      tags:
+      - payment
+    post:
+      consumes:
+      - application/json
+      description: Creates a new payment request with the specified payment method
+        and channel
+      parameters:
+      - description: Payment data
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/payment.CreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - APIKeyAuth: []
+      summary: Create a new payment
+      tags:
+      - payment
+  /payment/one/cancel:
+    post:
+      consumes:
+      - application/json
+      description: Cancels a pending payment by ID or external ID. Only payments in
+        PENDING status can be cancelled. Returns success if payment is already cancelled
+        (idempotent).
+      parameters:
+      - description: Payment ID (UUID)
+        in: query
+        name: id_eq
+        type: string
+      - description: External ID
+        in: query
+        name: external_id_eq
+        type: string
+      - description: Optional cancellation reason
+        in: body
+        name: request
+        schema:
+          $ref: '#/definitions/payment.CancelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - APIKeyAuth: []
+      summary: Cancel a payment
+      tags:
+      - payment
+  /readiness:
+    get:
+      description: Health check for service
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Health Check
+      tags:
+      - health
+  /webhook/{gateway}/{account_id}/one:
+    post:
+      consumes:
+      - application/json
+      description: Receives and processes webhooks from payment gateways (Xendit,
+        etc.)
+      parameters:
+      - description: Gateway code (e.g., XENDIT)
+        in: path
+        name: gateway
+        required: true
+        type: string
+      - description: Gateway account ID (UUID)
+        in: path
+        name: account_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Receive gateway webhook
+      tags:
+      - webhooks
+securityDefinitions:
+  APIKeyAuth:
+    description: API Key for service authentication
+    in: header
+    name: X-API-Key
+    type: apiKey
+  APISecretAuth:
+    description: API Secret for service authentication (required with X-API-Key)
+    in: header
+    name: X-API-Secret
+    type: apiKey
+swagger: "2.0"

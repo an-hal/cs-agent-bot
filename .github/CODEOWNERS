@@ -1,0 +1,3 @@
+/.github/CODEOWNERS @Sejutacita/sre
+/.github/workflows/ @Sejutacita/sre
+/.helm/ @Sejutacita/sre

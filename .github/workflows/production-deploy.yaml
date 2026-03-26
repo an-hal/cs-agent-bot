@@ -1,0 +1,32 @@
+name: Production Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      image-version:
+        description: "Image version"
+        required: true
+
+env:
+  IMAGE: ${{ vars.ARTIFACT_REGISTRY_CONTAINER }}/${{ vars.IMAGE_NAME }}
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: [self-hosted, backend-prioritized]
+    environment: production
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.image-version }}
+      - name: Deploy with helm
+        run: >
+          helm secrets upgrade ${{ vars.RELEASE_NAME }} ./.helm
+          --install
+          --atomic
+          --namespace ${{ vars.K8_PROD_NAMESPACE }}
+          --set image.repository=${{ env.IMAGE }}
+          --set image.tag=${{ github.event.inputs.image-version }}
+          --set image.pullPolicy=Always
+          -f ./.helm/secrets.prod.yaml

@@ -1,0 +1,65 @@
+# -----------------------------
+# Go Build & Vendor Artifacts
+# -----------------------------
+/bin/
+/dist/
+/out/
+/docker_build/
+*.exe
+*.test
+*.out
+
+# Go Module Cache (if vendoring)
+/vendor/
+
+# Dependency directories (Go 1.11+)
+
+# -----------------------------
+# Environment / Configuration
+# -----------------------------
+.env
+.env.*
+!.env.example
+environment_variables.env
+
+# -----------------------------
+# OS Specific
+# -----------------------------
+.DS_Store
+Thumbs.db
+
+# -----------------------------
+# Editor / IDEs
+# -----------------------------
+
+# VSCode
+.vscode/
+
+# JetBrains (GoLand, IntelliJ)
+.idea/
+*.iml
+
+# -----------------------------
+# Logs, Temp Files & Databases
+# -----------------------------
+*.log
+*.sqlite
+*.db
+*.pid
+*.swp
+*.tmp
+*.bak
+
+# -----------------------------
+# Test Output
+# -----------------------------
+coverage.*
+*.coverprofile
+*.testresult
+
+# -----------------------------
+# Air Hot Reload
+# -----------------------------
+tmp/
+
+*dec.yaml

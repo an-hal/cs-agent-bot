@@ -1,0 +1,53 @@
+# GolangCI-Lint configuration
+# https://golangci-lint.run/usage/configuration/
+
+run:
+  timeout: 5m
+  go: "1.23"
+
+linters:
+  disable-all: true
+  enable:
+    # Default linters (Option A - Conservative)
+    - errcheck      # Check for unchecked errors
+    - gosimple      # Simplify code
+    - govet         # Report suspicious constructs
+    - ineffassign   # Detect ineffectual assignments
+    - staticcheck   # Static analysis checks
+    - unused        # Check for unused code
+
+linters-settings:
+  errcheck:
+    # Report about not checking errors in type assertions
+    check-type-assertions: true
+    # Report about assignment of errors to blank identifier
+    check-blank: false
+
+  govet:
+    # Enable all analyzers
+    enable-all: true
+    # Disable fieldalignment - it's too noisy for minimal memory gains
+    disable:
+      - fieldalignment
+
+issues:
+  # Directories to exclude
+  exclude-dirs:
+    - docs
+    - vendor
+    - tmp
+
+  # Exclude some linters from running on specific files
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+    - path: mocks/
+      linters:
+        - errcheck
+
+  # Maximum issues count per one linter (0 = unlimited)
+  max-issues-per-linter: 0
+
+  # Maximum count of issues with the same text (0 = unlimited)
+  max-same-issues: 0
