@@ -1,8 +1,8 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "API service for payment gateway orchestration using Clean Architecture",
-        "title": "Payment Gateway API",
+        "description": "WhatsApp automation bot for Kantorku.id HRIS SaaS",
+        "title": "Customer Service Agent Bot API",
         "contact": {
             "name": "Dealls Engineering",
             "url": "https://github.com/Sejutacita"
@@ -10,192 +10,52 @@
         "version": "1.0"
     },
     "host": "api-dev.sejutacita.id",
-    "basePath": "/v1/payment-gateway",
+    "basePath": "/v1/cs-agent-bot",
     "paths": {
-        "/example/list": {
-            "get": {
-                "description": "Retrieves paginated examples from the database",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "example"
-                ],
-                "summary": "Get list of examples",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (default: 0)",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Limit per page (default: 10, max: 100)",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponseWithMeta"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/example/one": {
-            "get": {
-                "description": "Retrieves a single example by its UUID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "example"
-                ],
-                "summary": "Get example by ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Example ID (UUID)",
-                        "name": "id_eq",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    }
-                }
-            },
+        "/api/handoff/new-client": {
             "post": {
-                "description": "Creates a new example with the provided name, description, and status",
-                "consumes": [
-                    "application/json"
+                "security": [
+                    {
+                        "X-Handoff-Secret": []
+                    }
                 ],
-                "produces": [
-                    "application/json"
-                ],
+                "description": "Creates a new client record when a Business Development team member hands off a new prospect. Requires HMAC authentication using X-Handoff-Secret header.",
                 "tags": [
-                    "example"
+                    "api"
                 ],
-                "summary": "Create a new example",
+                "summary": "Onboard New Client from BD Handoff",
                 "parameters": [
                     {
-                        "description": "Example data to create",
+                        "description": "New client handoff payload",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/example.CreateRequest"
+                            "$ref": "#/definitions/dto.HandoffCreateRequest"
                         }
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Created",
+                        "description": "Client onboarded successfully",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
+                        "description": "Invalid request body or validation error",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
                     },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Soft deletes an example by its UUID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "example"
-                ],
-                "summary": "Delete an example",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Example ID (UUID)",
-                        "name": "id_eq",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
+                    "401": {
+                        "description": "Unauthorized - invalid HMAC signature",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
@@ -203,266 +63,33 @@
                 }
             }
         },
-        "/payment/list": {
+        "/cron/run": {
             "get": {
                 "security": [
                     {
-                        "APIKeyAuth": []
+                        "BearerAuth": []
                     }
                 ],
-                "description": "Lists all payments for the authenticated service with pagination",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
+                "description": "Manually triggers the bot's cron job to process all clients and send scheduled WhatsApp messages. Requires GCP Cloud Scheduler OIDC token authentication.",
                 "tags": [
-                    "payment"
+                    "cron"
                 ],
-                "summary": "List payments",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (default: 0)",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Limit per page (default: 10, max: 100)",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
+                "summary": "Trigger Cron Job",
                 "responses": {
                     "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponseWithMeta"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
+                        "description": "Cron run completed successfully",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
                     },
                     "401": {
-                        "description": "Unauthorized",
+                        "description": "Unauthorized - invalid or missing OIDC token",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/payment/one": {
-            "get": {
-                "security": [
-                    {
-                        "APIKeyAuth": []
-                    }
-                ],
-                "description": "Retrieves a payment by internal ID or external ID (exactly one required)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "payment"
-                ],
-                "summary": "Get payment by ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Payment ID (UUID)",
-                        "name": "id_eq",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "External ID",
-                        "name": "external_id_eq",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "APIKeyAuth": []
-                    }
-                ],
-                "description": "Creates a new payment request with the specified payment method and channel",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "payment"
-                ],
-                "summary": "Create a new payment",
-                "parameters": [
-                    {
-                        "description": "Payment data",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/payment.CreateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/payment/one/cancel": {
-            "post": {
-                "security": [
-                    {
-                        "APIKeyAuth": []
-                    }
-                ],
-                "description": "Cancels a pending payment by ID or external ID. Only payments in PENDING status can be cancelled. Returns success if payment is already cancelled (idempotent).",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "payment"
-                ],
-                "summary": "Cancel a payment",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Payment ID (UUID)",
-                        "name": "id_eq",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "External ID",
-                        "name": "external_id_eq",
-                        "in": "query"
-                    },
-                    {
-                        "description": "Optional cancellation reason",
-                        "name": "request",
-                        "in": "body",
-                        "schema": {
-                            "$ref": "#/definitions/payment.CancelRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error - cron run failed",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
@@ -487,64 +114,81 @@
                 }
             }
         },
-        "/webhook/{gateway}/{account_id}/one": {
+        "/webhook/checkin-form": {
             "post": {
-                "description": "Receives and processes webhooks from payment gateways (Xendit, etc.)",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
+                "description": "Processes check-in form submissions from clients. Marks the client as having replied to check-in and notifies the Account Executive via Telegram.",
                 "tags": [
-                    "webhooks"
+                    "webhook"
                 ],
-                "summary": "Receive gateway webhook",
+                "summary": "Process Check-in Form Submission",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Gateway code (e.g., XENDIT)",
-                        "name": "gateway",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Gateway account ID (UUID)",
-                        "name": "account_id",
-                        "in": "path",
-                        "required": true
+                        "description": "Check-in form payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.CheckinFormRequest"
+                        }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "OK",
+                        "description": "Checkin form processed successfully",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
                     },
                     "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
+                        "description": "Invalid request body",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
                     },
                     "404": {
-                        "description": "Not Found",
+                        "description": "Company not found",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
                     },
                     "500": {
-                        "description": "Internal Server Error",
+                        "description": "Internal server error",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/webhook/wa": {
+            "post": {
+                "description": "Receives incoming WhatsApp message events from HaloAI. Returns HTTP 200 immediately, then processes the message asynchronously in a background goroutine.",
+                "tags": [
+                    "webhook"
+                ],
+                "summary": "Receive WhatsApp Webhook",
+                "parameters": [
+                    {
+                        "description": "WhatsApp webhook payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.WAWebhookRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Webhook received (async processing)",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body",
+                        "schema": {
+                            "type": "string"
                         }
                     }
                 }
@@ -563,103 +207,106 @@
                 }
             }
         },
-        "example.CreateRequest": {
+        "dto.CheckinFormRequest": {
             "type": "object",
             "required": [
-                "name"
+                "company_id"
             ],
             "properties": {
-                "description": {
+                "company_id": {
                     "type": "string",
-                    "maxLength": 1000
-                },
-                "name": {
-                    "type": "string",
-                    "maxLength": 255,
-                    "minLength": 1
-                },
-                "status": {
-                    "type": "string",
-                    "enum": [
-                        "active",
-                        "inactive",
-                        "pending"
-                    ]
+                    "example": "KTK-001"
                 }
             }
         },
-        "payment.CancelRequest": {
-            "type": "object",
-            "properties": {
-                "reason": {
-                    "type": "string",
-                    "maxLength": 500
-                }
-            }
-        },
-        "payment.CreateRequest": {
+        "dto.HandoffCreateRequest": {
             "type": "object",
             "required": [
-                "amount",
-                "currency",
-                "external_id",
-                "payment_method"
+                "company_id",
+                "company_name",
+                "contract_end",
+                "contract_months",
+                "contract_start",
+                "owner_name",
+                "owner_telegram_id",
+                "pic_name",
+                "pic_wa",
+                "segment"
             ],
             "properties": {
-                "amount": {
-                    "type": "number"
-                },
-                "currency": {
-                    "type": "string"
-                },
-                "customer": {
-                    "$ref": "#/definitions/payment.CustomerRequest"
-                },
-                "description": {
+                "activation_date": {
                     "type": "string",
-                    "maxLength": 1000
+                    "example": "2024-01-15"
                 },
-                "expires_at": {
-                    "type": "string"
-                },
-                "external_id": {
+                "company_id": {
                     "type": "string",
-                    "maxLength": 255
+                    "example": "KTK-001"
                 },
-                "failure_url": {
-                    "type": "string"
-                },
-                "metadata": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "payment_channel": {
-                    "type": "string"
-                },
-                "payment_method": {
+                "company_name": {
                     "type": "string",
-                    "enum": [
-                        "EWALLET",
-                        "VIRTUAL_ACCOUNT",
-                        "QR_CODE"
-                    ]
+                    "example": "PT Maju Bersama Sejahtera"
                 },
-                "success_url": {
-                    "type": "string"
+                "contract_end": {
+                    "type": "string",
+                    "example": "2026-01-15"
+                },
+                "contract_months": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "contract_start": {
+                    "type": "string",
+                    "example": "2024-01-15"
+                },
+                "owner_name": {
+                    "type": "string",
+                    "example": "Rina"
+                },
+                "owner_telegram_id": {
+                    "type": "string",
+                    "example": "-1001234567890"
+                },
+                "owner_wa": {
+                    "type": "string",
+                    "example": "6289876543210"
+                },
+                "pic_name": {
+                    "type": "string",
+                    "example": "Budi Santoso"
+                },
+                "pic_wa": {
+                    "type": "string",
+                    "example": "6281234567890"
+                },
+                "segment": {
+                    "type": "string",
+                    "example": "Mid"
                 }
             }
         },
-        "payment.CustomerRequest": {
+        "dto.WAWebhookRequest": {
             "type": "object",
             "properties": {
-                "email": {
-                    "type": "string"
+                "message_id": {
+                    "type": "string",
+                    "example": "msg_1234567890"
                 },
-                "name": {
-                    "type": "string"
+                "message_type": {
+                    "description": "text, image, voice, video, document",
+                    "type": "string",
+                    "example": "text"
                 },
-                "phone": {
-                    "type": "string"
+                "phone_number": {
+                    "type": "string",
+                    "example": "6281234567890"
+                },
+                "text": {
+                    "type": "string",
+                    "example": "Thank you for the reminder."
+                },
+                "timestamp": {
+                    "type": "string",
+                    "example": "2025-03-26T10:30:00Z"
                 }
             }
         },
@@ -693,52 +340,6 @@
                     }
                 }
             }
-        },
-        "response.StandardResponseWithMeta": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "errorCode": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "meta": {},
-                "requestId": {
-                    "type": "string"
-                },
-                "stackTrace": {
-                    "type": "string"
-                },
-                "status": {
-                    "description": "\"success\" or \"error\"",
-                    "type": "string"
-                },
-                "traceId": {
-                    "type": "string"
-                },
-                "validationErrors": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/apperror.FieldError"
-                    }
-                }
-            }
-        }
-    },
-    "securityDefinitions": {
-        "APIKeyAuth": {
-            "description": "API Key for service authentication",
-            "type": "apiKey",
-            "name": "X-API-Key",
-            "in": "header"
-        },
-        "APISecretAuth": {
-            "description": "API Secret for service authentication (required with X-API-Key)",
-            "type": "apiKey",
-            "name": "X-API-Secret",
-            "in": "header"
         }
     }
 }

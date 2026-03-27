@@ -1,25 +1,32 @@
 package http
 
 import (
+	"net/http"
+
+	cronHandler "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/cron"
 	deliveryHttpDeps "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/deps"
-	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/example"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/health"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/middleware"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/router"
-
-	"net/http"
+	webhookHandler "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/webhook"
 
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
-	// Initialize handlers
-	exampleHandler := example.NewExampleHandler(deps.ExampleUC, deps.Logger, deps.Validator, deps.Tracer)
-	healthHandler := health.NewHealthHandler(deps.Logger, deps.Tracer)
+	healthH := health.NewHealthHandler(deps.Logger, deps.Tracer)
+	cronH := cronHandler.NewCronHandler(deps.CronRunner, deps.Logger)
+	waH := webhookHandler.NewWAWebhookHandler(deps.ReplyHandler, deps.Logger)
+	checkinH := webhookHandler.NewCheckinFormHTTPHandler(deps.CheckinHandler, deps.Logger)
+	handoffH := webhookHandler.NewHandoffHTTPHandler(deps.HandoffHandler, deps.Logger)
+
+	// Per-route auth wrappers
+	oidcAuth := middleware.OIDCAuthMiddleware(deps.Cfg.AppURL, deps.Cfg.SchedulerSAEmail, deps.Cfg.Env, deps.Logger)
+	haloaiSig := middleware.HaloAISignatureMiddleware(deps.Cfg.WAWebhookSecret, deps.Logger)
+	hmacAuth := middleware.HMACAuthMiddleware(deps.Cfg.HandoffWebhookSecret, deps.Logger)
 
 	r := router.NewRouter()
 
-	// Configure exception handler for router
 	r.SetErrorHandler(middleware.ErrorHandlingMiddleware(deps.ExceptionHandler))
 
 	// Apply global middleware
@@ -28,22 +35,26 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	r.Use(middleware.RequestIDMiddleware())
 	r.Use(middleware.LoggingMiddleware(deps.Logger))
 
-	// Route without prefix
-	r.Handle(http.MethodGet, "/readiness", healthHandler.Check)
+	// Health check
+	r.Handle(http.MethodGet, "/readiness", healthH.Check)
 
-	// Route group with prefix
+	// Cron — OIDC auth
+	wrappedCronRun := middleware.WrapErrorHandler(cronH.Run, deps.ExceptionHandler)
+	r.Handle(http.MethodGet, "/cron/run", oidcAuth(wrappedCronRun))
+
+	// Webhook — HaloAI signature verification; immediate 200 response
+	r.Handle(http.MethodPost, "/webhook/wa", haloaiSig(waH.Handle))
+
+	// Webhook — checkin form (no auth)
+	r.Handle(http.MethodPost, "/webhook/checkin-form", checkinH.Handle)
+
+	// API — BD handoff with HMAC auth
+	wrappedHandoff := middleware.WrapErrorHandler(handoffH.Handle, deps.ExceptionHandler)
+	r.Handle(http.MethodPost, "/api/handoff/new-client", hmacAuth(wrappedHandoff))
+
+	// Swagger
 	api := r.Group(deps.Cfg.RoutePrefix)
-
 	api.HandlePrefix(http.MethodGet, "/swagger/", httpSwagger.WrapHandler)
-
-	// Example routes (reference implementation)
-	api.Handle(http.MethodGet, "/example/list", exampleHandler.GetAll)
-	api.Handle(http.MethodGet, "/example/one", exampleHandler.GetByID)
-	api.Handle(http.MethodPost, "/example/one", exampleHandler.Create)
-	api.Handle(http.MethodDelete, "/example/one", exampleHandler.Delete)
-
-	// TODO: Add agent bot routes here
-	// Conversations, Messages, etc.
 
 	return r
 }

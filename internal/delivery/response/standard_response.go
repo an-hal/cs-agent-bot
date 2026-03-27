@@ -7,8 +7,6 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/apperror"
 )
 
-// StandardSuccess writes a successful StandardResponse
-// Reads requestID and traceID from context automatically
 func StandardSuccess(w http.ResponseWriter, r *http.Request, code int, message string, data interface{}) error {
 	requestID := GetRequestID(r)
 	traceID := GetTraceID(r)
@@ -25,8 +23,6 @@ func StandardSuccess(w http.ResponseWriter, r *http.Request, code int, message s
 	})
 }
 
-// StandardSuccessWithMeta writes a successful StandardResponseWithMeta
-// Reads requestID and traceID from context automatically
 func StandardSuccessWithMeta(w http.ResponseWriter, r *http.Request, code int, message string, meta, data interface{}) error {
 	requestID := GetRequestID(r)
 	traceID := GetTraceID(r)
@@ -44,8 +40,6 @@ func StandardSuccessWithMeta(w http.ResponseWriter, r *http.Request, code int, m
 	})
 }
 
-// StandardError writes an error StandardResponse
-// Reads requestID and traceID from context automatically
 func StandardError(w http.ResponseWriter, r *http.Request, code int, message, errorCode string, validationErrors []apperror.FieldError, stackTrace string) error {
 	requestID := GetRequestID(r)
 	traceID := GetTraceID(r)
@@ -64,8 +58,6 @@ func StandardError(w http.ResponseWriter, r *http.Request, code int, message, er
 	})
 }
 
-// StandardErrorWithMeta writes an error StandardResponseWithMeta
-// Reads requestID and traceID from context automatically
 func StandardErrorWithMeta(w http.ResponseWriter, r *http.Request, code int, message, errorCode string, meta interface{}, validationErrors []apperror.FieldError, stackTrace string) error {
 	requestID := GetRequestID(r)
 	traceID := GetTraceID(r)

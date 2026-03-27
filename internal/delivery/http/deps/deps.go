@@ -4,9 +4,9 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/config"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/response"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/validator"
-	"github.com/Sejutacita/cs-agent-bot/internal/service/session"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
-	"github.com/Sejutacita/cs-agent-bot/internal/usecase"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/webhook"
 	"github.com/rs/zerolog"
 )
 
@@ -16,6 +16,8 @@ type Deps struct {
 	Validator        *validator.Validator
 	Tracer           tracer.Tracer
 	ExceptionHandler *response.HTTPExceptionHandler
-	ExampleUC        usecase.ExampleUseCase
-	SessionStore     session.Store
+	CronRunner       cron.CronRunner
+	ReplyHandler     webhook.ReplyHandler
+	CheckinHandler   webhook.CheckinFormHandler
+	HandoffHandler   webhook.HandoffHandler
 }

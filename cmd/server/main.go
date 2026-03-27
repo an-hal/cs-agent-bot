@@ -1,6 +1,6 @@
 // @title           Customer Service Agent Bot API
 // @version         1.0
-// @description     AI-powered customer service agent bot for automated support
+// @description     WhatsApp automation bot for Kantorku.id HRIS SaaS
 
 // @contact.name   Dealls Engineering
 // @contact.url    https://github.com/Sejutacita
@@ -8,21 +8,10 @@
 // @host      api-dev.sejutacita.id
 // @BasePath  /v1/cs-agent-bot
 
-// @securityDefinitions.apikey APIKeyAuth
-// @in header
-// @name X-API-Key
-// @description API Key for service authentication
-
-// @securityDefinitions.apikey APISecretAuth
-// @in header
-// @name X-API-Secret
-// @description API Secret for service authentication (required with X-API-Key)
-
 package main
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
@@ -37,12 +26,20 @@ import (
 	deliveryHttpDeps "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/deps"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/response"
 	pkgDatabase "github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
+	sheetsClient "github.com/Sejutacita/cs-agent-bot/internal/pkg/database/sheets"
 	pkgLogger "github.com/Sejutacita/cs-agent-bot/internal/pkg/logger"
 	pkgValidator "github.com/Sejutacita/cs-agent-bot/internal/pkg/validator"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
-	"github.com/Sejutacita/cs-agent-bot/internal/service/session"
-	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
-	"github.com/Sejutacita/cs-agent-bot/internal/usecase"
+	pkgCache "github.com/Sejutacita/cs-agent-bot/internal/service/cache"
+	appTracer "github.com/Sejutacita/cs-agent-bot/internal/tracer"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/classifier"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/escalation"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/telegram"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/template"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/trigger"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/webhook"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
@@ -57,12 +54,10 @@ func main() {
 		log.Fatal("fail to create live file :: ", err)
 	}
 
-	_ = godotenv.Load() // Load .env
+	_ = godotenv.Load()
 
-	// Load env config
 	cfg := config.LoadConfig()
 
-	// Override tracer service version if not set
 	if cfg.TracerServiceVersion == "" {
 		cfg.TracerServiceVersion = version
 	}
@@ -70,7 +65,7 @@ func main() {
 	logger := pkgLogger.InitLogger(cfg.Env, cfg.LogLevel)
 
 	// Initialize tracer
-	tracerInstance, err := tracer.New(cfg)
+	tracerInstance, err := appTracer.New(cfg)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to initialize tracer")
 	}
@@ -82,28 +77,109 @@ func main() {
 		}
 	}()
 
-	postgresClient := pkgDatabase.NewPostgresClient(cfg, logger)
-	db := postgresClient.InitPostgresDB()
+	// Initialize Redis
 	redisClient := pkgDatabase.NewRedisClient(cfg, logger)
 	rdb := redisClient.InitRedis()
-	sessionStore := session.NewRedisSessionStore(rdb, logger)
 
-	// Start PostgreSQL stats logger if enabled
-	// Create a cancellable context for the stats logger
-	statsCtx, statsCancel := context.WithCancel(context.Background())
-	defer statsCancel()
-	postgresClient.StartStatsLogger(statsCtx, db)
+	// Initialize Google Sheets client
+	sheetsService, err := sheetsClient.NewSheetsClient(cfg, logger)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to initialize Google Sheets client")
+	}
 
-	// Repository Initialization
-	exampleRepo := repository.NewExampleRepo(db, postgresClient.QueryTimeout, tracerInstance)
+	// Initialize SheetCache
+	cacheService := pkgCache.NewSheetCache(rdb, sheetsService, logger)
 
-	// UseCase Initialization
-	exampleUC := usecase.NewExampleUseCase(exampleRepo, db, logger, tracerInstance)
+	// Start background cache refresher (runs until app shutdown)
+	cacheCtx, cacheCancel := context.WithCancel(context.Background())
+	defer cacheCancel()
+	cacheService.StartRefresher(cacheCtx)
 
-	// Validator Initialization
+	// Initialize Repositories
+	clientRepo := repository.NewClientRepo(sheetsService, cacheService, logger)
+	invoiceRepo := repository.NewInvoiceRepo(sheetsService, cacheService, logger)
+	flagsRepo := repository.NewFlagsRepo(sheetsService, cacheService, logger)
+	logRepo := repository.NewLogRepo(sheetsService, logger)
+	escalationRepo := repository.NewEscalationRepo(sheetsService, cacheService, logger)
+	configRepo := repository.NewConfigRepo(sheetsService, cacheService, logger)
+
+	// Initialize External Services
+	haloaiClient := haloai.NewHaloAIClient(cfg.HaloAIAPIURL, cfg.WAAPIToken, cfg.HaloAIBusinessID, cfg.HaloAIChannelID, logger)
+	telegramNotifier := telegram.NewTelegramNotifier(cfg.TelegramBotToken, cfg.TelegramAELeadID, logger)
+
+	// Initialize Template Resolver (depends on configRepo)
+	templateResolver := template.NewTemplateResolver(configRepo, logger)
+
+	// Initialize Reply Classifier
+	replyClassifier := classifier.NewReplyClassifier()
+
+	// Initialize Escalation Handler
+	escalationHandler := escalation.NewEscalationHandler(
+		flagsRepo,
+		logRepo,
+		escalationRepo,
+		telegramNotifier,
+		logger,
+	)
+
+	// Initialize Trigger Service (all evaluators)
+	triggerService := trigger.NewTriggerService(
+		clientRepo,
+		invoiceRepo,
+		flagsRepo,
+		logRepo,
+		configRepo,
+		escalationRepo,
+		templateResolver,
+		haloaiClient,
+		telegramNotifier,
+		escalationHandler,
+		cacheService,
+		cfg,
+		logger,
+	)
+
+	// Initialize Cron Runner
+	cronRunner := cron.NewCronRunner(
+		clientRepo,
+		flagsRepo,
+		invoiceRepo,
+		logRepo,
+		triggerService,
+		logger,
+	)
+
+	// Initialize Webhook Handlers
+	replyHandler := webhook.NewReplyHandler(
+		clientRepo,
+		flagsRepo,
+		logRepo,
+		replyClassifier,
+		escalationHandler,
+		haloaiClient,
+		telegramNotifier,
+		logger,
+	)
+
+	checkinHandler := webhook.NewCheckinFormHandler(
+		clientRepo,
+		flagsRepo,
+		logRepo,
+		telegramNotifier,
+		logger,
+	)
+
+	handoffHandler := webhook.NewHandoffHandler(
+		clientRepo,
+		flagsRepo,
+		logRepo,
+		logger,
+	)
+
+	// Validator
 	validate := pkgValidator.New()
 
-	// Exception Handler Initialization
+	// Exception Handler
 	exceptionHandler := response.NewHTTPExceptionHandler(logger, cfg.EnableStackTrace)
 
 	// HTTP Handler Setup
@@ -113,62 +189,44 @@ func main() {
 		Validator:        validate,
 		Tracer:           tracerInstance,
 		ExceptionHandler: exceptionHandler,
-		ExampleUC:        exampleUC,
-		SessionStore:     sessionStore,
+		CronRunner:       cronRunner,
+		ReplyHandler:     replyHandler,
+		CheckinHandler:   checkinHandler,
+		HandoffHandler:   handoffHandler,
 	})
 
-	// HTTP server config
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%s", cfg.Port),
 		Handler: handler,
 	}
 
-	// Run server in goroutine
 	go func() {
 		logger.Info().Msgf("Server running on http://localhost:%s", cfg.Port)
-		logger.Info().Msgf("Swagger running on http://localhost:%s%s/swagger/index.html", cfg.Port, cfg.RoutePrefix)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Fatal().Err(err).Msgf("Server failed: %v", err)
 		}
 	}()
 
-	// Setup signal listener
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
-	logger.Info().Msgf("Gracefully shutting down server...")
+	logger.Info().Msg("Gracefully shutting down server...")
 
-	// Remove liveness file
-	removeLivenessErr := os.Remove(LiveFile)
-	if removeLivenessErr != nil {
+	if removeLivenessErr := os.Remove(LiveFile); removeLivenessErr != nil {
 		log.Fatal(removeLivenessErr)
 	}
 
-	// Graceful shutdown context
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	// Shutdown HTTP server
 	if err := server.Shutdown(ctx); err != nil {
 		logger.Fatal().Err(err).Msgf("Server shutdown failed: %v", err)
 	}
 
-	// Close PostgreSQL DB
-	closePostgres(db, logger)
-
-	// Close Redis DB
 	closeRedis(rdb, logger)
 
-	logger.Info().Msgf("Server shutdown completed.")
-}
-
-func closePostgres(db *sql.DB, logger zerolog.Logger) {
-	if err := db.Close(); err != nil {
-		logger.Info().Msgf("Failed to close PostgreSQL connection: %v", err)
-	} else {
-		logger.Info().Msgf("PostgreSQL connection closed.")
-	}
+	logger.Info().Msg("Server shutdown completed.")
 }
 
 func closeRedis(rdb *redis.Client, logger zerolog.Logger) {

@@ -1,4 +1,4 @@
-basePath: /v1/payment-gateway
+basePath: /v1/cs-agent-bot
 definitions:
   apperror.FieldError:
     properties:
@@ -7,74 +7,81 @@ definitions:
       message:
         type: string
     type: object
-  example.CreateRequest:
+  dto.CheckinFormRequest:
     properties:
-      description:
-        maxLength: 1000
-        type: string
-      name:
-        maxLength: 255
-        minLength: 1
-        type: string
-      status:
-        enum:
-        - active
-        - inactive
-        - pending
+      company_id:
+        example: KTK-001
         type: string
     required:
-    - name
+    - company_id
     type: object
-  payment.CancelRequest:
+  dto.HandoffCreateRequest:
     properties:
-      reason:
-        maxLength: 500
+      activation_date:
+        example: "2024-01-15"
         type: string
-    type: object
-  payment.CreateRequest:
-    properties:
-      amount:
-        type: number
-      currency:
+      company_id:
+        example: KTK-001
         type: string
-      customer:
-        $ref: '#/definitions/payment.CustomerRequest'
-      description:
-        maxLength: 1000
+      company_name:
+        example: PT Maju Bersama Sejahtera
         type: string
-      expires_at:
+      contract_end:
+        example: "2026-01-15"
         type: string
-      external_id:
-        maxLength: 255
+      contract_months:
+        example: 12
+        type: integer
+      contract_start:
+        example: "2024-01-15"
         type: string
-      failure_url:
+      owner_name:
+        example: Rina
         type: string
-      metadata:
-        additionalProperties: {}
-        type: object
-      payment_channel:
+      owner_telegram_id:
+        example: "-1001234567890"
         type: string
-      payment_method:
-        enum:
-        - EWALLET
-        - VIRTUAL_ACCOUNT
-        - QR_CODE
+      owner_wa:
+        example: "6289876543210"
         type: string
-      success_url:
+      pic_name:
+        example: Budi Santoso
+        type: string
+      pic_wa:
+        example: "6281234567890"
+        type: string
+      segment:
+        example: Mid
         type: string
     required:
-    - amount
-    - currency
-    - external_id
-    - payment_method
+    - company_id
+    - company_name
+    - contract_end
+    - contract_months
+    - contract_start
+    - owner_name
+    - owner_telegram_id
+    - pic_name
+    - pic_wa
+    - segment
     type: object
-  payment.CustomerRequest:
+  dto.WAWebhookRequest:
     properties:
-      email:
+      message_id:
+        example: msg_1234567890
         type: string
-      name:
+      message_type:
+        description: text, image, voice, video, document
+        example: text
         type: string
-      phone:
+      phone_number:
+        example: "6281234567890"
+        type: string
+      text:
+        example: Thank you for the reminder.
+        type: string
+      timestamp:
+        example: "2025-03-26T10:30:00Z"
         type: string
     type: object
   response.StandardResponse:
@@ -98,338 +105,72 @@ definitions:
           $ref: '#/definitions/apperror.FieldError'
         type: array
     type: object
-  response.StandardResponseWithMeta:
-    properties:
-      data: {}
-      errorCode:
-        type: string
-      message:
-        type: string
-      meta: {}
-      requestId:
-        type: string
-      stackTrace:
-        type: string
-      status:
-        description: '"success" or "error"'
-        type: string
-      traceId:
-        type: string
-      validationErrors:
-        items:
-          $ref: '#/definitions/apperror.FieldError'
-        type: array
-    type: object
 host: api-dev.sejutacita.id
 info:
   contact:
     name: Dealls Engineering
     url: https://github.com/Sejutacita
-  description: API service for payment gateway orchestration using Clean Architecture
-  title: Payment Gateway API
+  description: WhatsApp automation bot for Kantorku.id HRIS SaaS
+  title: Customer Service Agent Bot API
   version: "1.0"
 paths:
-  /example/list:
-    get:
-      consumes:
-      - application/json
-      description: Retrieves paginated examples from the database
-      parameters:
-      - description: 'Offset for pagination (default: 0)'
-        in: query
-        name: offset
-        type: integer
-      - description: 'Limit per page (default: 10, max: 100)'
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.StandardResponseWithMeta'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-      summary: Get list of examples
-      tags:
-      - example
-  /example/one:
-    delete:
-      consumes:
-      - application/json
-      description: Soft deletes an example by its UUID
-      parameters:
-      - description: Example ID (UUID)
-        in: query
-        name: id_eq
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-      summary: Delete an example
-      tags:
-      - example
-    get:
-      consumes:
-      - application/json
-      description: Retrieves a single example by its UUID
-      parameters:
-      - description: Example ID (UUID)
-        in: query
-        name: id_eq
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-      summary: Get example by ID
-      tags:
-      - example
+  /api/handoff/new-client:
     post:
-      consumes:
-      - application/json
-      description: Creates a new example with the provided name, description, and
-        status
+      description: Creates a new client record when a Business Development team member
+        hands off a new prospect. Requires HMAC authentication using X-Handoff-Secret
+        header.
       parameters:
-      - description: Example data to create
+      - description: New client handoff payload
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/example.CreateRequest'
-      produces:
-      - application/json
+          $ref: '#/definitions/dto.HandoffCreateRequest'
       responses:
         "201":
-          description: Created
+          description: Client onboarded successfully
           schema:
             $ref: '#/definitions/response.StandardResponse'
         "400":
-          description: Bad Request
+          description: Invalid request body or validation error
           schema:
             $ref: '#/definitions/response.StandardResponse'
-        "422":
-          description: Unprocessable Entity
+        "401":
+          description: Unauthorized - invalid HMAC signature
           schema:
             $ref: '#/definitions/response.StandardResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
             $ref: '#/definitions/response.StandardResponse'
-      summary: Create a new example
+      security:
+      - X-Handoff-Secret: []
+      summary: Onboard New Client from BD Handoff
       tags:
-      - example
-  /payment/list:
+      - api
+  /cron/run:
     get:
-      consumes:
-      - application/json
-      description: Lists all payments for the authenticated service with pagination
-      parameters:
-      - description: 'Offset for pagination (default: 0)'
-        in: query
-        name: offset
-        type: integer
-      - description: 'Limit per page (default: 10, max: 100)'
-        in: query
-        name: limit
-        type: integer
-      produces:
-      - application/json
+      description: Manually triggers the bot's cron job to process all clients and
+        send scheduled WhatsApp messages. Requires GCP Cloud Scheduler OIDC token
+        authentication.
       responses:
         "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.StandardResponseWithMeta'
-        "400":
-          description: Bad Request
+          description: Cron run completed successfully
           schema:
             $ref: '#/definitions/response.StandardResponse'
         "401":
-          description: Unauthorized
+          description: Unauthorized - invalid or missing OIDC token
           schema:
             $ref: '#/definitions/response.StandardResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error - cron run failed
           schema:
             $ref: '#/definitions/response.StandardResponse'
       security:
-      - APIKeyAuth: []
-      summary: List payments
+      - BearerAuth: []
+      summary: Trigger Cron Job
       tags:
-      - payment
-  /payment/one:
-    get:
-      consumes:
-      - application/json
-      description: Retrieves a payment by internal ID or external ID (exactly one
-        required)
-      parameters:
-      - description: Payment ID (UUID)
-        in: query
-        name: id_eq
-        type: string
-      - description: External ID
-        in: query
-        name: external_id_eq
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-      security:
-      - APIKeyAuth: []
-      summary: Get payment by ID
-      tags:
-      - payment
-    post:
-      consumes:
-      - application/json
-      description: Creates a new payment request with the specified payment method
-        and channel
-      parameters:
-      - description: Payment data
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/payment.CreateRequest'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-      security:
-      - APIKeyAuth: []
-      summary: Create a new payment
-      tags:
-      - payment
-  /payment/one/cancel:
-    post:
-      consumes:
-      - application/json
-      description: Cancels a pending payment by ID or external ID. Only payments in
-        PENDING status can be cancelled. Returns success if payment is already cancelled
-        (idempotent).
-      parameters:
-      - description: Payment ID (UUID)
-        in: query
-        name: id_eq
-        type: string
-      - description: External ID
-        in: query
-        name: external_id_eq
-        type: string
-      - description: Optional cancellation reason
-        in: body
-        name: request
-        schema:
-          $ref: '#/definitions/payment.CancelRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-      security:
-      - APIKeyAuth: []
-      summary: Cancel a payment
-      tags:
-      - payment
+      - cron
   /readiness:
     get:
       description: Health check for service
@@ -441,58 +182,59 @@ paths:
       summary: Health Check
       tags:
       - health
-  /webhook/{gateway}/{account_id}/one:
+  /webhook/checkin-form:
     post:
-      consumes:
-      - application/json
-      description: Receives and processes webhooks from payment gateways (Xendit,
-        etc.)
+      description: Processes check-in form submissions from clients. Marks the client
+        as having replied to check-in and notifies the Account Executive via Telegram.
       parameters:
-      - description: Gateway code (e.g., XENDIT)
-        in: path
-        name: gateway
+      - description: Check-in form payload
+        in: body
+        name: request
         required: true
-        type: string
-      - description: Gateway account ID (UUID)
-        in: path
-        name: account_id
-        required: true
-        type: string
-      produces:
-      - application/json
+        schema:
+          $ref: '#/definitions/dto.CheckinFormRequest'
       responses:
         "200":
-          description: OK
+          description: Checkin form processed successfully
           schema:
             $ref: '#/definitions/response.StandardResponse'
         "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "401":
-          description: Unauthorized
+          description: Invalid request body
           schema:
             $ref: '#/definitions/response.StandardResponse'
         "404":
-          description: Not Found
+          description: Company not found
           schema:
             $ref: '#/definitions/response.StandardResponse'
         "500":
-          description: Internal Server Error
+          description: Internal server error
           schema:
             $ref: '#/definitions/response.StandardResponse'
-      summary: Receive gateway webhook
+      summary: Process Check-in Form Submission
       tags:
-      - webhooks
-securityDefinitions:
-  APIKeyAuth:
-    description: API Key for service authentication
-    in: header
-    name: X-API-Key
-    type: apiKey
-  APISecretAuth:
-    description: API Secret for service authentication (required with X-API-Key)
-    in: header
-    name: X-API-Secret
-    type: apiKey
+      - webhook
+  /webhook/wa:
+    post:
+      description: Receives incoming WhatsApp message events from HaloAI. Returns
+        HTTP 200 immediately, then processes the message asynchronously in a background
+        goroutine.
+      parameters:
+      - description: WhatsApp webhook payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.WAWebhookRequest'
+      responses:
+        "200":
+          description: Webhook received (async processing)
+          schema:
+            type: string
+        "400":
+          description: Invalid request body
+          schema:
+            type: string
+      summary: Receive WhatsApp Webhook
+      tags:
+      - webhook
 swagger: "2.0"

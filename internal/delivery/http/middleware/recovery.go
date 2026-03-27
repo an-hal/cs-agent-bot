@@ -20,7 +20,6 @@ func RecoveryMiddleware(logger zerolog.Logger, exceptionHandler *response.HTTPEx
 					requestID := response.GetRequestID(r)
 					traceID := response.GetTraceID(r)
 
-					// Log the panic with stack trace (server-side only)
 					logger.Error().
 						Interface("panic", err).
 						Str("requestId", requestID).
@@ -30,7 +29,6 @@ func RecoveryMiddleware(logger zerolog.Logger, exceptionHandler *response.HTTPEx
 						Str("stack", string(debug.Stack())).
 						Msg("Panic recovered")
 
-					// Convert panic to AppError and handle via exception handler
 					panicErr := apperror.InternalError(fmt.Errorf("panic: %v", err))
 					exceptionHandler.HandleError(w, r, panicErr)
 				}

@@ -16,7 +16,7 @@ type AppConfig struct {
 	RoutePrefix string
 	LogLevel    string
 
-	// PostgreSQL Connection
+	// PostgreSQL Connection (kept for future production use)
 	DBEnabled  string
 	DBHost     string
 	DBPort     string
@@ -41,14 +41,33 @@ type AppConfig struct {
 	RedisUsername string
 	RedisPassword string
 
-	// Event Dispatcher Settings
-	DispatcherEnabled      bool
-	DispatcherPollInterval time.Duration
-	DispatcherHTTPTimeout  time.Duration
-	DispatcherBatchSize    int
+	// HaloAI WhatsApp API
+	HaloAIAPIURL     string
+	WAAPIToken       string
+	HaloAIBusinessID string
+	HaloAIChannelID  string
+	WAWebhookSecret  string
 
-	// Webhook Settings
-	WebhookDebugLogging bool
+	// Telegram Bot
+	TelegramBotToken string
+	TelegramAELeadID string
+
+	// Google Sheets
+	GoogleSAKeyFile string
+	SpreadsheetID   string
+
+	// GCP Cloud Scheduler OIDC
+	AppURL           string
+	SchedulerSAEmail string
+
+	// BD Handoff
+	HandoffWebhookSecret string
+
+	// Business Config
+	PromoDeadline     string
+	SurveyPlatformURL string
+	CheckinFormURL    string
+	ReferralBenefit   string
 
 	// OpenTelemetry Tracing
 	TracerExporter            string
@@ -64,28 +83,25 @@ type AppConfig struct {
 }
 
 func LoadConfig() *AppConfig {
-	// Load from .env file
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using system env")
 	}
 
-	return &AppConfig{
+	cfg := &AppConfig{
 		// Application
 		Env:         getEnv("ENV", "development"),
-		Port:        getEnv("APP_PORT", "3000"),
-		RoutePrefix: getEnv("APP_ROUTE_PREFIX", "/v1/cs-agent-bot"),
+		Port:        getEnv("APP_PORT", "8080"),
+		RoutePrefix: getEnv("APP_ROUTE_PREFIX", ""),
 		LogLevel:    getEnv("LOG_LEVEL", "info"),
 
-		// PostgreSQL Connection
-		DBEnabled:  getEnv("DB_ENABLED", "false"),
-		DBHost:     getEnv("DB_HOST", "localhost"),
-		DBPort:     getEnv("DB_PORT", "5432"),
-		DBUser:     getEnv("DB_USER", "postgres"),
-		DBPassword: getEnv("DB_PASSWORD", ""),
-		DBName:     getEnv("DB_NAME", "cs_agent_bot"),
-		DBSSLMode:  getEnv("DB_SSLMODE", "disable"),
-
-		// PostgreSQL Pool Settings
+		// PostgreSQL Connection (disabled for POC)
+		DBEnabled:             getEnv("DB_ENABLED", "false"),
+		DBHost:                getEnv("DB_HOST", "localhost"),
+		DBPort:                getEnv("DB_PORT", "5432"),
+		DBUser:                getEnv("DB_USER", "postgres"),
+		DBPassword:            getEnv("DB_PASSWORD", ""),
+		DBName:                getEnv("DB_NAME", "cs_agent_bot"),
+		DBSSLMode:             getEnv("DB_SSLMODE", "disable"),
 		DBMaxOpenConns:        getEnvInt("DB_MAX_OPEN_CONNS", 25),
 		DBMaxIdleConns:        getEnvInt("DB_MAX_IDLE_CONNS", 5),
 		DBConnMaxLifetime:     getEnvDuration("DB_CONN_MAX_LIFETIME", 5*time.Minute),
@@ -94,21 +110,40 @@ func LoadConfig() *AppConfig {
 		DBStatsLoggingEnabled: getEnvBool("DB_STATS_LOGGING_ENABLED", false),
 
 		// Redis Connection
-		RedisEnabled:  getEnv("REDIS_ENABLED", "false"),
+		RedisEnabled:  getEnv("REDIS_ENABLED", "true"),
 		RedisDB:       getEnv("REDIS_DB", "0"),
 		RedisHost:     getEnv("REDIS_HOST", "localhost"),
 		RedisPort:     getEnv("REDIS_PORT", "6379"),
 		RedisUsername: getEnv("REDIS_USERNAME", ""),
 		RedisPassword: getEnv("REDIS_PASSWORD", ""),
 
-		// Event Dispatcher Settings
-		DispatcherEnabled:      getEnvBool("DISPATCHER_ENABLED", true),
-		DispatcherPollInterval: getEnvDuration("DISPATCHER_POLL_INTERVAL", 5*time.Second),
-		DispatcherHTTPTimeout:  getEnvDuration("DISPATCHER_HTTP_TIMEOUT", 30*time.Second),
-		DispatcherBatchSize:    getEnvInt("DISPATCHER_BATCH_SIZE", 100),
+		// HaloAI WhatsApp API
+		HaloAIAPIURL:     getEnv("HALOAI_API_URL", ""),
+		WAAPIToken:       getEnv("WA_API_TOKEN", ""),
+		HaloAIBusinessID: getEnv("HALOAI_BUSINESS_ID", ""),
+		HaloAIChannelID:  getEnv("HALOAI_CHANNEL_ID", ""),
+		WAWebhookSecret:  getEnv("WA_WEBHOOK_SECRET", ""),
 
-		// Webhook Settings
-		WebhookDebugLogging: getEnvBool("WEBHOOK_DEBUG_LOGGING", false),
+		// Telegram Bot
+		TelegramBotToken: getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TelegramAELeadID: getEnv("TELEGRAM_AE_LEAD_ID", ""),
+
+		// Google Sheets
+		GoogleSAKeyFile: getEnv("GOOGLE_SA_KEY_FILE", "./credentials/service_account.json"),
+		SpreadsheetID:   getEnv("SPREADSHEET_ID", ""),
+
+		// GCP Cloud Scheduler OIDC
+		AppURL:           getEnv("APP_URL", ""),
+		SchedulerSAEmail: getEnv("SCHEDULER_SA_EMAIL", ""),
+
+		// BD Handoff
+		HandoffWebhookSecret: getEnv("HANDOFF_WEBHOOK_SECRET", ""),
+
+		// Business Config
+		PromoDeadline:     getEnv("PROMO_DEADLINE", ""),
+		SurveyPlatformURL: getEnv("SURVEY_PLATFORM_URL", ""),
+		CheckinFormURL:    getEnv("CHECKIN_FORM_URL", ""),
+		ReferralBenefit:   getEnv("REFERRAL_BENEFIT", "1 bulan gratis"),
 
 		// OpenTelemetry Tracing
 		TracerExporter:            getEnv("TRACER_EXPORTER", "zipkin"),
@@ -122,9 +157,36 @@ func LoadConfig() *AppConfig {
 		// Error Handling
 		EnableStackTrace: getEnvBool("ENABLE_STACK_TRACE", false),
 	}
+
+	validateRequired(cfg)
+
+	return cfg
 }
 
-// getEnv retrieves a string environment variable or returns the default value
+func validateRequired(cfg *AppConfig) {
+	required := map[string]string{
+		"HALOAI_API_URL":         cfg.HaloAIAPIURL,
+		"WA_API_TOKEN":           cfg.WAAPIToken,
+		"WA_WEBHOOK_SECRET":      cfg.WAWebhookSecret,
+		"TELEGRAM_BOT_TOKEN":     cfg.TelegramBotToken,
+		"TELEGRAM_AE_LEAD_ID":    cfg.TelegramAELeadID,
+		"SPREADSHEET_ID":         cfg.SpreadsheetID,
+		"HANDOFF_WEBHOOK_SECRET": cfg.HandoffWebhookSecret,
+	}
+
+	// OIDC config only required for production
+	if cfg.Env != "development" && cfg.Env != "local" {
+		required["APP_URL"] = cfg.AppURL
+		required["SCHEDULER_SA_EMAIL"] = cfg.SchedulerSAEmail
+	}
+
+	for key, val := range required {
+		if val == "" {
+			log.Fatalf("Required environment variable %s is not set", key)
+		}
+	}
+}
+
 func getEnv(key, defaultVal string) string {
 	if val, exists := os.LookupEnv(key); exists {
 		return val
@@ -132,7 +194,6 @@ func getEnv(key, defaultVal string) string {
 	return defaultVal
 }
 
-// getEnvInt retrieves an integer environment variable or returns the default value
 func getEnvInt(key string, defaultVal int) int {
 	if val, exists := os.LookupEnv(key); exists {
 		if intVal, err := strconv.Atoi(val); err == nil {
@@ -142,7 +203,6 @@ func getEnvInt(key string, defaultVal int) int {
 	return defaultVal
 }
 
-// getEnvBool retrieves a boolean environment variable or returns the default value
 func getEnvBool(key string, defaultVal bool) bool {
 	if val, exists := os.LookupEnv(key); exists {
 		if boolVal, err := strconv.ParseBool(val); err == nil {
@@ -152,8 +212,6 @@ func getEnvBool(key string, defaultVal bool) bool {
 	return defaultVal
 }
 
-// getEnvDuration retrieves a duration environment variable or returns the default value
-// Supports formats: "30s", "5m", "1h", etc.
 func getEnvDuration(key string, defaultVal time.Duration) time.Duration {
 	if val, exists := os.LookupEnv(key); exists {
 		if duration, err := time.ParseDuration(val); err == nil {
