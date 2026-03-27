@@ -35,6 +35,16 @@ func (r *logRepo) AppendLog(ctx context.Context, entry entity.ActionLog) error {
 		entry.Timestamp = time.Now()
 	}
 
+	messageSent := "N"
+	if entry.MessageSent {
+		messageSent = "Y"
+	}
+
+	responseReceived := "N"
+	if entry.ResponseReceived {
+		responseReceived = "Y"
+	}
+
 	row := []interface{}{
 		entry.Timestamp.Format(time.DateTime),
 		entry.CompanyID,
@@ -42,7 +52,11 @@ func (r *logRepo) AppendLog(ctx context.Context, entry entity.ActionLog) error {
 		entry.TriggerType,
 		entry.TemplateID,
 		entry.Channel,
-		entry.Details,
+		messageSent,
+		responseReceived,
+		entry.ResponseClassification,
+		entry.NextActionTriggered,
+		entry.LogNotes,
 	}
 
 	return r.sheetsClient.AppendRows(ctx, cache.RangeActionLog, [][]interface{}{row})

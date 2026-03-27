@@ -15,29 +15,32 @@ type CronRunner interface {
 }
 
 type cronRunner struct {
-	clientRepo  repository.ClientRepository
-	flagsRepo   repository.FlagsRepository
-	invoiceRepo repository.InvoiceRepository
-	logRepo     repository.LogRepository
-	triggers    *trigger.TriggerService
-	logger      zerolog.Logger
+	clientRepo    repository.ClientRepository
+	flagsRepo     repository.FlagsRepository
+	convStateRepo repository.ConversationStateRepository
+	invoiceRepo   repository.InvoiceRepository
+	logRepo       repository.LogRepository
+	triggers      *trigger.TriggerService
+	logger        zerolog.Logger
 }
 
 func NewCronRunner(
 	clientRepo repository.ClientRepository,
 	flagsRepo repository.FlagsRepository,
+	convStateRepo repository.ConversationStateRepository,
 	invoiceRepo repository.InvoiceRepository,
 	logRepo repository.LogRepository,
 	triggers *trigger.TriggerService,
 	logger zerolog.Logger,
 ) CronRunner {
 	return &cronRunner{
-		clientRepo:  clientRepo,
-		flagsRepo:   flagsRepo,
-		invoiceRepo: invoiceRepo,
-		logRepo:     logRepo,
-		triggers:    triggers,
-		logger:      logger,
+		clientRepo:    clientRepo,
+		flagsRepo:     flagsRepo,
+		convStateRepo: convStateRepo,
+		invoiceRepo:   invoiceRepo,
+		logRepo:       logRepo,
+		triggers:      triggers,
+		logger:        logger,
 	}
 }
 
@@ -117,6 +120,14 @@ func (cr *cronRunner) processClient(ctx context.Context, c entity.Client) error 
 		cr.logger.Warn().Err(err).Str("company_id", c.CompanyID).Msg("Failed to get active invoice")
 	}
 
+	// Get conversation state
+	convState, err := cr.convStateRepo.GetByCompanyID(ctx, c.CompanyID)
+	if err != nil {
+		cr.logger.Warn().Err(err).Str("company_id", c.CompanyID).Msg("Failed to get conversation state")
+		// Continue with default state
+		convState = &entity.ConversationState{BotActive: true}
+	}
+
 	// Strict priority order. First match fires and returns — no further evaluation.
 	if sent, _ := cr.triggers.EvalHealthRisk(ctx, c, *f); sent {
 		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Health risk trigger fired")
@@ -130,11 +141,11 @@ func (cr *cronRunner) processClient(ctx context.Context, c entity.Client) error 
 		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Negotiation trigger fired")
 		return nil
 	}
-	if sent, _ := cr.triggers.EvalInvoice(ctx, c, *f, inv); sent {
+	if sent, _ := cr.triggers.EvalInvoice(ctx, c, *f, inv, convState); sent {
 		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Invoice trigger fired")
 		return nil
 	}
-	if sent, _ := cr.triggers.EvalOverdue(ctx, c, *f, inv); sent {
+	if sent, _ := cr.triggers.EvalOverdue(ctx, c, *f, inv, convState); sent {
 		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Overdue trigger fired")
 		return nil
 	}

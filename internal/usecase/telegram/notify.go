@@ -5,30 +5,36 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/template"
 	"github.com/rs/zerolog"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 type TelegramNotifier interface {
 	SendMessage(ctx context.Context, chatID string, message string) error
-	FormatEscalation(esc entity.Escalation, client entity.Client) string
-	FormatPaymentClaim(client entity.Client, replyText string) string
+	FormatEscalation(ctx context.Context, esc entity.Escalation, client entity.Client, extraVars map[string]string) (string, error)
+	FormatPaymentClaim(client entity.Client, inv *entity.Invoice) string
 }
 
 type telegramNotifier struct {
-	botToken   string
-	leadID     string
-	httpClient *http.Client
-	logger     zerolog.Logger
+	botToken         string
+	leadID           string
+	httpClient       *http.Client
+	templateResolver template.TemplateResolver
+	logger           zerolog.Logger
 }
 
-func NewTelegramNotifier(botToken, leadID string, logger zerolog.Logger) TelegramNotifier {
+func NewTelegramNotifier(botToken, leadID string, templateResolver template.TemplateResolver, logger zerolog.Logger) TelegramNotifier {
 	return &telegramNotifier{
-		botToken: botToken,
-		leadID:   leadID,
+		botToken:         botToken,
+		leadID:           leadID,
+		templateResolver: templateResolver,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -67,6 +73,9 @@ func (t *telegramNotifier) SendMessage(ctx context.Context, chatID string, messa
 	}
 	defer resp.Body.Close()
 
+	bodyBytes, _ := io.ReadAll(resp.Body)
+	t.logger.Info().Msg(string(bodyBytes))
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("telegram API returned status %d", resp.StatusCode)
 	}
@@ -78,28 +87,29 @@ func (t *telegramNotifier) SendMessage(ctx context.Context, chatID string, messa
 	return nil
 }
 
-func (t *telegramNotifier) FormatEscalation(esc entity.Escalation, client entity.Client) string {
+func (t *telegramNotifier) FormatEscalation(ctx context.Context, esc entity.Escalation, client entity.Client, extraVars map[string]string) (string, error) {
+	return t.templateResolver.ResolveEscalationTemplate(ctx, esc.EscID, client, esc, extraVars)
+}
+
+func (t *telegramNotifier) FormatPaymentClaim(client entity.Client, inv *entity.Invoice) string {
 	return fmt.Sprintf(
-		"<b>ESCALATION %s</b>\n"+
-			"Priority: %s\n"+
-			"Company: %s (%s)\n"+
-			"Reason: %s\n"+
-			"Status: %s\n"+
-			"Action: Bot suspended. Please resolve in the dashboard.",
-		esc.EscID, esc.Priority,
-		client.CompanyName, client.CompanyID,
-		esc.Reason,
-		esc.Status,
+		"Halo *%s*\n"+
+			"Berikut terdapat pembayaran Invoice dengan detail : \n\n"+
+			"Nama Company : *%s*\n"+
+			"Jatuh Tempo : %s\n"+
+			"Nominal : %s\n"+
+			"Status : Paid - Need to Confirm\n\n"+
+			"Kami lampirkan bukti trasnfer pada Paper.id. \n"+
+			"Silahkan check dashboard Paper.id untuk konfirmasi dan lakukan konfirmasi dengan update status invoice pada dashboard AE kita pada URL : http://biz.kantorku.id/\n\n"+
+			"Terimakasih",
+		client.OwnerName,
+		client.CompanyName,
+		inv.DueDate.Format("2 Januari 2006"),
+		formatRupiah(inv.Amount),
 	)
 }
 
-func (t *telegramNotifier) FormatPaymentClaim(client entity.Client, replyText string) string {
-	return fmt.Sprintf(
-		"<b>PAYMENT CLAIM</b>\n"+
-			"Company: %s (%s)\n"+
-			"Client says: %s\n"+
-			"Action: Please verify payment proof. Do NOT mark as paid without confirmation.",
-		client.CompanyName, client.CompanyID,
-		replyText,
-	)
+func formatRupiah(amount float64) string {
+	p := message.NewPrinter(language.Indonesian)
+	return p.Sprintf("Rp %.0f", amount)
 }

@@ -63,6 +63,63 @@
                 }
             }
         },
+        "/api/payment/verify": {
+            "post": {
+                "security": [
+                    {
+                        "X-Verify-Secret": []
+                    }
+                ],
+                "description": "Verifies and marks a client's payment as paid after AE verification. Sends confirmation to client via WhatsApp and creates tracking record. Requires HMAC authentication using X-Verify-Secret header.",
+                "tags": [
+                    "api"
+                ],
+                "summary": "Verify Client Payment",
+                "parameters": [
+                    {
+                        "description": "Payment verification payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_delivery_http_payment.VerifyPaymentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Payment verified successfully",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - invalid HMAC signature",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Client not found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/cron/run": {
             "get": {
                 "security": [
@@ -307,6 +364,23 @@
                 "timestamp": {
                     "type": "string",
                     "example": "2025-03-26T10:30:00Z"
+                }
+            }
+        },
+        "internal_delivery_http_payment.VerifyPaymentRequest": {
+            "type": "object",
+            "properties": {
+                "company_id": {
+                    "type": "string"
+                },
+                "invoice_id": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "verified_by": {
+                    "type": "string"
                 }
             }
         },

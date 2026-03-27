@@ -7,6 +7,7 @@ import (
 	deliveryHttpDeps "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/deps"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/health"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/middleware"
+	paymentHandler "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/payment"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/router"
 	webhookHandler "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/webhook"
 
@@ -19,11 +20,12 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	waH := webhookHandler.NewWAWebhookHandler(deps.ReplyHandler, deps.Logger)
 	checkinH := webhookHandler.NewCheckinFormHTTPHandler(deps.CheckinHandler, deps.Logger)
 	handoffH := webhookHandler.NewHandoffHTTPHandler(deps.HandoffHandler, deps.Logger)
+	paymentVerifyH := paymentHandler.NewVerifyPaymentHTTPHandler(deps.PaymentVerifier, deps.Logger)
 
 	// Per-route auth wrappers
 	oidcAuth := middleware.OIDCAuthMiddleware(deps.Cfg.AppURL, deps.Cfg.SchedulerSAEmail, deps.Cfg.Env, deps.Logger)
-	haloaiSig := middleware.HaloAISignatureMiddleware(deps.Cfg.WAWebhookSecret, deps.Logger)
-	hmacAuth := middleware.HMACAuthMiddleware(deps.Cfg.HandoffWebhookSecret, deps.Logger)
+	haloaiSig := middleware.HaloAISignatureMiddleware(deps.Cfg.WAWebhookSecret, deps.Cfg.Env, deps.Logger)
+	hmacAuth := middleware.HMACAuthMiddleware(deps.Cfg.HandoffWebhookSecret, deps.Cfg.Env, deps.Logger)
 
 	r := router.NewRouter()
 
@@ -51,6 +53,10 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	// API — BD handoff with HMAC auth
 	wrappedHandoff := middleware.WrapErrorHandler(handoffH.Handle, deps.ExceptionHandler)
 	r.Handle(http.MethodPost, "/api/handoff/new-client", hmacAuth(wrappedHandoff))
+
+	// API — Payment verification with HMAC auth
+	wrappedPaymentVerify := middleware.WrapErrorHandler(paymentVerifyH.Handle, deps.ExceptionHandler)
+	r.Handle(http.MethodPost, "/api/payment/verify", hmacAuth(wrappedPaymentVerify))
 
 	// Swagger
 	api := r.Group(deps.Cfg.RoutePrefix)

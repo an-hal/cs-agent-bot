@@ -33,13 +33,17 @@ func (t *TriggerService) sendMessage(ctx context.Context, templateID string, tri
 
 	// Append to action log
 	logEntry := entity.ActionLog{
-		Timestamp:   time.Now(),
-		CompanyID:   client.CompanyID,
-		CompanyName: client.CompanyName,
-		TriggerType: triggerType,
-		TemplateID:  templateID,
-		Channel:     entity.ChannelWhatsApp,
-		Details:     templateID,
+		Timestamp:              time.Now(),
+		CompanyID:              client.CompanyID,
+		CompanyName:            client.CompanyName,
+		TriggerType:            triggerType,
+		TemplateID:             templateID,
+		Channel:                entity.ChannelWhatsApp,
+		MessageSent:            true,
+		ResponseReceived:       false,
+		ResponseClassification: "",
+		NextActionTriggered:    "",
+		LogNotes:               fmt.Sprintf("Template: %s", templateID),
 	}
 	if err := t.LogRepo.AppendLog(ctx, logEntry); err != nil {
 		t.Logger.Error().Err(err).Str("trigger", triggerType).Msg("Failed to append action log")

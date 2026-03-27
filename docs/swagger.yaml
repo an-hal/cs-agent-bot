@@ -84,6 +84,17 @@ definitions:
         example: "2025-03-26T10:30:00Z"
         type: string
     type: object
+  internal_delivery_http_payment.VerifyPaymentRequest:
+    properties:
+      company_id:
+        type: string
+      invoice_id:
+        type: string
+      notes:
+        type: string
+      verified_by:
+        type: string
+    type: object
   response.StandardResponse:
     properties:
       data: {}
@@ -146,6 +157,44 @@ paths:
       security:
       - X-Handoff-Secret: []
       summary: Onboard New Client from BD Handoff
+      tags:
+      - api
+  /api/payment/verify:
+    post:
+      description: Verifies and marks a client's payment as paid after AE verification.
+        Sends confirmation to client via WhatsApp and creates tracking record. Requires
+        HMAC authentication using X-Verify-Secret header.
+      parameters:
+      - description: Payment verification payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_delivery_http_payment.VerifyPaymentRequest'
+      responses:
+        "200":
+          description: Payment verified successfully
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Invalid request body or validation error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "401":
+          description: Unauthorized - invalid HMAC signature
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Client not found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - X-Verify-Secret: []
+      summary: Verify Client Payment
       tags:
       - api
   /cron/run:

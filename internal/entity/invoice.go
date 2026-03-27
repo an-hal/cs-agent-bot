@@ -10,13 +10,6 @@ type Invoice struct {
 	DueDate       time.Time `json:"due_date"`
 	Amount        float64   `json:"amount"`
 	PaymentStatus string    `json:"payment_status"`
-	Pre14Sent     bool      `json:"pre14_sent"`
-	Pre7Sent      bool      `json:"pre7_sent"`
-	Pre3Sent      bool      `json:"pre3_sent"`
-	Post1Sent     bool      `json:"post1_sent"`
-	Post4Sent     bool      `json:"post4_sent"`
-	Post8Sent     bool      `json:"post8_sent"`
-	Post15Sent    bool      `json:"post15_sent"`
 }
 
 // DaysPastDue returns how many days past the due date. Negative means not yet due.

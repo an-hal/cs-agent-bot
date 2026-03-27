@@ -1,6 +1,9 @@
 package entity
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type Client struct {
 	CompanyID           string    `json:"company_id"`
@@ -29,6 +32,15 @@ type Client struct {
 	CheckinReplied      bool      `json:"checkin_replied"`
 	ResponseStatus      string    `json:"response_status"`
 	LastInteractionDate time.Time `json:"last_interaction_date"`
+
+	// Invoice reminder flags (from Master Client sheet columns 27-33)
+	Pre14Sent  bool `json:"pre14_sent"`
+	Pre7Sent   bool `json:"pre7_sent"`
+	Pre3Sent   bool `json:"pre3_sent"`
+	Post1Sent  bool `json:"post1_sent"`
+	Post4Sent  bool `json:"post4_sent"`
+	Post8Sent  bool `json:"post8_sent"`
+	Post15Sent bool `json:"post15_sent"`
 }
 
 // Segment constants
@@ -69,4 +81,39 @@ func (c *Client) DaysToExpiry() int {
 // DaysSinceActivation returns the number of days since activation.
 func (c *Client) DaysSinceActivation() int {
 	return int(time.Since(c.ActivationDate).Hours() / 24)
+}
+
+// DaysPastDue returns days since ContractEnd (payment overdue).
+// Returns 0 if not yet past due.
+func (c *Client) DaysPastDue() int {
+	fmt.Println("Contract End: ", c.ContractEnd)
+	fmt.Println("Days to Expiry: ", int(time.Until(c.ContractEnd).Hours()/24))
+	fmt.Println("Current Time: ", time.Now())
+	fmt.Println("Company Name :", c.CompanyName)
+	fmt.Println("Company ID :", c.CompanyID)
+	if c.ContractEnd.IsZero() {
+		return 0
+	}
+	return int(time.Since(c.ContractEnd).Hours() / 24)
+}
+
+// IsPaymentOverdue checks if payment is overdue based on:
+// - today > ContractEnd AND PaymentStatus != 'Paid'
+func (c *Client) IsPaymentOverdue() bool {
+	daysPast := c.DaysPastDue()
+	isPaid := c.PaymentStatus == PaymentStatusPaid
+	return daysPast > 0 && !isPaid
+}
+
+// HasPendingPayment checks if payment is pending but not yet overdue
+func (c *Client) HasPendingPayment() bool {
+	daysPast := c.DaysPastDue()
+	isPaid := c.PaymentStatus == PaymentStatusPaid
+	return daysPast <= 0 && !isPaid
+}
+
+// UpdatePaymentStatus updates the payment status and last interaction date
+func (c *Client) UpdatePaymentStatus(status string) {
+	c.PaymentStatus = status
+	c.LastInteractionDate = time.Now()
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
@@ -20,19 +21,23 @@ type ReplyHandler interface {
 }
 
 type replyHandler struct {
-	clientRepo repository.ClientRepository
-	flagsRepo  repository.FlagsRepository
-	logRepo    repository.LogRepository
-	classifier classifier.ReplyClassifier
-	escalation escalation.EscalationHandler
-	haloAI     haloai.HaloAIClient
-	telegram   telegram.TelegramNotifier
-	logger     zerolog.Logger
+	invoiceRepo   repository.InvoiceRepository
+	clientRepo    repository.ClientRepository
+	flagsRepo     repository.FlagsRepository
+	convStateRepo repository.ConversationStateRepository
+	logRepo       repository.LogRepository
+	classifier    classifier.ReplyClassifier
+	escalation    escalation.EscalationHandler
+	haloAI        haloai.HaloAIClient
+	telegram      telegram.TelegramNotifier
+	logger        zerolog.Logger
 }
 
 func NewReplyHandler(
+	invoiceRepo repository.InvoiceRepository,
 	clientRepo repository.ClientRepository,
 	flagsRepo repository.FlagsRepository,
+	convStateRepo repository.ConversationStateRepository,
 	logRepo repository.LogRepository,
 	replyClassifier classifier.ReplyClassifier,
 	escHandler escalation.EscalationHandler,
@@ -41,14 +46,16 @@ func NewReplyHandler(
 	logger zerolog.Logger,
 ) ReplyHandler {
 	return &replyHandler{
-		clientRepo: clientRepo,
-		flagsRepo:  flagsRepo,
-		logRepo:    logRepo,
-		classifier: replyClassifier,
-		escalation: escHandler,
-		haloAI:     haloAIClient,
-		telegram:   telegramNotifier,
-		logger:     logger,
+		invoiceRepo:   invoiceRepo,
+		clientRepo:    clientRepo,
+		flagsRepo:     flagsRepo,
+		convStateRepo: convStateRepo,
+		logRepo:       logRepo,
+		classifier:    replyClassifier,
+		escalation:    escHandler,
+		haloAI:        haloAIClient,
+		telegram:      telegramNotifier,
+		logger:        logger,
 	}
 }
 
@@ -60,7 +67,7 @@ func (h *replyHandler) HandleIncomingReply(ctx context.Context, payload WAWebhoo
 	}
 	if exists {
 		h.logger.Info().Str("message_id", payload.MessageID).Msg("Duplicate message, skipping")
-		return nil
+		// return nil
 	}
 
 	// Lookup client by WA number
@@ -80,11 +87,16 @@ func (h *replyHandler) HandleIncomingReply(ctx context.Context, payload WAWebhoo
 
 	// Log the incoming reply
 	logEntry := entity.ActionLog{
-		CompanyID:   client.CompanyID,
-		TriggerType: "REPLY_" + strings.ToUpper(string(intent)),
-		TemplateID:  payload.MessageID,
-		Channel:     entity.ChannelWhatsApp,
-		Details:     payload.Text,
+		CompanyID:              client.CompanyID,
+		CompanyName:            client.CompanyName,
+		TriggerType:            "REPLY_" + strings.ToUpper(string(intent)),
+		TemplateID:             "-",
+		Channel:                entity.ChannelWhatsApp,
+		MessageSent:            false,
+		ResponseReceived:       true,
+		ResponseClassification: strings.ToUpper(string(intent)),
+		NextActionTriggered:    "",
+		LogNotes:               payload.Text,
 	}
 	_ = h.logRepo.AppendLog(ctx, logEntry)
 
@@ -124,6 +136,13 @@ func (h *replyHandler) HandleIncomingReply(ctx context.Context, payload WAWebhoo
 }
 
 func (h *replyHandler) handleAngry(ctx context.Context, client entity.Client) error {
+	// Update conversation state - STOP bot immediately
+	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
+	convState.ResponseClassification = entity.RespAngry
+	convState.BotActive = false
+	convState.ReasonBotPaused = "Angry client detected"
+	_ = h.convStateRepo.CreateOrUpdate(ctx, *convState)
+
 	// Blacklist immediately. ESC-006. No WA reply.
 	return h.escalation.TriggerEscalation(ctx, entity.EscAngryClient, client,
 		"Angry client detected", entity.EscPriorityP0Emergency)
@@ -132,10 +151,17 @@ func (h *replyHandler) handleAngry(ctx context.Context, client entity.Client) er
 func (h *replyHandler) handlePaidClaim(ctx context.Context, client entity.Client, replyText string) error {
 	// Ask for proof via WA
 	_, _ = h.haloAI.SendWA(ctx, client.PICWA,
-		"Terima kasih atas informasinya. Mohon kirimkan bukti pembayaran agar kami dapat memverifikasi. Terima kasih!")
+		"Terima kasih atas informasinya. Pembayaran anda sedang kami verifikasi. Terima kasih!")
+
+	// Update conversation state
+	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
+	inv, _ := h.invoiceRepo.GetActiveByCompanyID(ctx, client.CompanyID)
+	convState.ResponseClassification = entity.RespPaid
+	convState.ResponseStatus = entity.ResponseStatusPending
+	_ = h.convStateRepo.CreateOrUpdate(ctx, *convState)
 
 	// Telegram to AE — Do NOT mark as paid
-	formatted := h.telegram.FormatPaymentClaim(client, replyText)
+	formatted := h.telegram.FormatPaymentClaim(client, inv)
 	return h.telegram.SendMessage(ctx, client.OwnerTelegramID, formatted)
 }
 
@@ -145,6 +171,11 @@ func (h *replyHandler) handleNPS(ctx context.Context, client entity.Client, text
 	// Store NPS score — this is on Sheet 1 (Master Client)
 	// For POC, we update via client repo
 	h.logger.Info().Str("company_id", client.CompanyID).Int("nps_score", score).Msg("NPS score received")
+
+	// Update conversation state
+	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
+	convState.ResponseClassification = entity.RespNPS
+	_ = h.convStateRepo.CreateOrUpdate(ctx, *convState)
 
 	// Update flags: NPSReplied = true
 	flags, err := h.flagsRepo.GetByCompanyID(ctx, client.CompanyID)
@@ -176,6 +207,13 @@ func (h *replyHandler) handleCSInterested(ctx context.Context, client entity.Cli
 }
 
 func (h *replyHandler) handleReject(ctx context.Context, client entity.Client) error {
+	// Update conversation state - STOP all automation
+	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
+	convState.ResponseClassification = entity.RespReject
+	convState.BotActive = false
+	convState.ReasonBotPaused = "Client rejected automation"
+	_ = h.convStateRepo.CreateOrUpdate(ctx, *convState)
+
 	// Stop all automation. Set Rejected=TRUE.
 	h.logger.Info().Str("company_id", client.CompanyID).Msg("Client rejected, stopping automation")
 
@@ -184,6 +222,13 @@ func (h *replyHandler) handleReject(ctx context.Context, client entity.Client) e
 }
 
 func (h *replyHandler) handleDelay(ctx context.Context, client entity.Client) error {
+	// Update conversation state - snooze for 30 days
+	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
+	convState.ResponseClassification = entity.RespDelay
+	convState.NextScheduledAction = "REACTIVATE_FLOW"
+	convState.NextScheduledDate = time.Now().AddDate(0, 1, 0) // 30 days
+	_ = h.convStateRepo.CreateOrUpdate(ctx, *convState)
+
 	// Snooze
 	h.logger.Info().Str("company_id", client.CompanyID).Msg("Client requested delay")
 

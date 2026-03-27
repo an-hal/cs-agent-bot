@@ -21,12 +21,13 @@ const (
 
 // Escalation ID constants
 const (
-	EscInvoiceOverdue15  = "ESC-001"
-	EscObjection         = "ESC-002"
-	EscLowNPS            = "ESC-003"
-	EscRen0NoReply       = "ESC-004"
-	EscHighValueChurn    = "ESC-005"
-	EscAngryClient       = "ESC-006"
+	EscInvoiceOverdue15 = "ESC-001"
+	EscObjection        = "ESC-002"
+	EscLowNPS           = "ESC-003"
+	EscRen0NoReply      = "ESC-004"
+	EscHighValueChurn   = "ESC-005"
+	EscAngryClient      = "ESC-006"
+	EscPaymentClaim     = "ESC-007"
 )
 
 // Escalation priority constants

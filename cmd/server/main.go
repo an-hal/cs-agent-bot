@@ -36,6 +36,7 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/escalation"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai"
+	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/telegram"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/template"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/trigger"
@@ -99,16 +100,29 @@ func main() {
 	clientRepo := repository.NewClientRepo(sheetsService, cacheService, logger)
 	invoiceRepo := repository.NewInvoiceRepo(sheetsService, cacheService, logger)
 	flagsRepo := repository.NewFlagsRepo(sheetsService, cacheService, logger)
+	convStateRepo := repository.NewConversationStateRepo(sheetsService, cacheService, logger)
 	logRepo := repository.NewLogRepo(sheetsService, logger)
 	escalationRepo := repository.NewEscalationRepo(sheetsService, cacheService, logger)
 	configRepo := repository.NewConfigRepo(sheetsService, cacheService, logger)
 
-	// Initialize External Services
-	haloaiClient := haloai.NewHaloAIClient(cfg.HaloAIAPIURL, cfg.WAAPIToken, cfg.HaloAIBusinessID, cfg.HaloAIChannelID, logger)
-	telegramNotifier := telegram.NewTelegramNotifier(cfg.TelegramBotToken, cfg.TelegramAELeadID, logger)
-
 	// Initialize Template Resolver (depends on configRepo)
 	templateResolver := template.NewTemplateResolver(configRepo, logger)
+
+	// Initialize External Services
+	haloaiClient := haloai.NewHaloAIClient(cfg.HaloAIAPIURL, cfg.WAAPIToken, cfg.HaloAIBusinessID, cfg.HaloAIChannelID, logger)
+	telegramNotifier := telegram.NewTelegramNotifier(cfg.TelegramBotToken, cfg.TelegramAELeadID, templateResolver, logger)
+
+	// Initialize Payment Verifier
+	paymentVerifier := usecasePayment.NewPaymentVerifier(
+		clientRepo,
+		flagsRepo,
+		logRepo,
+		escalationRepo,
+		telegramNotifier,
+		haloaiClient,
+		templateResolver,
+		logger,
+	)
 
 	// Initialize Reply Classifier
 	replyClassifier := classifier.NewReplyClassifier()
@@ -127,6 +141,7 @@ func main() {
 		clientRepo,
 		invoiceRepo,
 		flagsRepo,
+		convStateRepo,
 		logRepo,
 		configRepo,
 		escalationRepo,
@@ -143,6 +158,7 @@ func main() {
 	cronRunner := cron.NewCronRunner(
 		clientRepo,
 		flagsRepo,
+		convStateRepo,
 		invoiceRepo,
 		logRepo,
 		triggerService,
@@ -151,8 +167,10 @@ func main() {
 
 	// Initialize Webhook Handlers
 	replyHandler := webhook.NewReplyHandler(
+		invoiceRepo,
 		clientRepo,
 		flagsRepo,
+		convStateRepo,
 		logRepo,
 		replyClassifier,
 		escalationHandler,
@@ -193,6 +211,7 @@ func main() {
 		ReplyHandler:     replyHandler,
 		CheckinHandler:   checkinHandler,
 		HandoffHandler:   handoffHandler,
+		PaymentVerifier:  paymentVerifier,
 	})
 
 	server := &http.Server{

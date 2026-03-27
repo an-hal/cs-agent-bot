@@ -57,10 +57,14 @@ func (h *checkinFormHandler) HandleCheckinForm(ctx context.Context, companyID st
 
 	// Append to action log
 	logEntry := entity.ActionLog{
-		CompanyID:   companyID,
-		TriggerType: "CHECKIN_FORM_REPLIED",
-		Channel:     entity.ChannelWhatsApp,
-		Details:     "Check-in form submitted",
+		CompanyID:              companyID,
+		TriggerType:            "CHECKIN_FORM_REPLIED",
+		Channel:                entity.ChannelWhatsApp,
+		MessageSent:            false,
+		ResponseReceived:       true,
+		ResponseClassification: "CHECKIN",
+		NextActionTriggered:    "",
+		LogNotes:               "Check-in form submitted",
 	}
 	if err := h.logRepo.AppendLog(ctx, logEntry); err != nil {
 		h.logger.Error().Err(err).Msg("Failed to append checkin log")

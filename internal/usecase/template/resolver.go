@@ -14,6 +14,7 @@ import (
 
 type TemplateResolver interface {
 	ResolveTemplate(ctx context.Context, templateID string, client entity.Client, invoice *entity.Invoice, cfg TemplateConfig) (string, error)
+	ResolveEscalationTemplate(ctx context.Context, escID string, client entity.Client, esc entity.Escalation, extraVars map[string]string) (string, error)
 }
 
 type TemplateConfig struct {
@@ -77,6 +78,40 @@ func (r *templateResolver) ResolveTemplate(ctx context.Context, templateID strin
 	// Guard: reject send if any [variable] remains unresolved
 	if strings.Contains(body, "[") && strings.Contains(body, "]") {
 		return "", fmt.Errorf("unresolved variable in template %s", templateID)
+	}
+
+	return body, nil
+}
+
+func (r *templateResolver) ResolveEscalationTemplate(ctx context.Context, escID string, client entity.Client, esc entity.Escalation, extraVars map[string]string) (string, error) {
+	tmpl, err := r.configRepo.GetEscalationTemplate(ctx, escID)
+	if err != nil {
+		return "", fmt.Errorf("escalation template not found: %s: %w", escID, err)
+	}
+
+	body := tmpl.TelegramMsg
+
+	// Replace escalation-specific variables
+	body = strings.ReplaceAll(body, "[Esc_ID]", esc.EscID)
+	body = strings.ReplaceAll(body, "[Priority]", esc.Priority)
+	body = strings.ReplaceAll(body, "[Reason]", esc.Reason)
+	body = strings.ReplaceAll(body, "[Status]", esc.Status)
+
+	// Replace client variables
+	body = strings.ReplaceAll(body, "[Company_Name]", client.CompanyName)
+	body = strings.ReplaceAll(body, "[Company_ID]", client.CompanyID)
+	body = strings.ReplaceAll(body, "[PIC_Name]", client.PICName)
+	body = strings.ReplaceAll(body, "[Owner_Name]", client.OwnerName)
+	body = strings.ReplaceAll(body, "[Owner_WA]", client.OwnerWA)
+
+	// Replace extra variables (e.g., [Verified_By], [Invoice_ID])
+	for key, value := range extraVars {
+		body = strings.ReplaceAll(body, "["+key+"]", value)
+	}
+
+	// Guard: reject if any [variable] remains unresolved
+	if strings.Contains(body, "[") && strings.Contains(body, "]") {
+		return "", fmt.Errorf("unresolved variable in escalation template %s", escID)
 	}
 
 	return body, nil

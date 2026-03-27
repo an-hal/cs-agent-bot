@@ -6,6 +6,7 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/validator"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
+	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/webhook"
 	"github.com/rs/zerolog"
 )
@@ -20,4 +21,5 @@ type Deps struct {
 	ReplyHandler     webhook.ReplyHandler
 	CheckinHandler   webhook.CheckinFormHandler
 	HandoffHandler   webhook.HandoffHandler
+	PaymentVerifier  usecasePayment.PaymentVerifier
 }

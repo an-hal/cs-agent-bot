@@ -91,8 +91,6 @@ func (c *haloAIClient) SendWA(ctx context.Context, phoneNumber string, message s
 	}
 
 	var result sendResponse
-	c.logger.Info().Interface("result", result).Msg("Result")
-	c.logger.Info().Interface("body", body).Msg("Body")
 	if err := json.Unmarshal(body, &result); err != nil {
 		return "", fmt.Errorf("failed to unmarshal response: %w", err)
 	}

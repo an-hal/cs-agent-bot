@@ -88,10 +88,14 @@ func (h *handoffHandler) HandleNewClient(ctx context.Context, payload NewClientP
 
 	// Append to action log
 	logEntry := entity.ActionLog{
-		CompanyID:   payload.CompanyID,
-		TriggerType: "NEW_CLIENT_HANDOFF",
-		Channel:     entity.ChannelWhatsApp,
-		Details:     fmt.Sprintf("New client onboarded: %s", payload.CompanyName),
+		CompanyID:              payload.CompanyID,
+		TriggerType:            "NEW_CLIENT_HANDOFF",
+		Channel:                entity.ChannelWhatsApp,
+		MessageSent:            false,
+		ResponseReceived:       false,
+		ResponseClassification: "HANDOFF",
+		NextActionTriggered:    "ONBOARD",
+		LogNotes:               fmt.Sprintf("New client onboarded: %s", payload.CompanyName),
 	}
 	_ = h.logRepo.AppendLog(ctx, logEntry)
 

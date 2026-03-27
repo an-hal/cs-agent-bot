@@ -15,6 +15,7 @@ type TriggerService struct {
 	ClientRepo       repository.ClientRepository
 	InvoiceRepo      repository.InvoiceRepository
 	FlagsRepo        repository.FlagsRepository
+	ConvStateRepo    repository.ConversationStateRepository
 	LogRepo          repository.LogRepository
 	ConfigRepo       repository.ConfigRepository
 	EscalationRepo   repository.EscalationRepository
@@ -31,6 +32,7 @@ func NewTriggerService(
 	clientRepo repository.ClientRepository,
 	invoiceRepo repository.InvoiceRepository,
 	flagsRepo repository.FlagsRepository,
+	convStateRepo repository.ConversationStateRepository,
 	logRepo repository.LogRepository,
 	configRepo repository.ConfigRepository,
 	escalationRepo repository.EscalationRepository,
@@ -46,6 +48,7 @@ func NewTriggerService(
 		ClientRepo:       clientRepo,
 		InvoiceRepo:      invoiceRepo,
 		FlagsRepo:        flagsRepo,
+		ConvStateRepo:    convStateRepo,
 		LogRepo:          logRepo,
 		ConfigRepo:       configRepo,
 		EscalationRepo:   escalationRepo,

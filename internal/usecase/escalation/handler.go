@@ -67,19 +67,26 @@ func (h *escalationHandler) TriggerEscalation(ctx context.Context, escID string,
 
 	// Step 2: Append to Action Log
 	logEntry := entity.ActionLog{
-		CompanyID:   client.CompanyID,
-		TriggerType: "ESCALATED_" + escID,
-		Channel:     entity.ChannelTelegram,
-		Details:     reason,
+		CompanyID:              client.CompanyID,
+		TriggerType:            "ESCALATED_" + escID,
+		Channel:                entity.ChannelTelegram,
+		MessageSent:            false,
+		ResponseReceived:       false,
+		ResponseClassification: "",
+		NextActionTriggered:    "ESCALATION",
+		LogNotes:               reason,
 	}
 	if err := h.logRepo.AppendLog(ctx, logEntry); err != nil {
 		return fmt.Errorf("escalation step 2 (append log) failed: %w", err)
 	}
 
 	// Step 3: Send Telegram to AE
-	formatted := h.telegram.FormatEscalation(esc, client)
+	formatted, err := h.telegram.FormatEscalation(ctx, esc, client, nil)
+	if err != nil {
+		return fmt.Errorf("escalation step 3 (telegram format) failed: %w", err)
+	}
 	if err := h.telegram.SendMessage(ctx, client.OwnerTelegramID, formatted); err != nil {
-		return fmt.Errorf("escalation step 3 (telegram) failed: %w", err)
+		return fmt.Errorf("escalation step 3 (telegram send) failed: %w", err)
 	}
 
 	// Step 4: Write escalation row
