@@ -10,9 +10,16 @@ import (
 )
 
 // HMACAuthMiddleware validates the X-Handoff-Secret header for the BD handoff endpoint.
-func HMACAuthMiddleware(secret string, logger zerolog.Logger) func(http.HandlerFunc) http.HandlerFunc {
+// Skips validation when ENV=development or ENV=local for local testing.
+func HMACAuthMiddleware(secret, env string, logger zerolog.Logger) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
+			// Skip HMAC validation for local development
+			if env == "development" || env == "local" {
+				logger.Debug().Msg("HMAC: skipping validation for local development")
+				next(w, r)
+				return
+			}
 			headerVal := r.Header.Get("X-Handoff-Secret")
 			if headerVal == "" {
 				logger.Warn().Msg("HMAC: missing X-Handoff-Secret header")

@@ -12,9 +12,16 @@ import (
 )
 
 // HaloAISignatureMiddleware verifies HaloAI webhook signature.
-func HaloAISignatureMiddleware(secret string, logger zerolog.Logger) func(http.HandlerFunc) http.HandlerFunc {
+// Skips validation when ENV=development or ENV=local for local testing.
+func HaloAISignatureMiddleware(secret, env string, logger zerolog.Logger) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
+			// Skip signature validation for local development
+			if env == "development" || env == "local" {
+				logger.Debug().Msg("HaloAI signature: skipping validation for local development")
+				next(w, r)
+				return
+			}
 			signature := r.Header.Get("X-Signature")
 			if signature == "" {
 				logger.Warn().Msg("HaloAI signature: missing X-Signature header")
