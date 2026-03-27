@@ -1,6 +1,8 @@
 package entity
 
-import "time"
+import (
+	"time"
+)
 
 type Invoice struct {
 	InvoiceID     string    `json:"invoice_id"`
@@ -14,6 +16,7 @@ type Invoice struct {
 	Post1Sent     bool      `json:"post1_sent"`
 	Post4Sent     bool      `json:"post4_sent"`
 	Post8Sent     bool      `json:"post8_sent"`
+	Post15Sent    bool      `json:"post15_sent"`
 }
 
 // DaysPastDue returns how many days past the due date. Negative means not yet due.

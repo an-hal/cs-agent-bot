@@ -21,7 +21,7 @@ func (t *TriggerService) EvalOverdue(ctx context.Context, c entity.Client, f ent
 
 	// D+1 reminder
 	if daysPast >= 1 && !inv.Post1Sent {
-		if err := t.sendMessage(ctx, "TPL-CS-H45", "PAY_POST1_SENT", c, inv); err != nil {
+		if err := t.sendMessage(ctx, "TPL-PAY-POST1", "PAY_POST1_SENT", c, inv); err != nil {
 			return false, err
 		}
 		if err := t.InvoiceRepo.UpdateFlags(ctx, inv.InvoiceID, map[string]bool{"post1_sent": true}); err != nil {
@@ -32,7 +32,7 @@ func (t *TriggerService) EvalOverdue(ctx context.Context, c entity.Client, f ent
 
 	// D+4 reminder
 	if daysPast >= 4 && !inv.Post4Sent {
-		if err := t.sendMessage(ctx, "PAY_POST4", "PAY_POST4_SENT", c, inv); err != nil {
+		if err := t.sendMessage(ctx, "TPL-PAY-POST4", "PAY_POST4_SENT", c, inv); err != nil {
 			return false, err
 		}
 		if err := t.InvoiceRepo.UpdateFlags(ctx, inv.InvoiceID, map[string]bool{"post4_sent": true}); err != nil {
@@ -43,10 +43,21 @@ func (t *TriggerService) EvalOverdue(ctx context.Context, c entity.Client, f ent
 
 	// D+8 reminder
 	if daysPast >= 8 && !inv.Post8Sent {
-		if err := t.sendMessage(ctx, "PAY_POST8", "PAY_POST8_SENT", c, inv); err != nil {
+		if err := t.sendMessage(ctx, "TPL-PAY-POST8", "PAY_POST8_SENT", c, inv); err != nil {
 			return false, err
 		}
 		if err := t.InvoiceRepo.UpdateFlags(ctx, inv.InvoiceID, map[string]bool{"post8_sent": true}); err != nil {
+			return true, err
+		}
+		return true, nil
+	}
+
+	// D+15 reminder
+	if daysPast >= 15 && !inv.Post15Sent {
+		if err := t.sendMessage(ctx, "TPL-PAY-POST15", "PAY_POST15_SENT", c, inv); err != nil {
+			return false, err
+		}
+		if err := t.InvoiceRepo.UpdateFlags(ctx, inv.InvoiceID, map[string]bool{"post15_sent": true}); err != nil {
 			return true, err
 		}
 		return true, nil

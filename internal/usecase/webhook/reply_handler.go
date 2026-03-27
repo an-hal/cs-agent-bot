@@ -20,14 +20,14 @@ type ReplyHandler interface {
 }
 
 type replyHandler struct {
-	clientRepo  repository.ClientRepository
-	flagsRepo   repository.FlagsRepository
-	logRepo     repository.LogRepository
-	classifier  classifier.ReplyClassifier
-	escalation  escalation.EscalationHandler
-	haloAI      haloai.HaloAIClient
-	telegram    telegram.TelegramNotifier
-	logger      zerolog.Logger
+	clientRepo repository.ClientRepository
+	flagsRepo  repository.FlagsRepository
+	logRepo    repository.LogRepository
+	classifier classifier.ReplyClassifier
+	escalation escalation.EscalationHandler
+	haloAI     haloai.HaloAIClient
+	telegram   telegram.TelegramNotifier
+	logger     zerolog.Logger
 }
 
 func NewReplyHandler(
@@ -82,7 +82,7 @@ func (h *replyHandler) HandleIncomingReply(ctx context.Context, payload WAWebhoo
 	logEntry := entity.ActionLog{
 		CompanyID:   client.CompanyID,
 		TriggerType: "REPLY_" + strings.ToUpper(string(intent)),
-		MessageID:   payload.MessageID,
+		TemplateID:  payload.MessageID,
 		Channel:     entity.ChannelWhatsApp,
 		Details:     payload.Text,
 	}

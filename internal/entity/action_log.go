@@ -3,11 +3,11 @@ package entity
 import "time"
 
 type ActionLog struct {
-	LogID       string    `json:"log_id"`
-	CompanyID   string    `json:"company_id"`
 	Timestamp   time.Time `json:"timestamp"`
+	CompanyID   string    `json:"company_id"`
+	CompanyName string    `json:"company_name"`
 	TriggerType string    `json:"trigger_type"`
-	MessageID   string    `json:"message_id"`
+	TemplateID  string    `json:"template_id"`
 	Channel     string    `json:"channel"`
 	Details     string    `json:"details"`
 }

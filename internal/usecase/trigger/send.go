@@ -3,6 +3,7 @@ package trigger
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/template"
@@ -25,16 +26,18 @@ func (t *TriggerService) sendMessage(ctx context.Context, templateID string, tri
 		return err
 	}
 
-	messageID, err := t.HaloAI.SendWA(ctx, client.PICWA, body)
+	_, err = t.HaloAI.SendWA(ctx, client.PICWA, body)
 	if err != nil {
 		return fmt.Errorf("failed to send WA for %s: %w", triggerType, err)
 	}
 
 	// Append to action log
 	logEntry := entity.ActionLog{
+		Timestamp:   time.Now(),
 		CompanyID:   client.CompanyID,
+		CompanyName: client.CompanyName,
 		TriggerType: triggerType,
-		MessageID:   messageID,
+		TemplateID:  templateID,
 		Channel:     entity.ChannelWhatsApp,
 		Details:     templateID,
 	}

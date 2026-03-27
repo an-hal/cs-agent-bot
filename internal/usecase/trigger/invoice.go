@@ -45,7 +45,7 @@ func (t *TriggerService) EvalInvoice(ctx context.Context, c entity.Client, f ent
 
 	// H-14 reminder
 	if daysUntilDue <= 14 && !inv.Pre14Sent {
-		if err := t.sendMessage(ctx, "PAY_PRE14", "PAY_PRE14_SENT", c, inv); err != nil {
+		if err := t.sendMessage(ctx, "TPL-PAY-PRE14", "PAY_PRE14_SENT", c, inv); err != nil {
 			return false, err
 		}
 		if err := t.InvoiceRepo.UpdateFlags(ctx, inv.InvoiceID, map[string]bool{"pre14_sent": true}); err != nil {
@@ -56,7 +56,7 @@ func (t *TriggerService) EvalInvoice(ctx context.Context, c entity.Client, f ent
 
 	// H-7 reminder
 	if daysUntilDue <= 7 && !inv.Pre7Sent {
-		if err := t.sendMessage(ctx, "PAY_PRE7", "PAY_PRE7_SENT", c, inv); err != nil {
+		if err := t.sendMessage(ctx, "TPL-PAY-PRE7", "PAY_PRE7_SENT", c, inv); err != nil {
 			return false, err
 		}
 		if err := t.InvoiceRepo.UpdateFlags(ctx, inv.InvoiceID, map[string]bool{"pre7_sent": true}); err != nil {
@@ -67,7 +67,7 @@ func (t *TriggerService) EvalInvoice(ctx context.Context, c entity.Client, f ent
 
 	// H-3 reminder
 	if daysUntilDue <= 3 && !inv.Pre3Sent {
-		if err := t.sendMessage(ctx, "PAY_PRE3", "PAY_PRE3_SENT", c, inv); err != nil {
+		if err := t.sendMessage(ctx, "TPL-PAY-PRE3", "PAY_PRE3_SENT", c, inv); err != nil {
 			return false, err
 		}
 		if err := t.InvoiceRepo.UpdateFlags(ctx, inv.InvoiceID, map[string]bool{"pre3_sent": true}); err != nil {

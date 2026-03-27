@@ -8,7 +8,6 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database/sheets"
 	"github.com/Sejutacita/cs-agent-bot/internal/service/cache"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
 
@@ -32,19 +31,16 @@ func NewLogRepo(sheetsClient *sheets.SheetsClient, logger zerolog.Logger) LogRep
 
 // AppendLog appends a new entry to the action log. Never cached.
 func (r *logRepo) AppendLog(ctx context.Context, entry entity.ActionLog) error {
-	if entry.LogID == "" {
-		entry.LogID = uuid.New().String()
-	}
 	if entry.Timestamp.IsZero() {
 		entry.Timestamp = time.Now()
 	}
 
 	row := []interface{}{
-		entry.LogID,
+		entry.Timestamp.Format(time.DateTime),
 		entry.CompanyID,
-		entry.Timestamp.Format(time.RFC3339),
+		entry.CompanyName,
 		entry.TriggerType,
-		entry.MessageID,
+		entry.TemplateID,
 		entry.Channel,
 		entry.Details,
 	}
