@@ -7,13 +7,11 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// HTTPExceptionHandler handles errors and writes standardized responses
 type HTTPExceptionHandler struct {
 	logger           zerolog.Logger
 	enableStackTrace bool
 }
 
-// NewHTTPExceptionHandler creates a new exception handler
 func NewHTTPExceptionHandler(logger zerolog.Logger, enableStackTrace bool) *HTTPExceptionHandler {
 	return &HTTPExceptionHandler{
 		logger:           logger,
@@ -21,7 +19,6 @@ func NewHTTPExceptionHandler(logger zerolog.Logger, enableStackTrace bool) *HTTP
 	}
 }
 
-// HandleError handles an error and writes a standardized error response
 func (h *HTTPExceptionHandler) HandleError(w http.ResponseWriter, r *http.Request, err error) {
 	requestID := GetRequestID(r)
 	traceID := GetTraceID(r)
@@ -60,7 +57,6 @@ func (h *HTTPExceptionHandler) HandleError(w http.ResponseWriter, r *http.Reques
 	_ = StandardError(w, r, code, message, errorCode, fields, stackTrace)
 }
 
-// logError logs AppError with appropriate context
 func (h *HTTPExceptionHandler) logError(requestID, traceID string, appErr *apperror.AppError) {
 	logEvent := h.logger.Error().
 		Str("requestId", requestID).

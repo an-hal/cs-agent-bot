@@ -48,7 +48,6 @@ func LoggingMiddleware(logger zerolog.Logger) func(http.Handler) http.Handler {
 				Int("status", rec.status).
 				Int64("duration_ms", duration.Milliseconds())
 
-			// Add trace ID if available
 			if traceID != "" {
 				logEvent = logEvent.Str("traceId", traceID)
 			}

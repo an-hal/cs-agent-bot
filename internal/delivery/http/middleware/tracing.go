@@ -14,16 +14,13 @@ import (
 func TracingMiddleware(t tracer.Tracer) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Start a new span for this HTTP request
 			spanName := r.Method + " " + r.URL.Path
 			ctx, span := t.Start(r.Context(), spanName)
 			defer span.End()
 
-			// Extract traceID and store in context
 			traceID := span.SpanContext().TraceID().String()
 			ctx = ctxutil.SetTraceID(ctx, traceID)
 
-			// Add HTTP request attributes
 			span.SetAttributes(
 				semconv.HTTPRequestMethodKey.String(r.Method),
 				semconv.HTTPRoute(r.URL.Path),
@@ -35,16 +32,12 @@ func TracingMiddleware(t tracer.Tracer) func(http.Handler) http.Handler {
 				attribute.String("http.remote_addr", r.RemoteAddr),
 			)
 
-			// Create a response recorder to capture status code
 			rec := &tracingResponseRecorder{ResponseWriter: w, statusCode: http.StatusOK}
 
-			// Continue with the request using the new context
 			next.ServeHTTP(rec, r.WithContext(ctx))
 
-			// Add response status code
 			span.SetAttributes(semconv.HTTPResponseStatusCode(rec.statusCode))
 
-			// Set span status based on HTTP status code
 			if rec.statusCode >= 400 {
 				span.SetStatus(codes.Error, http.StatusText(rec.statusCode))
 			} else {

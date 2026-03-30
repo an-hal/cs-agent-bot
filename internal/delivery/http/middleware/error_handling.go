@@ -10,17 +10,18 @@ import (
 type ErrorHandler func(http.ResponseWriter, *http.Request) error
 
 // ErrorHandlingMiddleware wraps an ErrorHandler and catches any returned errors
-// This is used for per-route error handling where handlers return errors
 func ErrorHandlingMiddleware(exceptionHandler *response.HTTPExceptionHandler) func(ErrorHandler) http.HandlerFunc {
 	return func(handler ErrorHandler) http.HandlerFunc {
 		return func(w http.ResponseWriter, r *http.Request) {
-			// Execute the handler
 			err := handler(w, r)
-
-			// If an error occurred, let the exception handler deal with it
 			if err != nil {
 				exceptionHandler.HandleError(w, r, err)
 			}
 		}
 	}
+}
+
+// WrapErrorHandler converts an error-returning handler to http.HandlerFunc
+func WrapErrorHandler(handler ErrorHandler, exceptionHandler *response.HTTPExceptionHandler) http.HandlerFunc {
+	return ErrorHandlingMiddleware(exceptionHandler)(handler)
 }

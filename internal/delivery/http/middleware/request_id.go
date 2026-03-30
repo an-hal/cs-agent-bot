@@ -13,19 +13,15 @@ import (
 func RequestIDMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Try to get request ID from header, or generate a new one
 			requestID := r.Header.Get(ctxutil.RequestIDHeader)
 			if requestID == "" {
 				requestID = uuid.New().String()
 			}
 
-			// Add request ID to response header for client tracing
 			w.Header().Set(ctxutil.RequestIDHeader, requestID)
 
-			// Add request ID to context
 			ctx := ctxutil.SetRequestID(r.Context(), requestID)
 
-			// Continue with the request using the new context
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

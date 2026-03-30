@@ -134,7 +134,6 @@ func (r *Router) Handle(method, path string, handler interface{}) {
 	root.routes = append(root.routes, route)
 }
 
-// typeString returns a string representation of the type
 func typeString(v interface{}) string {
 	if v == nil {
 		return "nil"
@@ -192,7 +191,6 @@ func (r *Router) serveRoute(w http.ResponseWriter, req *http.Request) {
 	http.NotFound(w, req)
 }
 
-// GetParam retrieves param from context
 func GetParam(r *http.Request, key string) string {
 	params := r.Context().Value(ParamKey)
 	if m, ok := params.(map[string]string); ok {
