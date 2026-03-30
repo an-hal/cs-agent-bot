@@ -22,7 +22,7 @@ func (t *TriggerService) sendMessage(ctx context.Context, templateID string, tri
 	if err != nil {
 		// Alert AE if template resolution fails
 		alertMsg := fmt.Sprintf("Template resolution failed for %s (%s): %v", client.CompanyName, client.CompanyID, err)
-		_ = t.Telegram.SendMessage(ctx, client.OwnerTelegramID, alertMsg)
+		_ = t.Telegram.SendMessage(ctx, t.Cfg.TelegramAELeadID, alertMsg)
 		return err
 	}
 

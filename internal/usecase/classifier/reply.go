@@ -47,7 +47,7 @@ func (c *replyClassifier) ClassifyReply(messageType string, text string) Intent 
 	}
 
 	// 2. Paid claim
-	paidKeywords := []string{"sudah bayar", "lunas", "transfer", "trf", "sdh bayar"}
+	paidKeywords := []string{"sudah bayar", "lunas", "transfer", "trf", "sdh bayar", "sudah transfer"}
 	if containsAny(lower, paidKeywords) {
 		return IntentPaidClaim
 	}

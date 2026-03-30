@@ -151,7 +151,10 @@ func (h *replyHandler) handleAngry(ctx context.Context, client entity.Client) er
 func (h *replyHandler) handlePaidClaim(ctx context.Context, client entity.Client, replyText string) error {
 	// Ask for proof via WA
 	_, _ = h.haloAI.SendWA(ctx, client.PICWA,
-		"Terima kasih atas informasinya. Pembayaran anda sedang kami verifikasi. Terima kasih!")
+		"Terima kasih atas informasinya.\n"+
+			"Saat ini pembayaran Anda sedang kami lakukan proses verifikasi.\n"+
+			"Kami akan segera menginformasikan kembali setelah proses selesai.\n\n"+
+			"Terima kasih atas kesabarannya.")
 
 	// Update conversation state
 	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)

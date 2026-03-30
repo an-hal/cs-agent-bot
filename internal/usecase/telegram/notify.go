@@ -93,15 +93,16 @@ func (t *telegramNotifier) FormatEscalation(ctx context.Context, esc entity.Esca
 
 func (t *telegramNotifier) FormatPaymentClaim(client entity.Client, inv *entity.Invoice) string {
 	return fmt.Sprintf(
-		"Halo *%s*\n"+
-			"Berikut terdapat pembayaran Invoice dengan detail : \n\n"+
+		"Halo *%s*,\n\n"+
+			"Terdapat pembayaran invoice dengan detail berikut:\n\n"+
 			"Nama Company : *%s*\n"+
-			"Jatuh Tempo : %s\n"+
-			"Nominal : %s\n"+
-			"Status : Paid - Need to Confirm\n\n"+
-			"Kami lampirkan bukti trasnfer pada Paper.id. \n"+
-			"Silahkan check dashboard Paper.id untuk konfirmasi dan lakukan konfirmasi dengan update status invoice pada dashboard AE kita pada URL : http://biz.kantorku.id/\n\n"+
-			"Terimakasih",
+			"Jatuh Tempo   : %s\n"+
+			"Nominal       : %s\n"+
+			"Status        : Paid (Need Confirmation)\n\n"+
+			"Bukti transfer telah dilampirkan melalui Paper.id.\n"+
+			"Silakan melakukan pengecekan pada dashboard Paper.id dan melanjutkan konfirmasi dengan memperbarui status invoice pada dashboard AE melalui link berikut:\n"+
+			"http://biz.kantorku.id/\n\n"+
+			"Terima kasih.",
 		client.OwnerName,
 		client.CompanyName,
 		inv.DueDate.Format("2 Januari 2006"),
