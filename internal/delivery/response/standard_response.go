@@ -76,3 +76,8 @@ func StandardErrorWithMeta(w http.ResponseWriter, r *http.Request, code int, mes
 		StackTrace:       stackTrace,
 	})
 }
+
+// WriteJSON writes a JSON response with the given status code
+func WriteJSON(w http.ResponseWriter, r *http.Request, code int, data interface{}) error {
+	return StandardSuccess(w, r, code, "Success", data)
+}

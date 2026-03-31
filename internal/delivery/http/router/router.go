@@ -33,11 +33,14 @@ type Router struct {
 	routes       []Route
 	prefixRoutes []prefixRoute
 	middleware   []func(http.Handler) http.Handler
+	routeMiddleware map[string][]func(http.Handler) http.Handler // path-specific middleware
 	errorHandler func(middleware.ErrorHandler) http.HandlerFunc
 }
 
 func NewRouter() *Router {
-	return &Router{}
+	return &Router{
+		routeMiddleware: make(map[string][]func(http.Handler) http.Handler),
+	}
 }
 
 // root returns the root router in the chain.
@@ -70,6 +73,15 @@ func (r *Router) Use(mw func(http.Handler) http.Handler) {
 func (r *Router) SetErrorHandler(handler func(middleware.ErrorHandler) http.HandlerFunc) {
 	root := r.root()
 	root.errorHandler = handler
+}
+
+// UseMiddleware adds middleware to a specific route path.
+func (r *Router) UseMiddleware(path string, mw func(http.Handler) http.Handler) {
+	root := r.root()
+	if root.routeMiddleware == nil {
+		root.routeMiddleware = make(map[string][]func(http.Handler) http.Handler)
+	}
+	root.routeMiddleware[path] = append(root.routeMiddleware[path], mw)
 }
 
 // Handle registers a new route with the given method and path.
@@ -184,7 +196,21 @@ func (r *Router) serveRoute(w http.ResponseWriter, req *http.Request) {
 				params[name] = matches[i+1]
 			}
 			ctx := context.WithValue(req.Context(), ParamKey, params)
-			route.HandlerFunc(w, req.WithContext(ctx))
+
+			// Build handler with route-specific middleware
+			var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				route.HandlerFunc(w, req)
+			})
+
+			// Apply route-specific middleware if any
+			path := req.URL.Path
+			if mws, ok := r.routeMiddleware[path]; ok {
+				for i := len(mws) - 1; i >= 0; i-- {
+					handler = mws[i](handler)
+				}
+			}
+
+			handler.ServeHTTP(w, req.WithContext(ctx))
 			return
 		}
 	}

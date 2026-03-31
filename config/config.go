@@ -80,6 +80,33 @@ type AppConfig struct {
 
 	// Error Handling
 	EnableStackTrace bool
+
+	// HaloAI Integration
+	HALOAI_API_URL    string
+	WA_API_TOKEN      string
+	WA_WEBHOOK_SECRET string
+
+	// Telegram Integration
+	TELEGRAM_BOT_TOKEN  string
+	TELEGRAM_AE_LEAD_ID string
+
+	// GCP Cloud Scheduler
+	APP_URL           string
+	SCHEDULER_SA_EMAIL string
+
+	// Business Configuration
+	PROMO_DEADLINE         string
+	SURVEY_PLATFORM_URL    string
+	CHECKIN_FORM_URL       string
+	REFERRAL_BENEFIT       string
+	QUOTATION_URL          string
+	ACV_HIGH_THRESHOLD     float64
+	ACV_MID_THRESHOLD      float64
+	SENIOR_AE_TELEGRAM_IDS string
+	AE_TEAM_TELEGRAM_IDS   string
+	ANGRY_KEYWORDS_EXTRA   string
+	HANDOFF_WEBHOOK_SECRET string
+	SILENCE_THRESHOLD_DAYS int
 }
 
 func LoadConfig() *AppConfig {
@@ -156,6 +183,33 @@ func LoadConfig() *AppConfig {
 
 		// Error Handling
 		EnableStackTrace: getEnvBool("ENABLE_STACK_TRACE", false),
+
+		// HaloAI Integration
+		HALOAI_API_URL:    getEnv("HALOAI_API_URL", "https://api.haloai.id"),
+		WA_API_TOKEN:      getEnv("WA_API_TOKEN", ""),
+		WA_WEBHOOK_SECRET: getEnv("WA_WEBHOOK_SECRET", ""),
+
+		// Telegram Integration
+		TELEGRAM_BOT_TOKEN:  getEnv("TELEGRAM_BOT_TOKEN", ""),
+		TELEGRAM_AE_LEAD_ID: getEnv("TELEGRAM_AE_LEAD_ID", ""),
+
+		// GCP Cloud Scheduler
+		APP_URL:            getEnv("APP_URL", "http://localhost:3000"),
+		SCHEDULER_SA_EMAIL: getEnv("SCHEDULER_SA_EMAIL", ""),
+
+		// Business Configuration
+		PROMO_DEADLINE:         getEnv("PROMO_DEADLINE", "2025-03-31"),
+		SURVEY_PLATFORM_URL:    getEnv("SURVEY_PLATFORM_URL", ""),
+		CHECKIN_FORM_URL:       getEnv("CHECKIN_FORM_URL", ""),
+		REFERRAL_BENEFIT:       getEnv("REFERRAL_BENEFIT", "1 bulan gratis"),
+		QUOTATION_URL:          getEnv("QUOTATION_URL", ""),
+		ACV_HIGH_THRESHOLD:     getEnvFloat("ACV_HIGH_THRESHOLD", 50000000),
+		ACV_MID_THRESHOLD:      getEnvFloat("ACV_MID_THRESHOLD", 5000000),
+		SENIOR_AE_TELEGRAM_IDS: getEnv("SENIOR_AE_TELEGRAM_IDS", ""),
+		AE_TEAM_TELEGRAM_IDS:   getEnv("AE_TEAM_TELEGRAM_IDS", ""),
+		ANGRY_KEYWORDS_EXTRA:   getEnv("ANGRY_KEYWORDS_EXTRA", ""),
+		HANDOFF_WEBHOOK_SECRET: getEnv("HANDOFF_WEBHOOK_SECRET", ""),
+		SILENCE_THRESHOLD_DAYS: getEnvInt("SILENCE_THRESHOLD_DAYS", 30),
 	}
 
 	validateRequired(cfg)
@@ -216,6 +270,16 @@ func getEnvDuration(key string, defaultVal time.Duration) time.Duration {
 	if val, exists := os.LookupEnv(key); exists {
 		if duration, err := time.ParseDuration(val); err == nil {
 			return duration
+		}
+	}
+	return defaultVal
+}
+
+// getEnvFloat retrieves a float64 environment variable or returns the default value
+func getEnvFloat(key string, defaultVal float64) float64 {
+	if val, exists := os.LookupEnv(key); exists {
+		if floatVal, err := strconv.ParseFloat(val, 64); err == nil {
+			return floatVal
 		}
 	}
 	return defaultVal
