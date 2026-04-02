@@ -56,7 +56,7 @@ func (h *handoffHandler) HandleNewClient(ctx context.Context, payload NewClientP
 		PICName:         payload.PICName,
 		PICWA:           payload.PICWA,
 		OwnerName:       payload.OwnerName,
-		OwnerWA:         payload.OwnerWA,
+		OwnerWA:         entity.StringPtr(payload.OwnerWA),
 		Segment:         payload.Segment,
 		ContractMonths:  payload.ContractMonths,
 		ContractStart:   contractStart,
@@ -69,24 +69,17 @@ func (h *handoffHandler) HandleNewClient(ctx context.Context, payload NewClientP
 		ResponseStatus:  entity.ResponseStatusPending,
 	}
 
-	// Create client row in Sheet 1
 	if err := h.clientRepo.CreateClient(ctx, client); err != nil {
 		return fmt.Errorf("failed to create client: %w", err)
 	}
 
-	// Initialize all flags in Sheet 4 (all FALSE by default)
 	flags := entity.ClientFlags{
 		CompanyID: payload.CompanyID,
 	}
-	// Append flags row — since the struct defaults are all false, this works as initialization
-	// For POC, we use UpdateFlags which writes the full row
-	// First we need to append a new row to Sheet 4
 	if err := h.flagsRepo.UpdateFlags(ctx, payload.CompanyID, flags); err != nil {
-		// If update fails (row doesn't exist yet), the flags need to be created
 		h.logger.Warn().Err(err).Msg("Failed to update flags, client flags may need manual init")
 	}
 
-	// Append to action log
 	logEntry := entity.ActionLog{
 		CompanyID:              payload.CompanyID,
 		TriggerType:            "NEW_CLIENT_HANDOFF",

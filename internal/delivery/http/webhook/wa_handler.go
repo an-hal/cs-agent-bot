@@ -40,10 +40,10 @@ func (h *WAWebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	// Convert DTO to usecase type
 	ucPayload := usecaseWebhook.WAWebhookPayload{
-		MessageID:   payload.MessageID,
-		PhoneNumber: payload.PhoneNumber,
-		MessageType: payload.MessageType,
-		Text:        payload.Text,
+		MessageID:   payload.Trigger.MessageID,
+		PhoneNumber: payload.Customer.Phone,
+		MessageType: payload.Message.Body,
+		Text:        payload.Message.Body,
 	}
 
 	// Respond BEFORE any processing (must return 200 within 5 seconds)
@@ -54,7 +54,7 @@ func (h *WAWebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		ctx := context.Background()
 		if err := h.replyHandler.HandleIncomingReply(ctx, ucPayload); err != nil {
 			h.logger.Error().Err(err).
-				Str("message_id", payload.MessageID).
+				Str("message_id", payload.Trigger.MessageID).
 				Msg("Failed to handle incoming reply")
 		}
 	}()

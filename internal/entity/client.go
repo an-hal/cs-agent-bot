@@ -1,37 +1,36 @@
 package entity
 
 import (
-	"fmt"
 	"time"
 )
 
 type Client struct {
-	CompanyID           string    `json:"company_id"`
-	CompanyName         string    `json:"company_name"`
-	PICName             string    `json:"pic_name"`
-	PICWA               string    `json:"pic_wa"`
-	OwnerName           string    `json:"owner_name"`
-	OwnerWA             string    `json:"owner_wa"`
-	Segment             string    `json:"segment"`
-	ContractMonths      int       `json:"contract_months"`
-	ContractStart       time.Time `json:"contract_start"`
-	ContractEnd         time.Time `json:"contract_end"`
-	ActivationDate      time.Time `json:"activation_date"`
-	PaymentStatus       string    `json:"payment_status"`
-	NPSScore            int       `json:"nps_score"`
-	UsageScore          int       `json:"usage_score"`
-	BotActive           bool      `json:"bot_active"`
-	Blacklisted         bool      `json:"blacklisted"`
-	Renewed             bool      `json:"renewed"`
-	Rejected            bool      `json:"rejected"`
-	QuotationLink       string    `json:"quotation_link"`
-	OwnerTelegramID     string    `json:"owner_telegram_id"`
-	SequenceCS          string    `json:"sequence_cs"`
-	CrossSellRejected   bool      `json:"cross_sell_rejected"`
-	CrossSellInterested bool      `json:"cross_sell_interested"`
-	CheckinReplied      bool      `json:"checkin_replied"`
-	ResponseStatus      string    `json:"response_status"`
-	LastInteractionDate time.Time `json:"last_interaction_date"`
+	CompanyID           string     `json:"company_id"`
+	CompanyName         string     `json:"company_name"`
+	PICName             string     `json:"pic_name"`
+	PICWA               string     `json:"pic_wa"`
+	OwnerName           string     `json:"owner_name"`
+	OwnerWA             *string    `json:"owner_wa"`
+	Segment             string     `json:"segment"`
+	ContractMonths      int        `json:"contract_months"`
+	ContractStart       time.Time  `json:"contract_start"`
+	ContractEnd         time.Time  `json:"contract_end"`
+	ActivationDate      time.Time  `json:"activation_date"`
+	PaymentStatus       string     `json:"payment_status"`
+	NPSScore            int        `json:"nps_score"`
+	UsageScore          int        `json:"usage_score"`
+	BotActive           bool       `json:"bot_active"`
+	Blacklisted         bool       `json:"blacklisted"`
+	Renewed             bool       `json:"renewed"`
+	Rejected            bool       `json:"rejected"`
+	QuotationLink       string     `json:"quotation_link"`
+	OwnerTelegramID     string     `json:"owner_telegram_id"`
+	SequenceCS          string     `json:"sequence_cs"`
+	CrossSellRejected   bool       `json:"cross_sell_rejected"`
+	CrossSellInterested bool       `json:"cross_sell_interested"`
+	CheckinReplied      bool       `json:"checkin_replied"`
+	ResponseStatus      string     `json:"response_status"`
+	LastInteractionDate *time.Time `json:"last_interaction_date"`
 
 	// Invoice reminder flags (from Master Client sheet columns 27-33)
 	Pre14Sent  bool `json:"pre14_sent"`
@@ -86,11 +85,6 @@ func (c *Client) DaysSinceActivation() int {
 // DaysPastDue returns days since ContractEnd (payment overdue).
 // Returns 0 if not yet past due.
 func (c *Client) DaysPastDue() int {
-	fmt.Println("Contract End: ", c.ContractEnd)
-	fmt.Println("Days to Expiry: ", int(time.Until(c.ContractEnd).Hours()/24))
-	fmt.Println("Current Time: ", time.Now())
-	fmt.Println("Company Name :", c.CompanyName)
-	fmt.Println("Company ID :", c.CompanyID)
 	if c.ContractEnd.IsZero() {
 		return 0
 	}
@@ -115,5 +109,14 @@ func (c *Client) HasPendingPayment() bool {
 // UpdatePaymentStatus updates the payment status and last interaction date
 func (c *Client) UpdatePaymentStatus(status string) {
 	c.PaymentStatus = status
-	c.LastInteractionDate = time.Now()
+	now := time.Now()
+	c.LastInteractionDate = &now
+}
+
+// GetOwnerWA returns the owner WA number or empty string if nil.
+func (c *Client) GetOwnerWA() string {
+	if c.OwnerWA == nil {
+		return ""
+	}
+	return *c.OwnerWA
 }

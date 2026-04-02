@@ -1,0 +1,32 @@
+-- Migration: Seed escalation rules
+-- Version: 20250401000004
+
+INSERT INTO escalation_rules (esc_id, name, trigger_condition, priority, telegram_msg) VALUES
+('ESC-001', 'Invoice Overdue 15+ Days',
+ 'Invoice overdue 15+ days — AE takes over',
+ 'P1 Critical',
+ '🚨 ESC-001: Invoice [Company_Name] ([Company_ID]) overdue 15+ hari. AE mengambil alih.'),
+('ESC-002', 'Client Objection',
+ 'Client raised objection during negotiation',
+ 'P2 High',
+ '⚠️ ESC-002: [Company_Name] mengajukan keberatan. Reason: [Reason]'),
+('ESC-003', 'Low NPS Score',
+ 'NPS score <= 5 after survey',
+ 'P2 High',
+ '⚠️ ESC-003: [Company_Name] skor NPS rendah ([Reason]). Perlu follow-up.'),
+('ESC-004', 'Renewal Zero Day No Reply',
+ 'Mid/High segment no reply at contract end',
+ 'P2 High',
+ '⚠️ ESC-004: [Company_Name] (segment Mid/High) tidak membalas hingga akhir kontrak.'),
+('ESC-005', 'High Value Churn Risk',
+ 'High-value client showing churn signals',
+ 'P1 Critical',
+ '🚨 ESC-005: High-value client [Company_Name] menunjukkan sinyal churn.'),
+('ESC-006', 'Angry Client',
+ 'Client sent angry/perturbed message',
+ 'P0 Emergency',
+ '🔴 ESC-006: [Company_Name] menunjukkan kekecewaan. Perlu perhatian segera.'),
+('ESC-007', 'Payment Claim',
+ 'Client claims payment already made',
+ 'P1 Critical',
+ '🚨 ESC-007: [Company_Name] mengklaim pembayaran sudah dilakukan.');

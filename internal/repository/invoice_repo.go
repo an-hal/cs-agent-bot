@@ -2,11 +2,14 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
-	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database/sheets"
-	"github.com/Sejutacita/cs-agent-bot/internal/service/cache"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
+	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	"github.com/rs/zerolog"
 )
 
@@ -17,109 +20,96 @@ type InvoiceRepository interface {
 }
 
 type invoiceRepo struct {
-	sheetsClient *sheets.SheetsClient
-	cache        cache.SheetCache
+	DB           *sql.DB
+	queryTimeout time.Duration
+	tracer       tracer.Tracer
 	logger       zerolog.Logger
 }
 
-func NewInvoiceRepo(sheetsClient *sheets.SheetsClient, cache cache.SheetCache, logger zerolog.Logger) InvoiceRepository {
+func NewInvoiceRepo(db *sql.DB, queryTimeout time.Duration, tr tracer.Tracer, logger zerolog.Logger) InvoiceRepository {
 	return &invoiceRepo{
-		sheetsClient: sheetsClient,
-		cache:        cache,
+		DB:           db,
+		queryTimeout: queryTimeout,
+		tracer:       tr,
 		logger:       logger,
 	}
 }
 
+func (r *invoiceRepo) withTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	if r.queryTimeout > 0 {
+		return context.WithTimeout(ctx, r.queryTimeout)
+	}
+	return ctx, func() {}
+}
+
 func (r *invoiceRepo) GetActiveByCompanyID(ctx context.Context, companyID string) (*entity.Invoice, error) {
-	rows, err := r.cache.Get(ctx, cache.KeyInvoices, cache.RangeInvoices, cache.TTLInvoices)
+	ctx, span := r.tracer.Start(ctx, "invoice.repository.GetActiveByCompanyID")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query, args, err := database.PSQL.
+		Select("invoice_id", "company_id", "due_date", "amount", "payment_status").
+		From("invoices").
+		Where(sq.And{
+			sq.Eq{"company_id": companyID},
+			sq.NotEq{"payment_status": entity.PaymentStatusPaid},
+		}).
+		OrderBy("due_date DESC").
+		Limit(1).
+		ToSql()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("build query: %w", err)
 	}
 
-	// Find the latest invoice for this company that is not Paid
-	var latest *entity.Invoice
-	// Skip first 3 rows (indices 0-2): 2 info rows + 1 column header row
-	// Data starts at row 4 (index 3)
-	for i, row := range rows {
-		if i < 3 {
-			continue // skip header rows
+	var inv entity.Invoice
+	err = r.DB.QueryRowContext(ctx, query, args...).Scan(
+		&inv.InvoiceID,
+		&inv.CompanyID,
+		&inv.DueDate,
+		&inv.Amount,
+		&inv.PaymentStatus,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
 		}
-		inv, err := parseInvoiceRow(row)
-		if err != nil {
-			continue
-		}
-		if inv.CompanyID == companyID && inv.PaymentStatus != entity.PaymentStatusPaid {
-			latest = inv
-		}
+		return nil, fmt.Errorf("query invoice: %w", err)
 	}
 
-	if latest == nil {
-		return nil, nil // no active invoice, not an error
-	}
-
-	return latest, nil
+	return &inv, nil
 }
 
 func (r *invoiceRepo) CreateInvoice(ctx context.Context, inv entity.Invoice) error {
-	row := invoiceToRow(inv)
-	if err := r.sheetsClient.AppendRows(ctx, cache.RangeInvoices, [][]interface{}{row}); err != nil {
-		return err
-	}
-	return r.cache.Invalidate(ctx, cache.KeyInvoices)
-}
+	ctx, span := r.tracer.Start(ctx, "invoice.repository.CreateInvoice")
+	defer span.End()
 
-func (r *invoiceRepo) UpdateFlags(ctx context.Context, invoiceID string, flags map[string]bool) error {
-	// Note: The Invoice sheet doesn't have Pre14Sent, Pre7Sent, Pre3Sent, Post1Sent, Post4Sent, Post8Sent columns.
-	// These flags need to be tracked separately or columns added to the sheet.
-	r.logger.Warn().Str("invoice_id", invoiceID).Msg(
-		"UpdateFlags called but Invoice sheet lacks reminder flag columns. " +
-			"Consider adding columns: Pre14Sent, Pre7Sent, Pre3Sent, Post1Sent, Post4Sent, Post8Sent")
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query, args, err := database.PSQL.
+		Insert("invoices").
+		Columns("invoice_id", "company_id", "due_date", "payment_status").
+		Values(inv.InvoiceID, inv.CompanyID, inv.DueDate, inv.PaymentStatus).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("build query: %w", err)
+	}
+
+	if _, err = r.DB.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("insert invoice: %w", err)
+	}
+
 	return nil
 }
 
-// parseInvoiceRow maps a Sheets row to entity.Invoice.
-// Column order based on "POC Project Bumi – AE HRIS Automation.xlsx" Sheet 2: Invoice & Billing
-// Row 3 contains the actual column names.
-func parseInvoiceRow(row []interface{}) (*entity.Invoice, error) {
-	if len(row) < 7 {
-		return nil, fmt.Errorf("invoice row too short: %d columns, expected at least 7", len(row))
-	}
+func (r *invoiceRepo) UpdateFlags(ctx context.Context, invoiceID string, flags map[string]bool) error {
+	ctx, span := r.tracer.Start(ctx, "invoice.repository.UpdateFlags")
+	defer span.End()
 
-	return &entity.Invoice{
-		InvoiceID:     safeString(row, 0), // Invoice_ID
-		CompanyID:     safeString(row, 1), // Company_ID
-		DueDate:       safeDate(row, 5),   // Due_Date
-		Amount:        safeFloat(row, 3),  // Amount (Rp)
-		PaymentStatus: safeString(row, 6), // Payment_Status
-		// Flags not in sheet: Pre14Sent, Pre7Sent, Pre3Sent, Post1Sent, Post4Sent, Post8Sent
-		// These remain false as they're not tracked in the current sheet design
-	}, nil
-}
-
-// invoiceToRow converts entity.Invoice to a Sheets row.
-// Must match parseInvoiceRow column order.
-func invoiceToRow(inv entity.Invoice) []interface{} {
-	// Create a 12-column row (0-11) with empty values for unmapped columns
-	row := make([]interface{}, 12)
-
-	row[0] = inv.InvoiceID
-	row[1] = inv.CompanyID
-	// Col 2: Company_Name [lookup]
-	row[3] = inv.Amount
-	// Col 4: Issue_Date (not in entity)
-	row[5] = inv.DueDate.Format("2006-01-02")
-	row[6] = inv.PaymentStatus
-	// Cols 7-11: Days_Overdue [computed], Reminder_Count, Last_Reminder, Collection_Stage, Notes
-
-	return row
-}
-
-// columnLetter converts a 0-based column index to a spreadsheet column letter.
-func columnLetter(idx int) string {
-	result := ""
-	for idx >= 0 {
-		result = string(rune('A'+idx%26)) + result
-		idx = idx/26 - 1
-	}
-	return result
+	r.logger.Warn().Str("invoice_id", invoiceID).Msg(
+		"UpdateFlags called but Invoice table lacks reminder flag columns. " +
+			"Consider adding columns: Pre14Sent, Pre7Sent, Pre3Sent, Post1Sent, Post4Sent, Post8Sent")
+	return nil
 }

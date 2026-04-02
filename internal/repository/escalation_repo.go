@@ -2,12 +2,14 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
-	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database/sheets"
-	"github.com/Sejutacita/cs-agent-bot/internal/service/cache"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
+	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 )
@@ -18,96 +20,114 @@ type EscalationRepository interface {
 }
 
 type escalationRepo struct {
-	sheetsClient *sheets.SheetsClient
-	cache        cache.SheetCache
+	db           *sql.DB
+	queryTimeout time.Duration
+	tracer       tracer.Tracer
 	logger       zerolog.Logger
 }
 
-func NewEscalationRepo(sheetsClient *sheets.SheetsClient, cache cache.SheetCache, logger zerolog.Logger) EscalationRepository {
+func NewEscalationRepo(db *sql.DB, queryTimeout time.Duration, tr tracer.Tracer, logger zerolog.Logger) EscalationRepository {
 	return &escalationRepo{
-		sheetsClient: sheetsClient,
-		cache:        cache,
+		db:           db,
+		queryTimeout: queryTimeout,
+		tracer:       tr,
 		logger:       logger,
 	}
 }
 
-func (r *escalationRepo) GetOpenByCompanyAndEscID(ctx context.Context, companyID, escID string) (*entity.Escalation, error) {
-	rows, err := r.cache.Get(ctx, cache.KeyEscalation, cache.RangeEscalation, cache.TTLEscalation)
-	if err != nil {
-		return nil, err
+func (r *escalationRepo) withTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	if r.queryTimeout > 0 {
+		return context.WithTimeout(ctx, r.queryTimeout)
 	}
-
-	// Skip first 3 rows (indices 0-2): 2 info rows + 1 column header row
-	for i, row := range rows {
-		if i < 3 {
-			continue
-		}
-		if safeString(row, 1) == companyID &&
-			safeString(row, 2) == escID &&
-			safeString(row, 3) == entity.EscalationStatusOpen {
-			return parseEscalationRow(row)
-		}
-	}
-
-	return nil, nil // no open escalation found, not an error
+	return ctx, func() {}
 }
 
+// escalationColumns lists every column read from the escalations table in scan order.
+const escalationColumns = "id, esc_id, company_id, status, triggered_at, priority, trigger_condition"
+
+// GetOpenByCompanyAndEscID returns an open escalation matching the given company
+// and escalation rule ID. Returns nil, nil when no matching open escalation exists.
+func (r *escalationRepo) GetOpenByCompanyAndEscID(ctx context.Context, companyID, escID string) (*entity.Escalation, error) {
+	ctx, span := r.tracer.Start(ctx, "escalation.repository.GetOpenByCompanyAndEscID")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query, args, err := database.PSQL.
+		Select(escalationColumns).
+		From("escalations").
+		Where(sq.And{
+			sq.Eq{"company_id": companyID},
+			sq.Eq{"esc_id": escID},
+			sq.Eq{"status": entity.EscalationStatusOpen},
+		}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build query GetOpenByCompanyAndEscID: %w", err)
+	}
+
+	var esc entity.Escalation
+	err = r.db.QueryRowContext(ctx, query, args...).Scan(
+		&esc.EscalationID,
+		&esc.EscID,
+		&esc.CompanyID,
+		&esc.Status,
+		&esc.CreatedAt,
+		&esc.Priority,
+		&esc.Reason,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query GetOpenByCompanyAndEscID: %w", err)
+	}
+
+	return &esc, nil
+}
+
+// OpenEscalation inserts a new escalation record with status "Open".
+// If EscalationID is empty, a new UUID is generated. CreatedAt is set to NOW().
 func (r *escalationRepo) OpenEscalation(ctx context.Context, esc entity.Escalation) error {
+	ctx, span := r.tracer.Start(ctx, "escalation.repository.OpenEscalation")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
 	if esc.EscalationID == "" {
 		esc.EscalationID = uuid.New().String()
 	}
-	if esc.CreatedAt.IsZero() {
-		esc.CreatedAt = time.Now()
-	}
 	esc.Status = entity.EscalationStatusOpen
+	esc.CreatedAt = time.Now()
 
-	row := escalationToRow(esc)
-	if err := r.sheetsClient.AppendRows(ctx, cache.RangeEscalation, [][]interface{}{row}); err != nil {
-		return err
-	}
-	return r.cache.Invalidate(ctx, cache.KeyEscalation)
-}
-
-func parseEscalationRow(row []interface{}) (*entity.Escalation, error) {
-	if len(row) < 4 {
-		return nil, fmt.Errorf("escalation row too short: %d columns", len(row))
-	}
-
-	esc := &entity.Escalation{
-		EscalationID: safeString(row, 0),
-		CompanyID:    safeString(row, 1),
-		EscID:        safeString(row, 2),
-		Status:       safeString(row, 3),
-		CreatedAt:    safeDate(row, 4),
-		Priority:     safeString(row, 6),
-		Reason:       safeString(row, 7),
-	}
-
-	resolvedAt := safeString(row, 5)
-	if resolvedAt != "" {
-		t, err := time.Parse("2006-01-02", resolvedAt)
-		if err == nil {
-			esc.ResolvedAt = &t
-		}
+	query, args, err := database.PSQL.
+		Insert("escalations").
+		Columns(
+			"esc_id",
+			"company_id",
+			"trigger_condition",
+			"priority",
+			"status",
+			"triggered_at",
+		).
+		Values(
+			esc.EscalationID,
+			esc.CompanyID,
+			esc.Reason,
+			esc.Priority,
+			esc.Status,
+			esc.CreatedAt,
+		).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("build query OpenEscalation: %w", err)
 	}
 
-	return esc, nil
-}
-
-func escalationToRow(esc entity.Escalation) []interface{} {
-	resolvedAt := ""
-	if esc.ResolvedAt != nil {
-		resolvedAt = esc.ResolvedAt.Format("2006-01-02")
+	if _, err = r.db.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("insert escalation: %w", err)
 	}
 
-	return []interface{}{
-		esc.EscalationID,
-		esc.CompanyID,
-		esc.EscID,
-		esc.Status,
-		esc.CreatedAt.Format(time.RFC3339),
-		resolvedAt,
-		esc.Priority,
-		esc.Reason,
-	}
+	return nil
 }

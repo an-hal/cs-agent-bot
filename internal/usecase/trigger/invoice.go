@@ -46,7 +46,6 @@ func (t *TriggerService) EvalInvoice(ctx context.Context, c entity.Client, f ent
 		return false, nil
 	}
 
-	// H-14 reminder - using Client flags
 	if dte <= 14 && !c.Pre14Sent {
 		if err := t.sendMessage(ctx, "TPL-PAY-PRE14", "PAY_PRE14_SENT", c, inv); err != nil {
 			return false, err
@@ -54,12 +53,10 @@ func (t *TriggerService) EvalInvoice(ctx context.Context, c entity.Client, f ent
 		if err := t.ClientRepo.UpdateInvoiceReminderFlags(ctx, c.CompanyID, map[string]bool{"pre14_sent": true}); err != nil {
 			return true, err
 		}
-		// Record in conversation state
 		_ = t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "INVOICE_REMINDER", "TPL-PAY-PRE14")
 		return true, nil
 	}
 
-	// H-7 reminder - using Client flags
 	if dte <= 7 && !c.Pre7Sent {
 		if err := t.sendMessage(ctx, "TPL-PAY-PRE7", "PAY_PRE7_SENT", c, inv); err != nil {
 			return false, err
@@ -67,12 +64,10 @@ func (t *TriggerService) EvalInvoice(ctx context.Context, c entity.Client, f ent
 		if err := t.ClientRepo.UpdateInvoiceReminderFlags(ctx, c.CompanyID, map[string]bool{"pre7_sent": true}); err != nil {
 			return true, err
 		}
-		// Record in conversation state
 		_ = t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "INVOICE_REMINDER", "TPL-PAY-PRE7")
 		return true, nil
 	}
 
-	// H-3 reminder - using Client flags
 	if dte <= 3 && !c.Pre3Sent {
 		if err := t.sendMessage(ctx, "TPL-PAY-PRE3", "PAY_PRE3_SENT", c, inv); err != nil {
 			return false, err
@@ -80,7 +75,6 @@ func (t *TriggerService) EvalInvoice(ctx context.Context, c entity.Client, f ent
 		if err := t.ClientRepo.UpdateInvoiceReminderFlags(ctx, c.CompanyID, map[string]bool{"pre3_sent": true}); err != nil {
 			return true, err
 		}
-		// Record in conversation state
 		_ = t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "INVOICE_REMINDER", "TPL-PAY-PRE3")
 		return true, nil
 	}

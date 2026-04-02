@@ -76,18 +76,13 @@ func (v *paymentVerifier) VerifyPayment(ctx context.Context, req VerifyPaymentRe
 		invoice = nil
 	}
 
-	// Use provided invoice_id or get from invoice
 	invoiceID := req.InvoiceID
 	if invoiceID == "" && invoice != nil {
 		invoiceID = invoice.InvoiceID
 	}
 
 	// 4. Send WhatsApp to client using TPL_PAY_VERIF template
-	templateCfg := template.TemplateConfig{
-		SurveyPlatformURL: "", // Not needed for payment verification
-		CheckinFormURL:    "",
-		ReferralBenefit:   "",
-	}
+	templateCfg := template.TemplateConfig{}
 
 	message, err := v.templateResolver.ResolveTemplate(ctx, "TPL_PAY_VERIF", *client, invoice, templateCfg)
 	if err != nil {

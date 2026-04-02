@@ -26,11 +26,9 @@ import (
 	deliveryHttpDeps "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/deps"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/response"
 	pkgDatabase "github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
-	sheetsClient "github.com/Sejutacita/cs-agent-bot/internal/pkg/database/sheets"
 	pkgLogger "github.com/Sejutacita/cs-agent-bot/internal/pkg/logger"
 	pkgValidator "github.com/Sejutacita/cs-agent-bot/internal/pkg/validator"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
-	pkgCache "github.com/Sejutacita/cs-agent-bot/internal/service/cache"
 	appTracer "github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/classifier"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
@@ -65,7 +63,6 @@ func main() {
 
 	logger := pkgLogger.InitLogger(cfg.Env, cfg.LogLevel)
 
-	// Initialize tracer
 	tracerInstance, err := appTracer.New(cfg)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to initialize tracer")
@@ -78,41 +75,36 @@ func main() {
 		}
 	}()
 
-	// Initialize Redis
 	redisClient := pkgDatabase.NewRedisClient(cfg, logger)
 	rdb := redisClient.InitRedis()
 
-	// Initialize Google Sheets client
-	sheetsService, err := sheetsClient.NewSheetsClient(cfg, logger)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to initialize Google Sheets client")
+	pgClient := pkgDatabase.NewPostgresClient(cfg, logger)
+	db := pgClient.InitPostgresDB()
+	if db == nil {
+		logger.Fatal().Msg("PostgreSQL connection required. Set DB_ENABLED=true")
 	}
 
-	// Initialize SheetCache
-	cacheService := pkgCache.NewSheetCache(rdb, sheetsService, logger)
+	pgCtx, pgCancel := context.WithCancel(context.Background())
+	defer pgCancel()
+	if pgClient.IsStatsLoggingEnabled() {
+		pgClient.StartStatsLogger(pgCtx, db)
+	}
 
-	// Start background cache refresher (runs until app shutdown)
-	cacheCtx, cacheCancel := context.WithCancel(context.Background())
-	defer cacheCancel()
-	cacheService.StartRefresher(cacheCtx)
+	queryTimeout := cfg.DBQueryTimeout
 
-	// Initialize Repositories
-	clientRepo := repository.NewClientRepo(sheetsService, cacheService, logger)
-	invoiceRepo := repository.NewInvoiceRepo(sheetsService, cacheService, logger)
-	flagsRepo := repository.NewFlagsRepo(sheetsService, cacheService, logger)
-	convStateRepo := repository.NewConversationStateRepo(sheetsService, cacheService, logger)
-	logRepo := repository.NewLogRepo(sheetsService, logger)
-	escalationRepo := repository.NewEscalationRepo(sheetsService, cacheService, logger)
-	configRepo := repository.NewConfigRepo(sheetsService, cacheService, logger)
+	clientRepo := repository.NewClientRepo(db, queryTimeout, tracerInstance, logger)
+	invoiceRepo := repository.NewInvoiceRepo(db, queryTimeout, tracerInstance, logger)
+	flagsRepo := repository.NewFlagsRepo(db, queryTimeout, tracerInstance, logger)
+	convStateRepo := repository.NewConversationStateRepo(db, queryTimeout, tracerInstance, logger)
+	logRepo := repository.NewLogRepo(db, queryTimeout, tracerInstance, logger)
+	escalationRepo := repository.NewEscalationRepo(db, queryTimeout, tracerInstance, logger)
+	configRepo := repository.NewConfigRepo(db, queryTimeout, tracerInstance, logger)
 
-	// Initialize Template Resolver (depends on configRepo)
 	templateResolver := template.NewTemplateResolver(configRepo, logger)
 
-	// Initialize External Services
 	haloaiClient := haloai.NewHaloAIClient(cfg.HaloAIAPIURL, cfg.WAAPIToken, cfg.HaloAIBusinessID, cfg.HaloAIChannelID, logger)
 	telegramNotifier := telegram.NewTelegramNotifier(cfg.TelegramBotToken, cfg.TelegramAELeadID, templateResolver, logger)
 
-	// Initialize Payment Verifier
 	paymentVerifier := usecasePayment.NewPaymentVerifier(
 		clientRepo,
 		flagsRepo,
@@ -124,10 +116,8 @@ func main() {
 		logger,
 	)
 
-	// Initialize Reply Classifier
 	replyClassifier := classifier.NewReplyClassifier()
 
-	// Initialize Escalation Handler
 	escalationHandler := escalation.NewEscalationHandler(
 		flagsRepo,
 		logRepo,
@@ -136,7 +126,6 @@ func main() {
 		logger,
 	)
 
-	// Initialize Trigger Service (all evaluators)
 	triggerService := trigger.NewTriggerService(
 		clientRepo,
 		invoiceRepo,
@@ -149,12 +138,10 @@ func main() {
 		haloaiClient,
 		telegramNotifier,
 		escalationHandler,
-		cacheService,
 		cfg,
 		logger,
 	)
 
-	// Initialize Cron Runner
 	cronRunner := cron.NewCronRunner(
 		clientRepo,
 		flagsRepo,
@@ -165,7 +152,6 @@ func main() {
 		logger,
 	)
 
-	// Initialize Webhook Handlers
 	replyHandler := webhook.NewReplyHandler(
 		invoiceRepo,
 		clientRepo,
@@ -194,13 +180,10 @@ func main() {
 		logger,
 	)
 
-	// Validator
 	validate := pkgValidator.New()
 
-	// Exception Handler
 	exceptionHandler := response.NewHTTPExceptionHandler(logger, cfg.EnableStackTrace)
 
-	// HTTP Handler Setup
 	handler := deliveryHttp.SetupHandler(deliveryHttpDeps.Deps{
 		Cfg:              cfg,
 		Logger:           logger,
@@ -244,7 +227,6 @@ func main() {
 	}
 
 	closeRedis(rdb, logger)
-
 	logger.Info().Msg("Server shutdown completed.")
 }
 

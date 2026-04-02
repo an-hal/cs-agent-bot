@@ -16,7 +16,7 @@ type AppConfig struct {
 	RoutePrefix string
 	LogLevel    string
 
-	// PostgreSQL Connection (kept for future production use)
+	// PostgreSQL Connection
 	DBEnabled  string
 	DBHost     string
 	DBPort     string
@@ -64,10 +64,17 @@ type AppConfig struct {
 	HandoffWebhookSecret string
 
 	// Business Config
-	PromoDeadline     string
-	SurveyPlatformURL string
-	CheckinFormURL    string
-	ReferralBenefit   string
+	PromoDeadline        string
+	SurveyPlatformURL    string
+	CheckinFormURL       string
+	ReferralBenefit      string
+	QuotationURL         string
+	ACVHighThreshold     float64
+	ACVMidThreshold      float64
+	SeniorAETelegramIDs  string
+	AETeamTelegramIDs    string
+	AngryKeywordsExtra   string
+	SilenceThresholdDays int
 
 	// OpenTelemetry Tracing
 	TracerExporter            string
@@ -80,33 +87,6 @@ type AppConfig struct {
 
 	// Error Handling
 	EnableStackTrace bool
-
-	// HaloAI Integration
-	HALOAI_API_URL    string
-	WA_API_TOKEN      string
-	WA_WEBHOOK_SECRET string
-
-	// Telegram Integration
-	TELEGRAM_BOT_TOKEN  string
-	TELEGRAM_AE_LEAD_ID string
-
-	// GCP Cloud Scheduler
-	APP_URL           string
-	SCHEDULER_SA_EMAIL string
-
-	// Business Configuration
-	PROMO_DEADLINE         string
-	SURVEY_PLATFORM_URL    string
-	CHECKIN_FORM_URL       string
-	REFERRAL_BENEFIT       string
-	QUOTATION_URL          string
-	ACV_HIGH_THRESHOLD     float64
-	ACV_MID_THRESHOLD      float64
-	SENIOR_AE_TELEGRAM_IDS string
-	AE_TEAM_TELEGRAM_IDS   string
-	ANGRY_KEYWORDS_EXTRA   string
-	HANDOFF_WEBHOOK_SECRET string
-	SILENCE_THRESHOLD_DAYS int
 }
 
 func LoadConfig() *AppConfig {
@@ -121,8 +101,8 @@ func LoadConfig() *AppConfig {
 		RoutePrefix: getEnv("APP_ROUTE_PREFIX", ""),
 		LogLevel:    getEnv("LOG_LEVEL", "info"),
 
-		// PostgreSQL Connection (disabled for POC)
-		DBEnabled:             getEnv("DB_ENABLED", "false"),
+		// PostgreSQL Connection
+		DBEnabled:             getEnv("DB_ENABLED", "true"),
 		DBHost:                getEnv("DB_HOST", "localhost"),
 		DBPort:                getEnv("DB_PORT", "5432"),
 		DBUser:                getEnv("DB_USER", "postgres"),
@@ -167,10 +147,17 @@ func LoadConfig() *AppConfig {
 		HandoffWebhookSecret: getEnv("HANDOFF_WEBHOOK_SECRET", ""),
 
 		// Business Config
-		PromoDeadline:     getEnv("PROMO_DEADLINE", ""),
-		SurveyPlatformURL: getEnv("SURVEY_PLATFORM_URL", ""),
-		CheckinFormURL:    getEnv("CHECKIN_FORM_URL", ""),
-		ReferralBenefit:   getEnv("REFERRAL_BENEFIT", "1 bulan gratis"),
+		PromoDeadline:         getEnv("PROMO_DEADLINE", ""),
+		SurveyPlatformURL:     getEnv("SURVEY_PLATFORM_URL", ""),
+		CheckinFormURL:        getEnv("CHECKIN_FORM_URL", ""),
+		ReferralBenefit:       getEnv("REFERRAL_BENEFIT", "1 bulan gratis"),
+		QuotationURL:          getEnv("QUOTATION_URL", ""),
+		ACVHighThreshold:      getEnvFloat("ACV_HIGH_THRESHOLD", 50000000),
+		ACVMidThreshold:       getEnvFloat("ACV_MID_THRESHOLD", 5000000),
+		SeniorAETelegramIDs:   getEnv("SENIOR_AE_TELEGRAM_IDS", ""),
+		AETeamTelegramIDs:     getEnv("AE_TEAM_TELEGRAM_IDS", ""),
+		AngryKeywordsExtra:    getEnv("ANGRY_KEYWORDS_EXTRA", ""),
+		SilenceThresholdDays:  getEnvInt("SILENCE_THRESHOLD_DAYS", 30),
 
 		// OpenTelemetry Tracing
 		TracerExporter:            getEnv("TRACER_EXPORTER", "zipkin"),
@@ -183,33 +170,6 @@ func LoadConfig() *AppConfig {
 
 		// Error Handling
 		EnableStackTrace: getEnvBool("ENABLE_STACK_TRACE", false),
-
-		// HaloAI Integration
-		HALOAI_API_URL:    getEnv("HALOAI_API_URL", "https://api.haloai.id"),
-		WA_API_TOKEN:      getEnv("WA_API_TOKEN", ""),
-		WA_WEBHOOK_SECRET: getEnv("WA_WEBHOOK_SECRET", ""),
-
-		// Telegram Integration
-		TELEGRAM_BOT_TOKEN:  getEnv("TELEGRAM_BOT_TOKEN", ""),
-		TELEGRAM_AE_LEAD_ID: getEnv("TELEGRAM_AE_LEAD_ID", ""),
-
-		// GCP Cloud Scheduler
-		APP_URL:            getEnv("APP_URL", "http://localhost:3000"),
-		SCHEDULER_SA_EMAIL: getEnv("SCHEDULER_SA_EMAIL", ""),
-
-		// Business Configuration
-		PROMO_DEADLINE:         getEnv("PROMO_DEADLINE", "2025-03-31"),
-		SURVEY_PLATFORM_URL:    getEnv("SURVEY_PLATFORM_URL", ""),
-		CHECKIN_FORM_URL:       getEnv("CHECKIN_FORM_URL", ""),
-		REFERRAL_BENEFIT:       getEnv("REFERRAL_BENEFIT", "1 bulan gratis"),
-		QUOTATION_URL:          getEnv("QUOTATION_URL", ""),
-		ACV_HIGH_THRESHOLD:     getEnvFloat("ACV_HIGH_THRESHOLD", 50000000),
-		ACV_MID_THRESHOLD:      getEnvFloat("ACV_MID_THRESHOLD", 5000000),
-		SENIOR_AE_TELEGRAM_IDS: getEnv("SENIOR_AE_TELEGRAM_IDS", ""),
-		AE_TEAM_TELEGRAM_IDS:   getEnv("AE_TEAM_TELEGRAM_IDS", ""),
-		ANGRY_KEYWORDS_EXTRA:   getEnv("ANGRY_KEYWORDS_EXTRA", ""),
-		HANDOFF_WEBHOOK_SECRET: getEnv("HANDOFF_WEBHOOK_SECRET", ""),
-		SILENCE_THRESHOLD_DAYS: getEnvInt("SILENCE_THRESHOLD_DAYS", 30),
 	}
 
 	validateRequired(cfg)
@@ -224,7 +184,6 @@ func validateRequired(cfg *AppConfig) {
 		"WA_WEBHOOK_SECRET":      cfg.WAWebhookSecret,
 		"TELEGRAM_BOT_TOKEN":     cfg.TelegramBotToken,
 		"TELEGRAM_AE_LEAD_ID":    cfg.TelegramAELeadID,
-		"SPREADSHEET_ID":         cfg.SpreadsheetID,
 		"HANDOFF_WEBHOOK_SECRET": cfg.HandoffWebhookSecret,
 	}
 
