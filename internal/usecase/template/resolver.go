@@ -47,7 +47,7 @@ func (r *templateResolver) ResolveTemplate(ctx context.Context, templateID strin
 	body = strings.ReplaceAll(body, "[Company_Name]", client.CompanyName)
 	body = strings.ReplaceAll(body, "[PIC_Name]", client.PICName)
 	body = strings.ReplaceAll(body, "[Owner_Name]", client.OwnerName)
-	body = strings.ReplaceAll(body, "[Owner_WA]", client.OwnerWA)
+	body = strings.ReplaceAll(body, "[Owner_WA]", client.GetOwnerWA())
 	body = strings.ReplaceAll(body, "[link_quotation]", client.QuotationLink)
 
 	// Survey link
@@ -102,7 +102,7 @@ func (r *templateResolver) ResolveEscalationTemplate(ctx context.Context, escID 
 	body = strings.ReplaceAll(body, "[Company_ID]", client.CompanyID)
 	body = strings.ReplaceAll(body, "[PIC_Name]", client.PICName)
 	body = strings.ReplaceAll(body, "[Owner_Name]", client.OwnerName)
-	body = strings.ReplaceAll(body, "[Owner_WA]", client.OwnerWA)
+	body = strings.ReplaceAll(body, "[Owner_WA]", client.GetOwnerWA())
 
 	// Replace extra variables (e.g., [Verified_By], [Invoice_ID])
 	for key, value := range extraVars {

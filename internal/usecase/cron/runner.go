@@ -93,7 +93,6 @@ func (cr *cronRunner) processClient(ctx context.Context, c entity.Client) error 
 		return nil
 	}
 
-	// Get flags
 	f, err := cr.flagsRepo.GetByCompanyID(ctx, c.CompanyID)
 	if err != nil {
 		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to get flags")
@@ -114,13 +113,11 @@ func (cr *cronRunner) processClient(ctx context.Context, c entity.Client) error 
 		}
 	}
 
-	// Get active invoice
 	inv, err := cr.invoiceRepo.GetActiveByCompanyID(ctx, c.CompanyID)
 	if err != nil {
 		cr.logger.Warn().Err(err).Str("company_id", c.CompanyID).Msg("Failed to get active invoice")
 	}
 
-	// Get conversation state
 	convState, err := cr.convStateRepo.GetByCompanyID(ctx, c.CompanyID)
 	if err != nil {
 		cr.logger.Warn().Err(err).Str("company_id", c.CompanyID).Msg("Failed to get conversation state")

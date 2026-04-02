@@ -39,13 +39,11 @@ func NewCheckinFormHandler(
 }
 
 func (h *checkinFormHandler) HandleCheckinForm(ctx context.Context, companyID string) error {
-	// Get client
 	client, err := h.clientRepo.GetByID(ctx, companyID)
 	if err != nil {
 		return fmt.Errorf("client not found: %s: %w", companyID, err)
 	}
 
-	// Set CheckinReplied=TRUE on flags
 	flags, err := h.flagsRepo.GetByCompanyID(ctx, companyID)
 	if err != nil {
 		return fmt.Errorf("flags not found: %s: %w", companyID, err)
@@ -55,7 +53,6 @@ func (h *checkinFormHandler) HandleCheckinForm(ctx context.Context, companyID st
 		return err
 	}
 
-	// Append to action log
 	logEntry := entity.ActionLog{
 		CompanyID:              companyID,
 		TriggerType:            "CHECKIN_FORM_REPLIED",
@@ -70,7 +67,6 @@ func (h *checkinFormHandler) HandleCheckinForm(ctx context.Context, companyID st
 		h.logger.Error().Err(err).Msg("Failed to append checkin log")
 	}
 
-	// Notify AE via Telegram
 	msg := fmt.Sprintf("Check-in form submitted by %s (%s).", client.CompanyName, client.CompanyID)
 	return h.telegram.SendMessage(ctx, client.OwnerTelegramID, msg)
 }

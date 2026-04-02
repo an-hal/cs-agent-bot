@@ -2,12 +2,14 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
-	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database/sheets"
-	"github.com/Sejutacita/cs-agent-bot/internal/service/cache"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
+	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	"github.com/rs/zerolog"
 )
 
@@ -18,98 +20,152 @@ type LogRepository interface {
 }
 
 type logRepo struct {
-	sheetsClient *sheets.SheetsClient
+	db           *sql.DB
+	queryTimeout time.Duration
+	tracer       tracer.Tracer
 	logger       zerolog.Logger
 }
 
-func NewLogRepo(sheetsClient *sheets.SheetsClient, logger zerolog.Logger) LogRepository {
+func NewLogRepo(db *sql.DB, queryTimeout time.Duration, tr tracer.Tracer, logger zerolog.Logger) LogRepository {
 	return &logRepo{
-		sheetsClient: sheetsClient,
+		db:           db,
+		queryTimeout: queryTimeout,
+		tracer:       tr,
 		logger:       logger,
 	}
 }
 
-// AppendLog appends a new entry to the action log. Never cached.
+func (r *logRepo) withTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	if r.queryTimeout > 0 {
+		return context.WithTimeout(ctx, r.queryTimeout)
+	}
+	return ctx, func() {}
+}
+
+// AppendLog inserts a new action log entry into the action_log table.
 func (r *logRepo) AppendLog(ctx context.Context, entry entity.ActionLog) error {
+	ctx, span := r.tracer.Start(ctx, "log.repository.AppendLog")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
 	if entry.Timestamp.IsZero() {
 		entry.Timestamp = time.Now()
 	}
 
-	messageSent := "N"
+	status := "N"
 	if entry.MessageSent {
-		messageSent = "Y"
+		status = "Y"
 	}
 
-	responseReceived := "N"
-	if entry.ResponseReceived {
-		responseReceived = "Y"
-	}
-
-	row := []interface{}{
-		entry.Timestamp.Format(time.DateTime),
-		entry.CompanyID,
-		entry.CompanyName,
-		entry.TriggerType,
-		entry.TemplateID,
-		entry.Channel,
-		messageSent,
-		responseReceived,
-		entry.ResponseClassification,
-		entry.NextActionTriggered,
-		entry.LogNotes,
-	}
-
-	return r.sheetsClient.AppendRows(ctx, cache.RangeActionLog, [][]interface{}{row})
-}
-
-// SentTodayAlready checks if a WA message was already sent to this company today.
-// Reads directly from Sheets (never cached).
-func (r *logRepo) SentTodayAlready(ctx context.Context, companyID string) (bool, error) {
-	rows, err := r.sheetsClient.ReadRange(ctx, cache.RangeActionLog)
+	query, args, err := database.PSQL.
+		Insert("action_log").
+		Columns(
+			"triggered_at",
+			"company_id",
+			"company_name",
+			"trigger_type",
+			"template_id",
+			"channel",
+			"message_sent",
+			"status",
+			"response_classification",
+			"next_action_triggered",
+			"log_notes",
+		).
+		Values(
+			entry.Timestamp,
+			entry.CompanyID,
+			entry.CompanyName,
+			entry.TriggerType,
+			entry.TemplateID,
+			entry.Channel,
+			entry.MessageSent,
+			status,
+			entry.ResponseClassification,
+			entry.NextActionTriggered,
+			entry.LogNotes,
+		).
+		ToSql()
 	if err != nil {
-		return false, fmt.Errorf("failed to read action log: %w", err)
+		return fmt.Errorf("build query AppendLog: %w", err)
 	}
 
-	today := time.Now().Format("2006-01-02")
-
-	// Skip first 3 rows (indices 0-2): 2 info rows + 1 column header row
-	for i, row := range rows {
-		if i < 3 {
-			continue
-		}
-		if safeString(row, 1) == companyID &&
-			safeString(row, 5) == entity.ChannelWhatsApp {
-			ts := safeString(row, 2)
-			if len(ts) >= 10 && ts[:10] == today {
-				return true, nil
-			}
-		}
+	if _, err = r.db.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("insert action log: %w", err)
 	}
 
-	return false, nil
+	return nil
 }
 
-// MessageIDExists checks if a message ID already exists in the action log (deduplication).
-// Reads directly from Sheets (never cached).
+// SentTodayAlready checks whether a WhatsApp message was already sent to the
+// given company today by querying the action_log table.
+func (r *logRepo) SentTodayAlready(ctx context.Context, companyID string) (bool, error) {
+	ctx, span := r.tracer.Start(ctx, "log.repository.SentTodayAlready")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query, args, err := database.PSQL.
+		Select("1").
+		From("action_log").
+		Where(sq.And{
+			sq.Eq{"company_id": companyID},
+			sq.Eq{"channel": entity.ChannelWhatsApp},
+			sq.Eq{"message_sent": true},
+			sq.Expr("triggered_at::date = CURRENT_DATE"),
+		}).
+		Limit(1).
+		ToSql()
+	if err != nil {
+		return false, fmt.Errorf("build query SentTodayAlready: %w", err)
+	}
+
+	var dummy int
+	err = r.db.QueryRowContext(ctx, query, args...).Scan(&dummy)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, fmt.Errorf("query SentTodayAlready: %w", err)
+	}
+
+	return true, nil
+}
+
+// MessageIDExists checks whether the given message ID already exists in the
+// action_log table. Returns false with no error when messageID is empty.
 func (r *logRepo) MessageIDExists(ctx context.Context, messageID string) (bool, error) {
 	if messageID == "" {
 		return false, nil
 	}
 
-	rows, err := r.sheetsClient.ReadRange(ctx, cache.RangeActionLog)
+	ctx, span := r.tracer.Start(ctx, "log.repository.MessageIDExists")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query, args, err := database.PSQL.
+		Select("1").
+		From("action_log").
+		Where(sq.Eq{"message_id": messageID}).
+		Limit(1).
+		ToSql()
 	if err != nil {
-		return false, fmt.Errorf("failed to read action log: %w", err)
+		return false, fmt.Errorf("build query MessageIDExists: %w", err)
 	}
 
-	// Skip first 3 rows (indices 0-2): 2 info rows + 1 column header row
-	for i, row := range rows {
-		if i < 3 {
-			continue
+	var dummy int
+	err = r.db.QueryRowContext(ctx, query, args...).Scan(&dummy)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
 		}
-		if safeString(row, 4) == messageID {
-			return true, nil
-		}
+		return false, fmt.Errorf("query MessageIDExists: %w", err)
 	}
 
-	return false, nil
+	return true, nil
 }

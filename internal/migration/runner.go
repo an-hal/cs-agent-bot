@@ -41,5 +41,3 @@ func MigrateDown(db *sql.DB, dir string) {
 		break
 	}
 }
-
-// Fungsi tambahan: runSQL, extractVersion, getAppliedVersions bisa kamu pisah ke utils.go

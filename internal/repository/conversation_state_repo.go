@@ -2,12 +2,15 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
-	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database/sheets"
-	"github.com/Sejutacita/cs-agent-bot/internal/service/cache"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
+	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	"github.com/rs/zerolog"
 )
 
@@ -20,164 +23,204 @@ type ConversationStateRepository interface {
 }
 
 type conversationStateRepo struct {
-	sheetsClient *sheets.SheetsClient
-	cache        cache.SheetCache
+	DB           *sql.DB
+	queryTimeout time.Duration
+	tracer       tracer.Tracer
 	logger       zerolog.Logger
 }
 
-func NewConversationStateRepo(
-	sheetsClient *sheets.SheetsClient,
-	cache cache.SheetCache,
-	logger zerolog.Logger,
-) ConversationStateRepository {
+func NewConversationStateRepo(db *sql.DB, queryTimeout time.Duration, tr tracer.Tracer, logger zerolog.Logger) ConversationStateRepository {
 	return &conversationStateRepo{
-		sheetsClient: sheetsClient,
-		cache:        cache,
+		DB:           db,
+		queryTimeout: queryTimeout,
+		tracer:       tr,
 		logger:       logger,
 	}
 }
 
-func (r *conversationStateRepo) GetByCompanyID(ctx context.Context, companyID string) (*entity.ConversationState, error) {
-	rows, err := r.cache.Get(ctx, cache.KeyConversationState, cache.RangeConversationState, cache.TTLConversationState)
+func (r *conversationStateRepo) withTimeout(ctx context.Context) (context.Context, context.CancelFunc) {
+	if r.queryTimeout > 0 {
+		return context.WithTimeout(ctx, r.queryTimeout)
+	}
+	return ctx, func() {}
+}
+
+// csColumns lists all conversation_states columns in scan order.
+var csColumns = []string{
+	"company_id",
+	"company_name",
+	"active_flow",
+	"current_stage",
+	"last_message_type",
+	"last_message_date",
+	"response_status",
+	"response_classification",
+	"attempt_count",
+	"cooldown_until",
+	"bot_active",
+	"reason_bot_paused",
+	"next_scheduled_action",
+	"next_scheduled_date",
+	"human_owner_notified",
+}
+
+// scanConversationState scans a single row into a ConversationState struct.
+func scanConversationState(scanner interface {
+	Scan(dest ...interface{}) error
+}) (*entity.ConversationState, error) {
+	var s entity.ConversationState
+	err := scanner.Scan(
+		&s.CompanyID,
+		&s.CompanyName,
+		&s.ActiveFlow,
+		&s.CurrentStage,
+		&s.LastMessageType,
+		&s.LastMessageDate,
+		&s.ResponseStatus,
+		&s.ResponseClassification,
+		&s.AttemptCount,
+		&s.CooldownUntil,
+		&s.BotActive,
+		&s.ReasonBotPaused,
+		&s.NextScheduledAction,
+		&s.NextScheduledDate,
+		&s.HumanOwnerNotified,
+	)
 	if err != nil {
 		return nil, err
 	}
+	return &s, nil
+}
 
-	for i, row := range rows {
-		if i < 3 { // Skip header rows
-			continue
-		}
-		if safeString(row, 0) == companyID {
-			return parseConversationStateRow(row)
-		}
+// csValues returns the column values for a ConversationState in csColumns order.
+func csValues(s entity.ConversationState) []interface{} {
+	return []interface{}{
+		s.CompanyID,
+		s.CompanyName,
+		s.ActiveFlow,
+		s.CurrentStage,
+		s.LastMessageType,
+		s.LastMessageDate,
+		s.ResponseStatus,
+		s.ResponseClassification,
+		s.AttemptCount,
+		s.CooldownUntil,
+		s.BotActive,
+		s.ReasonBotPaused,
+		s.NextScheduledAction,
+		s.NextScheduledDate,
+		s.HumanOwnerNotified,
+	}
+}
+
+func (r *conversationStateRepo) GetByCompanyID(ctx context.Context, companyID string) (*entity.ConversationState, error) {
+	ctx, span := r.tracer.Start(ctx, "conversationState.repository.GetByCompanyID")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query, args, err := database.PSQL.
+		Select(csColumns...).
+		From("conversation_states").
+		Where(sq.Eq{"company_id": companyID}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build query: %w", err)
 	}
 
-	// If not found, return default state
-	return &entity.ConversationState{
-		CompanyID:              companyID,
-		BotActive:              true,
-		ResponseStatus:         entity.ResponseStatusPending,
-		AttemptCount:           0,
-		HumanOwnerNotified:     false,
-		NextScheduledDate:      time.Time{},
-		LastMessageDate:        time.Time{},
-		CooldownUntil:          time.Time{},
-	}, nil
+	s, err := scanConversationState(r.DB.QueryRowContext(ctx, query, args...))
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return &entity.ConversationState{
+				CompanyID:      companyID,
+				BotActive:      true,
+				ResponseStatus: entity.ResponseStatusPending,
+			}, nil
+		}
+		return nil, fmt.Errorf("query conversation state: %w", err)
+	}
+
+	return s, nil
 }
 
 func (r *conversationStateRepo) CreateOrUpdate(ctx context.Context, state entity.ConversationState) error {
-	rows, err := r.cache.Get(ctx, cache.KeyConversationState, cache.RangeConversationState, cache.TTLConversationState)
-	if err != nil {
-		return err
-	}
+	ctx, span := r.tracer.Start(ctx, "conversationState.repository.CreateOrUpdate")
+	defer span.End()
 
-	// Check if exists
-	for i, row := range rows {
-		if i < 3 {
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	// Build ON CONFLICT SET clause using EXCLUDED.* for all columns except company_id.
+	var setParts []string
+	for _, col := range csColumns {
+		if col == "company_id" {
 			continue
 		}
-		if safeString(row, 0) == state.CompanyID {
-			// Update existing row
-			stateRow := conversationStateToRow(state)
-			sheetRange := fmt.Sprintf("%s!A%d", cache.RangeConversationState, i+1)
-			if err := r.sheetsClient.WriteRange(ctx, sheetRange, [][]interface{}{stateRow}); err != nil {
-				return err
-			}
-			return r.cache.Invalidate(ctx, cache.KeyConversationState)
-		}
+		setParts = append(setParts, fmt.Sprintf("%s = EXCLUDED.%s", col, col))
+	}
+	setParts = append(setParts, "updated_at = NOW()")
+	upsertSuffix := fmt.Sprintf(
+		"ON CONFLICT (company_id) DO UPDATE SET %s",
+		strings.Join(setParts, ", "),
+	)
+
+	query, args, err := database.PSQL.
+		Insert("conversation_states").
+		Columns(csColumns...).
+		Values(csValues(state)...).
+		Suffix(upsertSuffix).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("build query: %w", err)
 	}
 
-	// Create new row
-	stateRow := conversationStateToRow(state)
-	if err := r.sheetsClient.AppendRows(ctx, cache.RangeConversationState, [][]interface{}{stateRow}); err != nil {
-		return err
+	if _, err = r.DB.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("upsert conversation state: %w", err)
 	}
-	return r.cache.Invalidate(ctx, cache.KeyConversationState)
+
+	return nil
 }
 
 func (r *conversationStateRepo) SetBotActive(ctx context.Context, companyID string, active bool, reason string) error {
+	ctx, span := r.tracer.Start(ctx, "conversationState.repository.SetBotActive")
+	defer span.End()
+
 	state, err := r.GetByCompanyID(ctx, companyID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get state for SetBotActive: %w", err)
 	}
+
 	state.BotActive = active
-	state.ReasonBotPaused = reason
+	state.ReasonBotPaused = &reason
+
 	return r.CreateOrUpdate(ctx, *state)
 }
 
 func (r *conversationStateRepo) SetCooldown(ctx context.Context, companyID string, duration time.Duration) error {
+	ctx, span := r.tracer.Start(ctx, "conversationState.repository.SetCooldown")
+	defer span.End()
+
 	state, err := r.GetByCompanyID(ctx, companyID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get state for SetCooldown: %w", err)
 	}
+
 	state.SetCooldown(duration)
+
 	return r.CreateOrUpdate(ctx, *state)
 }
 
 func (r *conversationStateRepo) RecordMessage(ctx context.Context, companyID string, messageType, templateID string) error {
+	ctx, span := r.tracer.Start(ctx, "conversationState.repository.RecordMessage")
+	defer span.End()
+
 	state, err := r.GetByCompanyID(ctx, companyID)
 	if err != nil {
-		return err
+		return fmt.Errorf("get state for RecordMessage: %w", err)
 	}
+
 	state.RecordMessage(messageType, templateID)
+
 	return r.CreateOrUpdate(ctx, *state)
-}
-
-func parseConversationStateRow(row []interface{}) (*entity.ConversationState, error) {
-	if len(row) < 15 {
-		return nil, fmt.Errorf("conversation state row too short: %d columns", len(row))
-	}
-
-	return &entity.ConversationState{
-		CompanyID:              safeString(row, 0),
-		CompanyName:            safeString(row, 1),
-		ActiveFlow:             safeString(row, 2),
-		CurrentStage:           safeString(row, 3),
-		LastMessageType:        safeString(row, 4),
-		LastMessageDate:        safeDate(row, 5),
-		ResponseStatus:         safeString(row, 6),
-		ResponseClassification: safeString(row, 7),
-		AttemptCount:           safeInt(row, 8),
-		CooldownUntil:          safeDate(row, 9),
-		BotActive:              safeBool(row, 10),
-		ReasonBotPaused:        safeString(row, 11),
-		NextScheduledAction:    safeString(row, 12),
-		NextScheduledDate:      safeDate(row, 13),
-		HumanOwnerNotified:     safeBool(row, 14),
-	}, nil
-}
-
-func conversationStateToRow(cs entity.ConversationState) []interface{} {
-	lastMsgDate := ""
-	if !cs.LastMessageDate.IsZero() {
-		lastMsgDate = cs.LastMessageDate.Format("2006-01-02")
-	}
-
-	cooldownDate := ""
-	if !cs.CooldownUntil.IsZero() {
-		cooldownDate = cs.CooldownUntil.Format("2006-01-02")
-	}
-
-	nextScheduledDate := ""
-	if !cs.NextScheduledDate.IsZero() {
-		nextScheduledDate = cs.NextScheduledDate.Format("2006-01-02")
-	}
-
-	return []interface{}{
-		cs.CompanyID,
-		cs.CompanyName,
-		cs.ActiveFlow,
-		cs.CurrentStage,
-		cs.LastMessageType,
-		lastMsgDate,
-		cs.ResponseStatus,
-		cs.ResponseClassification,
-		cs.AttemptCount,
-		cooldownDate,
-		cs.BotActive,
-		cs.ReasonBotPaused,
-		cs.NextScheduledAction,
-		nextScheduledDate,
-		cs.HumanOwnerNotified,
-	}
 }

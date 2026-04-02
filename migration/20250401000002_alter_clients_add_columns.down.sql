@@ -1,0 +1,14 @@
+ALTER TABLE clients DROP COLUMN IF EXISTS response_status;
+ALTER TABLE clients DROP COLUMN IF EXISTS renewed;
+ALTER TABLE clients DROP COLUMN IF EXISTS rejected;
+ALTER TABLE clients DROP COLUMN IF EXISTS cross_sell_rejected;
+ALTER TABLE clients DROP COLUMN IF EXISTS cross_sell_interested;
+ALTER TABLE clients DROP COLUMN IF EXISTS sequence_cs;
+ALTER TABLE clients DROP COLUMN IF EXISTS checkin_replied;
+ALTER TABLE clients DROP COLUMN IF EXISTS pre14_sent;
+ALTER TABLE clients DROP COLUMN IF EXISTS pre7_sent;
+ALTER TABLE clients DROP COLUMN IF EXISTS pre3_sent;
+ALTER TABLE clients DROP COLUMN IF EXISTS post1_sent;
+ALTER TABLE clients DROP COLUMN IF EXISTS post4_sent;
+ALTER TABLE clients DROP COLUMN IF EXISTS post8_sent;
+ALTER TABLE clients DROP COLUMN IF EXISTS post15_sent;

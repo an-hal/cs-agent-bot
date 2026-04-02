@@ -3,7 +3,6 @@ package trigger
 import (
 	"github.com/Sejutacita/cs-agent-bot/config"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
-	"github.com/Sejutacita/cs-agent-bot/internal/service/cache"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/escalation"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/telegram"
@@ -23,7 +22,6 @@ type TriggerService struct {
 	HaloAI           haloai.HaloAIClient
 	Telegram         telegram.TelegramNotifier
 	Escalation       escalation.EscalationHandler
-	Cache            cache.SheetCache
 	Logger           zerolog.Logger
 	Cfg              *config.AppConfig
 }
@@ -40,7 +38,6 @@ func NewTriggerService(
 	haloaiClient haloai.HaloAIClient,
 	telegramNotifier telegram.TelegramNotifier,
 	escalationHandler escalation.EscalationHandler,
-	cacheService cache.SheetCache,
 	cfg *config.AppConfig,
 	logger zerolog.Logger,
 ) *TriggerService {
@@ -56,7 +53,6 @@ func NewTriggerService(
 		HaloAI:           haloaiClient,
 		Telegram:         telegramNotifier,
 		Escalation:       escalationHandler,
-		Cache:            cacheService,
 		Cfg:              cfg,
 		Logger:           logger,
 	}

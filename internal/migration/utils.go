@@ -87,24 +87,19 @@ func ValidateMigrationName(name string) error {
 
 // CreateMigration generates new migration files with timestamp prefix
 func CreateMigration(dir string, name string) error {
-	// Validate name
 	if err := ValidateMigrationName(name); err != nil {
 		return err
 	}
 
-	// Ensure migration directory exists
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return fmt.Errorf("failed to create migration directory: %w", err)
 	}
 
-	// Generate timestamp: YYYYMMDDHHmmss
 	timestamp := time.Now().Format("20060102150405")
 
-	// Create file paths
 	upFile := filepath.Join(dir, fmt.Sprintf("%s_%s.up.sql", timestamp, name))
 	downFile := filepath.Join(dir, fmt.Sprintf("%s_%s.down.sql", timestamp, name))
 
-	// Up migration template
 	upContent := fmt.Sprintf(`-- Migration: %s
 -- Created at: %s
 
@@ -112,7 +107,6 @@ func CreateMigration(dir string, name string) error {
 
 `, name, time.Now().Format(time.RFC3339))
 
-	// Down migration template
 	downContent := fmt.Sprintf(`-- Migration: %s (rollback)
 -- Created at: %s
 
@@ -120,14 +114,11 @@ func CreateMigration(dir string, name string) error {
 
 `, name, time.Now().Format(time.RFC3339))
 
-	// Write up migration file
 	if err := os.WriteFile(upFile, []byte(upContent), 0644); err != nil {
 		return fmt.Errorf("failed to create up migration: %w", err)
 	}
 
-	// Write down migration file
 	if err := os.WriteFile(downFile, []byte(downContent), 0644); err != nil {
-		// Clean up the up file if down file creation fails
 		os.Remove(upFile)
 		return fmt.Errorf("failed to create down migration: %w", err)
 	}

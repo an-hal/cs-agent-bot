@@ -67,16 +67,13 @@ func (h *replyHandler) HandleIncomingReply(ctx context.Context, payload WAWebhoo
 	}
 	if exists {
 		h.logger.Info().Str("message_id", payload.MessageID).Msg("Duplicate message, skipping")
-		// return nil
 	}
 
-	// Lookup client by WA number
 	client, err := h.clientRepo.GetByWANumber(ctx, payload.PhoneNumber)
 	if err != nil {
 		return fmt.Errorf("client not found for %s: %w", payload.PhoneNumber, err)
 	}
 
-	// Classify intent
 	intent := h.classifier.ClassifyReply(payload.MessageType, payload.Text)
 
 	h.logger.Info().
@@ -85,7 +82,6 @@ func (h *replyHandler) HandleIncomingReply(ctx context.Context, payload WAWebhoo
 		Str("message_id", payload.MessageID).
 		Msg("Reply classified")
 
-	// Log the incoming reply
 	logEntry := entity.ActionLog{
 		CompanyID:              client.CompanyID,
 		CompanyName:            client.CompanyName,
@@ -100,7 +96,6 @@ func (h *replyHandler) HandleIncomingReply(ctx context.Context, payload WAWebhoo
 	}
 	_ = h.logRepo.AppendLog(ctx, logEntry)
 
-	// Branch on intent
 	switch intent {
 	case classifier.IntentAngry:
 		return h.handleAngry(ctx, *client)
@@ -136,11 +131,10 @@ func (h *replyHandler) HandleIncomingReply(ctx context.Context, payload WAWebhoo
 }
 
 func (h *replyHandler) handleAngry(ctx context.Context, client entity.Client) error {
-	// Update conversation state - STOP bot immediately
 	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
-	convState.ResponseClassification = entity.RespAngry
+	convState.ResponseClassification = entity.StringPtr(entity.RespAngry)
 	convState.BotActive = false
-	convState.ReasonBotPaused = "Angry client detected"
+	convState.ReasonBotPaused = entity.StringPtr("Angry client detected")
 	_ = h.convStateRepo.CreateOrUpdate(ctx, *convState)
 
 	// Blacklist immediately. ESC-006. No WA reply.
@@ -149,17 +143,15 @@ func (h *replyHandler) handleAngry(ctx context.Context, client entity.Client) er
 }
 
 func (h *replyHandler) handlePaidClaim(ctx context.Context, client entity.Client, replyText string) error {
-	// Ask for proof via WA
 	_, _ = h.haloAI.SendWA(ctx, client.PICWA,
 		"Terima kasih atas informasinya.\n"+
 			"Saat ini pembayaran Anda sedang kami lakukan proses verifikasi.\n"+
 			"Kami akan segera menginformasikan kembali setelah proses selesai.\n\n"+
 			"Terima kasih atas kesabarannya.")
 
-	// Update conversation state
 	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
 	inv, _ := h.invoiceRepo.GetActiveByCompanyID(ctx, client.CompanyID)
-	convState.ResponseClassification = entity.RespPaid
+	convState.ResponseClassification = entity.StringPtr(entity.RespPaid)
 	convState.ResponseStatus = entity.ResponseStatusPending
 	_ = h.convStateRepo.CreateOrUpdate(ctx, *convState)
 
@@ -171,16 +163,12 @@ func (h *replyHandler) handlePaidClaim(ctx context.Context, client entity.Client
 func (h *replyHandler) handleNPS(ctx context.Context, client entity.Client, text string) error {
 	score, _ := strconv.Atoi(strings.TrimSpace(text))
 
-	// Store NPS score — this is on Sheet 1 (Master Client)
-	// For POC, we update via client repo
 	h.logger.Info().Str("company_id", client.CompanyID).Int("nps_score", score).Msg("NPS score received")
 
-	// Update conversation state
 	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
-	convState.ResponseClassification = entity.RespNPS
+	convState.ResponseClassification = entity.StringPtr(entity.RespNPS)
 	_ = h.convStateRepo.CreateOrUpdate(ctx, *convState)
 
-	// Update flags: NPSReplied = true
 	flags, err := h.flagsRepo.GetByCompanyID(ctx, client.CompanyID)
 	if err != nil {
 		return err
@@ -190,13 +178,11 @@ func (h *replyHandler) handleNPS(ctx context.Context, client entity.Client, text
 		return err
 	}
 
-	// Score <= 5 → ESC-003
-	if score <= 5 {
+	if score <= 5 { // ESC-003
 		return h.escalation.TriggerEscalation(ctx, entity.EscLowNPS, client,
 			fmt.Sprintf("NPS score: %d", score), entity.EscPriorityP1Critical)
 	}
 
-	// Notify AE
 	msg := fmt.Sprintf("NPS Reply from %s (%s): Score %d", client.CompanyName, client.CompanyID, score)
 	return h.telegram.SendMessage(ctx, client.OwnerTelegramID, msg)
 }
@@ -210,14 +196,12 @@ func (h *replyHandler) handleCSInterested(ctx context.Context, client entity.Cli
 }
 
 func (h *replyHandler) handleReject(ctx context.Context, client entity.Client) error {
-	// Update conversation state - STOP all automation
 	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
-	convState.ResponseClassification = entity.RespReject
+	convState.ResponseClassification = entity.StringPtr(entity.RespReject)
 	convState.BotActive = false
-	convState.ReasonBotPaused = "Client rejected automation"
+	convState.ReasonBotPaused = entity.StringPtr("Client rejected automation")
 	_ = h.convStateRepo.CreateOrUpdate(ctx, *convState)
 
-	// Stop all automation. Set Rejected=TRUE.
 	h.logger.Info().Str("company_id", client.CompanyID).Msg("Client rejected, stopping automation")
 
 	msg := fmt.Sprintf("Client %s (%s) rejected automation.", client.CompanyName, client.CompanyID)
@@ -225,14 +209,12 @@ func (h *replyHandler) handleReject(ctx context.Context, client entity.Client) e
 }
 
 func (h *replyHandler) handleDelay(ctx context.Context, client entity.Client) error {
-	// Update conversation state - snooze for 30 days
 	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
-	convState.ResponseClassification = entity.RespDelay
-	convState.NextScheduledAction = "REACTIVATE_FLOW"
-	convState.NextScheduledDate = time.Now().AddDate(0, 1, 0) // 30 days
+	convState.ResponseClassification = entity.StringPtr(entity.RespDelay)
+	convState.NextScheduledAction = entity.StringPtr("REACTIVATE_FLOW")
+	convState.NextScheduledDate = func() *time.Time { t := time.Now().AddDate(0, 1, 0); return &t }() // 30 days
 	_ = h.convStateRepo.CreateOrUpdate(ctx, *convState)
 
-	// Snooze
 	h.logger.Info().Str("company_id", client.CompanyID).Msg("Client requested delay")
 
 	msg := fmt.Sprintf("Client %s (%s) requested delay/snooze.", client.CompanyName, client.CompanyID)
@@ -240,13 +222,11 @@ func (h *replyHandler) handleDelay(ctx context.Context, client entity.Client) er
 }
 
 func (h *replyHandler) handlePositive(ctx context.Context, client entity.Client, text string) error {
-	// Continue flow. Log. Telegram to AE.
 	msg := fmt.Sprintf("Positive reply from %s (%s): %s", client.CompanyName, client.CompanyID, text)
 	return h.telegram.SendMessage(ctx, client.OwnerTelegramID, msg)
 }
 
 func (h *replyHandler) handleWantsHuman(ctx context.Context, client entity.Client) error {
-	// Suspend bot. Telegram to AE.
 	if err := h.flagsRepo.SetBotActive(ctx, client.CompanyID, false); err != nil {
 		return err
 	}
