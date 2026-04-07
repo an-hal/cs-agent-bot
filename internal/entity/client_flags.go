@@ -52,5 +52,7 @@ type ClientFlags struct {
 	CSLT3 bool `json:"cs_lt3"`
 
 	// Feature update tracking
-	FeatureUpdateSent bool `json:"feature_update_sent"`
+	FeatureUpdateSent     bool   `json:"feature_update_sent"`
+	QuotationAcknowledged bool   `json:"quotation_acknowledged"`
+	WorkspaceID           string `json:"workspace_id"`
 }

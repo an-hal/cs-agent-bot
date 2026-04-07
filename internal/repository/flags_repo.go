@@ -52,10 +52,12 @@ var flagsColumns = []string{
 	"checkin_b1_form_sent", "checkin_b1_call_sent", "checkin_b2_form_sent", "checkin_b2_call_sent",
 	"checkin_replied",
 	"nps1_sent", "nps2_sent", "nps3_sent", "nps_replied", "referral_sent_this_cycle",
+	"quotation_acknowledged",
 	"low_usage_msg_sent", "low_nps_msg_sent",
 	"cs_h7", "cs_h14", "cs_h21", "cs_h30", "cs_h45", "cs_h60", "cs_h75", "cs_h90",
 	"cs_lt1", "cs_lt2", "cs_lt3",
 	"feature_update_sent",
+	"workspace_id",
 }
 
 // scanFlags scans a single row into a ClientFlags struct using the flagsColumns order.
@@ -74,6 +76,7 @@ func scanFlags(scanner interface {
 		&f.CSH7, &f.CSH14, &f.CSH21, &f.CSH30, &f.CSH45, &f.CSH60, &f.CSH75, &f.CSH90,
 		&f.CSLT1, &f.CSLT2, &f.CSLT3,
 		&f.FeatureUpdateSent,
+	&f.WorkspaceID,
 	)
 	if err != nil {
 		return nil, err
@@ -94,6 +97,7 @@ func flagValues(f entity.ClientFlags) []interface{} {
 		f.CSH7, f.CSH14, f.CSH21, f.CSH30, f.CSH45, f.CSH60, f.CSH75, f.CSH90,
 		f.CSLT1, f.CSLT2, f.CSLT3,
 		f.FeatureUpdateSent,
+	f.WorkspaceID,
 	}
 }
 

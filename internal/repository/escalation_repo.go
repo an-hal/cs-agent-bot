@@ -43,7 +43,7 @@ func (r *escalationRepo) withTimeout(ctx context.Context) (context.Context, cont
 }
 
 // escalationColumns lists every column read from the escalations table in scan order.
-const escalationColumns = "id, esc_id, company_id, status, triggered_at, priority, trigger_condition"
+const escalationColumns = "id, esc_id, company_id, status, triggered_at, priority, trigger_condition, COALESCE(notified_party, '') as notified_party, COALESCE(telegram_message_sent, '') as telegram_message_sent, resolved_at, COALESCE(resolved_by, '') as resolved_by, COALESCE(notes, '') as notes, COALESCE(workspace_id::text, '') as workspace_id"
 
 // GetOpenByCompanyAndEscID returns an open escalation matching the given company
 // and escalation rule ID. Returns nil, nil when no matching open escalation exists.
@@ -76,6 +76,12 @@ func (r *escalationRepo) GetOpenByCompanyAndEscID(ctx context.Context, companyID
 		&esc.CreatedAt,
 		&esc.Priority,
 		&esc.Reason,
+		&esc.NotifiedParty,
+		&esc.TelegramMessageSent,
+		&esc.ResolvedAt,
+		&esc.ResolvedBy,
+		&esc.EscNotes,
+		&esc.WorkspaceID,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {

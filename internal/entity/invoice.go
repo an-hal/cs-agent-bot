@@ -5,11 +5,21 @@ import (
 )
 
 type Invoice struct {
-	InvoiceID     string    `json:"invoice_id"`
-	CompanyID     string    `json:"company_id"`
-	DueDate       time.Time `json:"due_date"`
-	Amount        float64   `json:"amount"`
-	PaymentStatus string    `json:"payment_status"`
+	InvoiceID        string     `json:"invoice_id"`
+	CompanyID        string     `json:"company_id"`
+	IssueDate        time.Time  `json:"issue_date"`
+	DueDate          time.Time  `json:"due_date"`
+	Amount           float64    `json:"amount"`
+	PaymentStatus    string     `json:"payment_status"`
+	PaidAt           *time.Time `json:"paid_at"`
+	AmountPaid       float64    `json:"amount_paid"`
+	ReminderCount    int        `json:"reminder_count"`
+	CollectionStage  string     `json:"collection_stage"`
+	CreatedAt        time.Time  `json:"created_at"`
+	Notes            string     `json:"notes"`
+	LinkInvoice      string     `json:"link_invoice"`
+	LastReminderDate *time.Time `json:"last_reminder_date"`
+	WorkspaceID      string     `json:"workspace_id"`
 }
 
 // DaysPastDue returns how many days past the due date. Negative means not yet due.

@@ -65,7 +65,7 @@ func (r *clientRepo) withTimeout(ctx context.Context) (context.Context, context.
 // This constant is used for SELECT queries to avoid SELECT *.
 // Nullable columns that use Go pointer types (e.g. owner_wa, last_interaction_date) have no COALESCE.
 // Nullable columns that use Go value types still use COALESCE for zero-value defaults.
-const clientColumns = `company_id, company_name, pic_name, pic_wa, owner_name, owner_wa, owner_telegram_id, COALESCE(segment, '') as segment, contract_months, contract_start, contract_end, activation_date, COALESCE(payment_status, 'Paid') as payment_status, COALESCE(nps_score, 0) as nps_score, COALESCE(usage_score, 0) as usage_score, COALESCE(bot_active, true) as bot_active, COALESCE(blacklisted, false) as blacklisted, COALESCE(renewed, false) as renewed, COALESCE(rejected, false) as rejected, COALESCE(quotation_link, '') as quotation_link, COALESCE(sequence_cs, 'ACTIVE') as sequence_cs, COALESCE(cross_sell_rejected, false) as cross_sell_rejected, COALESCE(cross_sell_interested, false) as cross_sell_interested, COALESCE(checkin_replied, false) as checkin_replied, COALESCE(response_status, 'Pending') as response_status, COALESCE(pre14_sent, false) as pre14_sent, COALESCE(pre7_sent, false) as pre7_sent, COALESCE(pre3_sent, false) as pre3_sent, COALESCE(post1_sent, false) as post1_sent, COALESCE(post4_sent, false) as post4_sent, COALESCE(post8_sent, false) as post8_sent, COALESCE(post15_sent, false) as post15_sent, last_interaction_date`
+const clientColumns = `company_id, company_name, pic_name, pic_wa, owner_name, owner_wa, owner_telegram_id, COALESCE(segment, '') as segment, contract_months, contract_start, contract_end, activation_date, COALESCE(payment_status, 'Paid') as payment_status, COALESCE(nps_score, 0) as nps_score, COALESCE(usage_score, 0) as usage_score, COALESCE(bot_active, true) as bot_active, COALESCE(blacklisted, false) as blacklisted, COALESCE(renewed, false) as renewed, COALESCE(rejected, false) as rejected, COALESCE(quotation_link, '') as quotation_link, COALESCE(sequence_cs, 'ACTIVE') as sequence_cs, COALESCE(cross_sell_rejected, false) as cross_sell_rejected, COALESCE(cross_sell_interested, false) as cross_sell_interested, COALESCE(checkin_replied, false) as checkin_replied, COALESCE(response_status, 'Pending') as response_status, COALESCE(pre14_sent, false) as pre14_sent, COALESCE(pre7_sent, false) as pre7_sent, COALESCE(pre3_sent, false) as pre3_sent, COALESCE(post1_sent, false) as post1_sent, COALESCE(post4_sent, false) as post4_sent, COALESCE(post8_sent, false) as post8_sent, COALESCE(post15_sent, false) as post15_sent, last_interaction_date, COALESCE(pic_email, '') as pic_email, COALESCE(pic_role, '') as pic_role, COALESCE(hc_size, '') as hc_size, COALESCE(plan_type, '') as plan_type, COALESCE(payment_terms, '') as payment_terms, COALESCE(final_price, 0) as final_price, last_payment_date, COALESCE(notes, '') as notes, cross_sell_resume_date, renewal_date, created_at, COALESCE(churn_reason, '') as churn_reason, COALESCE(wa_undeliverable, false) as wa_undeliverable, COALESCE(feature_update_sent, false) as feature_update_sent, COALESCE(days_since_cs_last_sent, 0) as days_since_cs_last_sent, COALESCE(first_time_discount_pct, 0) as first_time_discount_pct, COALESCE(next_discount_pct_manual, 0) as next_discount_pct_manual, quotation_link_expires, COALESCE(ae_assigned, false) as ae_assigned, COALESCE(usage_score_avg_30d, 0) as usage_score_avg_30d, COALESCE(backup_owner_telegram_id, '') as backup_owner_telegram_id, COALESCE(ae_telegram_id, '') as ae_telegram_id, COALESCE(bd_prospect_id, '') as bd_prospect_id, COALESCE(risk_flag, false) as risk_flag, COALESCE(workspace_id::text, '') as workspace_id`
 
 // invoiceColumns lists every column read from the invoices table.
 const invoiceColumns = "invoice_id, company_id, due_date, amount, payment_status"
@@ -107,6 +107,31 @@ func scanClient(scanner interface{ Scan(dest ...interface{}) error }) (*entity.C
 		&c.Post8Sent,
 		&c.Post15Sent,
 		&c.LastInteractionDate,
+		&c.PICEmail,
+		&c.PICRole,
+		&c.HCSize,
+		&c.PlanType,
+		&c.PaymentTerms,
+		&c.FinalPrice,
+		&c.LastPaymentDate,
+		&c.Notes,
+		&c.CrossSellResumeDate,
+		&c.RenewalDate,
+		&c.CreatedAt,
+		&c.ChurnReason,
+		&c.WAUndeliverable,
+		&c.FeatureUpdateSent,
+		&c.DaysSinceCSLastSent,
+		&c.FirstTimeDiscountPct,
+		&c.NextDiscountPctManual,
+		&c.QuotationLinkExpires,
+		&c.AEAssigned,
+		&c.UsageScoreAvg30d,
+		&c.BackupOwnerTelegramID,
+		&c.AETelegramID,
+		&c.BDProspectID,
+		&c.RiskFlag,
+		&c.WorkspaceID,
 	)
 	if err != nil {
 		return nil, err

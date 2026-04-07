@@ -50,7 +50,7 @@ func (r *invoiceRepo) GetActiveByCompanyID(ctx context.Context, companyID string
 	defer cancel()
 
 	query, args, err := database.PSQL.
-		Select("invoice_id", "company_id", "due_date", "amount", "payment_status").
+		Select("invoice_id", "company_id", "issue_date", "due_date", "amount", "payment_status", "paid_at", "amount_paid", "reminder_count", "collection_stage", "created_at", "COALESCE(notes, '') as notes", "COALESCE(link_invoice, '') as link_invoice", "last_reminder_date", "COALESCE(workspace_id::text, '') as workspace_id").
 		From("invoices").
 		Where(sq.And{
 			sq.Eq{"company_id": companyID},
@@ -67,9 +67,19 @@ func (r *invoiceRepo) GetActiveByCompanyID(ctx context.Context, companyID string
 	err = r.DB.QueryRowContext(ctx, query, args...).Scan(
 		&inv.InvoiceID,
 		&inv.CompanyID,
+		&inv.IssueDate,
 		&inv.DueDate,
 		&inv.Amount,
 		&inv.PaymentStatus,
+		&inv.PaidAt,
+		&inv.AmountPaid,
+		&inv.ReminderCount,
+		&inv.CollectionStage,
+		&inv.CreatedAt,
+		&inv.Notes,
+		&inv.LinkInvoice,
+		&inv.LastReminderDate,
+		&inv.WorkspaceID,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
