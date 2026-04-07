@@ -20,7 +20,6 @@ type ActionLog struct {
 	WorkspaceID            string     `json:"workspace_id"`
 }
 
-// Channel constants
 const (
 	ChannelWhatsApp = "whatsapp"
 	ChannelTelegram = "telegram"

@@ -18,13 +18,11 @@ type Escalation struct {
 	WorkspaceID        string     `json:"workspace_id"`
 }
 
-// Escalation status constants
 const (
 	EscalationStatusOpen     = "Open"
 	EscalationStatusResolved = "Resolved"
 )
 
-// Escalation ID constants
 const (
 	EscInvoiceOverdue15 = "ESC-001"
 	EscObjection        = "ESC-002"
@@ -35,7 +33,6 @@ const (
 	EscPaymentClaim     = "ESC-007"
 )
 
-// Escalation priority constants
 const (
 	EscPriorityP0Emergency = "P0 Emergency"
 	EscPriorityP1Critical  = "P1 Critical"

@@ -2,8 +2,7 @@ package entity
 
 import "time"
 
-// DashboardEscalation mirrors the dashboard's EscalationEntry type.
-// Escalation entity already exists but has different field naming from dashboard.
+// DashboardEscalation represents an escalation entry for the dashboard API.
 type DashboardEscalation struct {
 	EscID            string `json:"esc_id"`
 	CompanyID        string `json:"Company_ID"`
@@ -13,8 +12,6 @@ type DashboardEscalation struct {
 	WhoNotified      string `json:"who_notified"`
 	Status           string `json:"status"`
 }
-
-// --- Shared mapping helpers for HTTP response layer ---
 
 func MapPaymentStatus(s string) string {
 	switch s {

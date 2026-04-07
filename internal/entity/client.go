@@ -69,14 +69,12 @@ type Client struct {
 	WorkspaceID           string     `json:"workspace_id"`
 }
 
-// Segment constants
 const (
 	SegmentHigh = "High"
 	SegmentMid  = "Mid"
 	SegmentLow  = "Low"
 )
 
-// PaymentStatus constants
 const (
 	PaymentStatusPaid    = "Paid"
 	PaymentStatusPending = "Pending"
@@ -84,7 +82,6 @@ const (
 	PaymentStatusPartial = "Partial"
 )
 
-// SequenceCS constants
 const (
 	SequenceCSActive    = "ACTIVE"
 	SequenceCSLongterm  = "LONGTERM"
@@ -93,7 +90,6 @@ const (
 	SequenceCSConverted = "CONVERTED"
 )
 
-// ResponseStatus constants
 const (
 	ResponseStatusPending = "Pending"
 	ResponseStatusReplied = "Replied"
@@ -133,7 +129,6 @@ func (c *Client) HasPendingPayment() bool {
 	return daysPast <= 0 && !isPaid
 }
 
-// UpdatePaymentStatus updates the payment status and last interaction date
 func (c *Client) UpdatePaymentStatus(status string) {
 	c.PaymentStatus = status
 	now := time.Now()

@@ -32,7 +32,6 @@ type ClientFlags struct {
 	NPSReplied           bool `json:"nps_replied"`
 	ReferralSentThisCycle bool `json:"referral_sent_this_cycle"`
 
-	// Risk
 	LowUsageMsgSent bool `json:"low_usage_msg_sent"`
 	LowNPSMsgSent   bool `json:"low_nps_msg_sent"`
 

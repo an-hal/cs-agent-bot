@@ -61,7 +61,6 @@ func (h *ClientHandler) Get(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// CreateClientRequest represents the create client request body
 type CreateClientRequest struct {
 	CompanyID       string `json:"company_id"`
 	CompanyName     string `json:"company_name"`
