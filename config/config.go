@@ -150,17 +150,17 @@ func LoadConfig() *AppConfig {
 		HandoffWebhookSecret: getEnv("HANDOFF_WEBHOOK_SECRET", ""),
 
 		// Business Config
-		PromoDeadline:         getEnv("PROMO_DEADLINE", ""),
-		SurveyPlatformURL:     getEnv("SURVEY_PLATFORM_URL", ""),
-		CheckinFormURL:        getEnv("CHECKIN_FORM_URL", ""),
-		ReferralBenefit:       getEnv("REFERRAL_BENEFIT", "1 bulan gratis"),
-		QuotationURL:          getEnv("QUOTATION_URL", ""),
-		ACVHighThreshold:      getEnvFloat("ACV_HIGH_THRESHOLD", 50000000),
-		ACVMidThreshold:       getEnvFloat("ACV_MID_THRESHOLD", 5000000),
-		SeniorAETelegramIDs:   getEnv("SENIOR_AE_TELEGRAM_IDS", ""),
-		AETeamTelegramIDs:     getEnv("AE_TEAM_TELEGRAM_IDS", ""),
-		AngryKeywordsExtra:    getEnv("ANGRY_KEYWORDS_EXTRA", ""),
-		SilenceThresholdDays:  getEnvInt("SILENCE_THRESHOLD_DAYS", 30),
+		PromoDeadline:        getEnv("PROMO_DEADLINE", ""),
+		SurveyPlatformURL:    getEnv("SURVEY_PLATFORM_URL", ""),
+		CheckinFormURL:       getEnv("CHECKIN_FORM_URL", ""),
+		ReferralBenefit:      getEnv("REFERRAL_BENEFIT", "1 bulan gratis"),
+		QuotationURL:         getEnv("QUOTATION_URL", ""),
+		ACVHighThreshold:     getEnvFloat("ACV_HIGH_THRESHOLD", 50000000),
+		ACVMidThreshold:      getEnvFloat("ACV_MID_THRESHOLD", 5000000),
+		SeniorAETelegramIDs:  getEnv("SENIOR_AE_TELEGRAM_IDS", ""),
+		AETeamTelegramIDs:    getEnv("AE_TEAM_TELEGRAM_IDS", ""),
+		AngryKeywordsExtra:   getEnv("ANGRY_KEYWORDS_EXTRA", ""),
+		SilenceThresholdDays: getEnvInt("SILENCE_THRESHOLD_DAYS", 30),
 
 		// OpenTelemetry Tracing
 		TracerExporter:            getEnv("TRACER_EXPORTER", "zipkin"),

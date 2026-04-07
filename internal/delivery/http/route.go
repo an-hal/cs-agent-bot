@@ -59,6 +59,7 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	api.Handle(http.MethodDelete, "/dashboard/clients/{company_id}", jwtAuth(dashboardH.Delete))
 	api.Handle(http.MethodGet, "/dashboard/clients/{company_id}/invoices", jwtAuth(dashboardH.GetInvoices))
 	api.Handle(http.MethodGet, "/dashboard/clients/{company_id}/escalations", jwtAuth(dashboardH.GetEscalations))
+	api.Handle(http.MethodGet, "/dashboard/workspaces/{workspace_id}/clients", jwtAuth(dashboardH.ListByWorkspaceID))
 	api.Handle(http.MethodGet, "/dashboard/activity-logs", jwtAuth(activityH.List))
 	api.Handle(http.MethodPost, "/dashboard/activity-logs", jwtAuth(activityH.Record))
 

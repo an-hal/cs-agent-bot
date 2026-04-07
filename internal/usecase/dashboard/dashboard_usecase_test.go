@@ -60,6 +60,10 @@ type mockClientRepo struct {
 	paginatedIDsResult []entity.Client
 	paginatedIDsTotal  int64
 	paginatedIDsErr    error
+	countByWSIDResult  int64
+	countByWSIDErr     error
+	fetchByWSIDResult  []entity.Client
+	fetchByWSIDErr     error
 }
 
 func (m *mockClientRepo) GetByID(_ context.Context, _ string) (*entity.Client, error) {
@@ -67,6 +71,12 @@ func (m *mockClientRepo) GetByID(_ context.Context, _ string) (*entity.Client, e
 }
 func (m *mockClientRepo) CreateClient(_ context.Context, _ entity.Client) error {
 	return m.createErr
+}
+func (m *mockClientRepo) CountByWorkspaceID(_ context.Context, _ string) (int64, error) {
+	return m.countByWSIDResult, m.countByWSIDErr
+}
+func (m *mockClientRepo) FetchByWorkspaceID(_ context.Context, _ string, _ pagination.Params) ([]entity.Client, error) {
+	return m.fetchByWSIDResult, m.fetchByWSIDErr
 }
 func (m *mockClientRepo) UpdateClientFields(_ context.Context, _ string, _ map[string]interface{}) error {
 	return m.updateFieldsErr
@@ -224,6 +234,47 @@ func TestGetClients_WorkspaceNotFound(t *testing.T) {
 	_, _, err := uc.GetClients(context.Background(), "nope", defaultParams)
 	if err == nil {
 		t.Error("expected error for missing workspace")
+	}
+}
+
+// ─── GetClientsByWorkspaceID ──────────────────────────────────────────────────
+
+func TestGetClientsByWorkspaceID_Success(t *testing.T) {
+	c := &mockClientRepo{
+		countByWSIDResult: 2,
+		fetchByWSIDResult: []entity.Client{{CompanyID: "C01"}, {CompanyID: "C02"}},
+	}
+	uc := newTestUC(ucDeps{cRepo: c})
+
+	result, err := uc.GetClientsByWorkspaceID(context.Background(), "ws-1", defaultParams)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result.Clients) != 2 {
+		t.Errorf("expected 2 clients, got %d", len(result.Clients))
+	}
+	if result.Meta.Total != 2 {
+		t.Errorf("expected total=2, got %d", result.Meta.Total)
+	}
+}
+
+func TestGetClientsByWorkspaceID_CountError(t *testing.T) {
+	c := &mockClientRepo{countByWSIDErr: errors.New("count fail")}
+	uc := newTestUC(ucDeps{cRepo: c})
+
+	_, err := uc.GetClientsByWorkspaceID(context.Background(), "ws-1", defaultParams)
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+func TestGetClientsByWorkspaceID_FetchError(t *testing.T) {
+	c := &mockClientRepo{countByWSIDResult: 5, fetchByWSIDErr: errors.New("fetch fail")}
+	uc := newTestUC(ucDeps{cRepo: c})
+
+	_, err := uc.GetClientsByWorkspaceID(context.Background(), "ws-1", defaultParams)
+	if err == nil {
+		t.Error("expected error")
 	}
 }
 

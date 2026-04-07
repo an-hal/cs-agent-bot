@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/middleware"
+	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/router"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
 	ucDashboard "github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
@@ -26,14 +27,16 @@ type mockUsecase struct {
 	getWSBySlugErr      error
 
 	// Clients
-	getClientsResult []entity.Client
-	getClientsTotal  int64
-	getClientsErr    error
-	getClientResult  *entity.Client
-	getClientErr     error
-	createClientErr  error
-	updateClientErr  error
-	deleteClientErr  error
+	getClientsResult       []entity.Client
+	getClientsTotal        int64
+	getClientsErr          error
+	getClientsByWSIDResult *ucDashboard.ClientListResult
+	getClientsByWSIDErr    error
+	getClientResult        *entity.Client
+	getClientErr           error
+	createClientErr        error
+	updateClientErr        error
+	deleteClientErr        error
 
 	// Invoices
 	getInvoicesResult []entity.Invoice
@@ -63,6 +66,10 @@ func (m *mockUsecase) GetWorkspaceBySlug(_ context.Context, _ string) (*entity.W
 
 func (m *mockUsecase) GetClients(_ context.Context, _ string, _ pagination.Params) ([]entity.Client, int64, error) {
 	return m.getClientsResult, m.getClientsTotal, m.getClientsErr
+}
+
+func (m *mockUsecase) GetClientsByWorkspaceID(_ context.Context, _ string, _ pagination.Params) (*ucDashboard.ClientListResult, error) {
+	return m.getClientsByWSIDResult, m.getClientsByWSIDErr
 }
 
 func (m *mockUsecase) GetClient(_ context.Context, _ string) (*entity.Client, error) {
@@ -111,11 +118,8 @@ func withJWTUser(r *http.Request, email string) *http.Request {
 	return r.WithContext(ctx)
 }
 
-// pathParamKey mirrors the unexported contextKey type in the router package.
-type pathParamKey string
-
 func withPathParam(r *http.Request, key, value string) *http.Request {
-	ctx := context.WithValue(r.Context(), pathParamKey("pathParams"), map[string]string{key: value})
+	ctx := context.WithValue(r.Context(), router.ParamKey, map[string]string{key: value})
 	return r.WithContext(ctx)
 }
 

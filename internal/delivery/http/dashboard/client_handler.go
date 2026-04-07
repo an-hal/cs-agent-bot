@@ -50,6 +50,39 @@ func (h *ClientHandler) List(w http.ResponseWriter, r *http.Request) error {
 	return response.StandardSuccessWithMeta(w, r, http.StatusOK, "Clients", pagination.NewMeta(params, total), clients)
 }
 
+// ListByWorkspaceID godoc
+// @Summary      List clients by workspace ID
+// @Description  Returns paginated clients for a given workspace ID.
+// @Tags         Dashboard
+// @Param        workspace_id  path      string  true   "Workspace ID"
+// @Param        offset        query     int     false  "Pagination offset (default 0)"
+// @Param        limit         query     int     false  "Limit per page (default 10, max 100)"
+// @Success      200  {object}  response.StandardResponseWithMeta{data=[]entity.Client}
+// @Failure      400  {object}  response.StandardResponse
+// @Failure      500  {object}  response.StandardResponse
+// @Router       /api/dashboard/workspaces/{workspace_id}/clients [get]
+func (h *ClientHandler) ListByWorkspaceID(w http.ResponseWriter, r *http.Request) error {
+	workspaceID := router.GetParam(r, "workspace_id")
+	if workspaceID == "" {
+		response.StandardError(w, r, http.StatusBadRequest, "workspace_id is required", "VALIDATION_ERROR", nil, "")
+		return nil
+	}
+
+	params := pagination.FromRequest(r)
+
+	result, err := h.uc.GetClientsByWorkspaceID(r.Context(), workspaceID, params)
+	if err != nil {
+		return err
+	}
+
+	clients := result.Clients
+	if clients == nil {
+		clients = []entity.Client{}
+	}
+
+	return response.StandardSuccessWithMeta(w, r, http.StatusOK, "Clients", result.Meta, clients)
+}
+
 // Get godoc
 // @Summary      Get client by ID
 // @Description  Returns a single client by company_id.

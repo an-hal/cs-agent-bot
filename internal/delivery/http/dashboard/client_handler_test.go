@@ -10,6 +10,8 @@ import (
 
 	handler "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/dashboard"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
+	ucDashboard "github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 )
 
 // ─── List ─────────────────────────────────────────────────────────────────────
@@ -272,6 +274,72 @@ func TestClientGetEscalations_RepoError(t *testing.T) {
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/clients/C01/escalations", nil)
 	r = withPathParam(r, "company_id", "C01")
 	err := h.GetEscalations(httptest.NewRecorder(), r)
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+// ─── ListByWorkspaceID ────────────────────────────────────────────────────────
+
+func TestClientListByWorkspaceID_ReturnsWithMeta(t *testing.T) {
+	mock := &mockUsecase{
+		getClientsByWSIDResult: &ucDashboard.ClientListResult{
+			Clients: []entity.Client{{CompanyID: "C01", CompanyName: "PT A"}},
+			Meta:    pagination.Meta{Offset: 0, Limit: 10, Total: 1},
+		},
+	}
+	h := handler.NewClientHandler(mock)
+
+	r := httptest.NewRequest(http.MethodGet, "/dashboard/workspaces/ws-1/clients", nil)
+	r = withPathParam(r, "workspace_id", "ws-1")
+	w := callHandler(h.ListByWorkspaceID, r)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	body := decodeBody(t, w)
+	meta, ok := body["meta"].(map[string]interface{})
+	if !ok {
+		t.Fatal("expected meta in response")
+	}
+	if meta["total"] != float64(1) {
+		t.Errorf("expected total=1, got %v", meta["total"])
+	}
+}
+
+func TestClientListByWorkspaceID_EmptyResult(t *testing.T) {
+	mock := &mockUsecase{
+		getClientsByWSIDResult: &ucDashboard.ClientListResult{
+			Clients: nil,
+			Meta:    pagination.Meta{Offset: 0, Limit: 10, Total: 0},
+		},
+	}
+	h := handler.NewClientHandler(mock)
+
+	r := httptest.NewRequest(http.MethodGet, "/dashboard/workspaces/ws-1/clients", nil)
+	r = withPathParam(r, "workspace_id", "ws-1")
+	w := callHandler(h.ListByWorkspaceID, r)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	body := decodeBody(t, w)
+	data, ok := body["data"].([]interface{})
+	if !ok {
+		t.Fatal("expected data as array")
+	}
+	if len(data) != 0 {
+		t.Errorf("expected empty array, got %d items", len(data))
+	}
+}
+
+func TestClientListByWorkspaceID_RepoError(t *testing.T) {
+	mock := &mockUsecase{getClientsByWSIDErr: errors.New("db error")}
+	h := handler.NewClientHandler(mock)
+
+	r := httptest.NewRequest(http.MethodGet, "/dashboard/workspaces/ws-1/clients", nil)
+	r = withPathParam(r, "workspace_id", "ws-1")
+	err := h.ListByWorkspaceID(httptest.NewRecorder(), r)
 	if err == nil {
 		t.Error("expected error")
 	}

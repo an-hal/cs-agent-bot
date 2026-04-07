@@ -11,10 +11,17 @@ import (
 	"github.com/rs/zerolog"
 )
 
+// ClientListResult contains paginated client results.
+type ClientListResult struct {
+	Clients []entity.Client
+	Meta    pagination.Meta
+}
+
 type DashboardUsecase interface {
 	GetWorkspaces(ctx context.Context) ([]entity.Workspace, error)
 	GetWorkspaceBySlug(ctx context.Context, slug string) (*entity.Workspace, error)
 	GetClients(ctx context.Context, workspaceSlug string, p pagination.Params) ([]entity.Client, int64, error)
+	GetClientsByWorkspaceID(ctx context.Context, workspaceID string, p pagination.Params) (*ClientListResult, error)
 	GetClient(ctx context.Context, companyID string) (*entity.Client, error)
 	CreateClient(ctx context.Context, client entity.Client) error
 	UpdateClient(ctx context.Context, companyID string, fields map[string]interface{}) error
@@ -83,6 +90,26 @@ func (u *dashboardUsecase) GetClients(ctx context.Context, workspaceSlug string,
 		return u.clientRepo.GetAllByWorkspaceIDsPaginated(ctx, ws.MemberIDs, p)
 	}
 	return u.clientRepo.GetAllByWorkspacePaginated(ctx, workspaceSlug, p)
+}
+
+func (u *dashboardUsecase) GetClientsByWorkspaceID(ctx context.Context, workspaceID string, p pagination.Params) (*ClientListResult, error) {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetClientsByWorkspaceID")
+	defer span.End()
+
+	total, err := u.clientRepo.CountByWorkspaceID(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("count clients: %w", err)
+	}
+
+	clients, err := u.clientRepo.FetchByWorkspaceID(ctx, workspaceID, p)
+	if err != nil {
+		return nil, fmt.Errorf("fetch clients: %w", err)
+	}
+
+	return &ClientListResult{
+		Clients: clients,
+		Meta:    pagination.NewMeta(p, total),
+	}, nil
 }
 
 func (u *dashboardUsecase) GetClient(ctx context.Context, companyID string) (*entity.Client, error) {

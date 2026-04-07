@@ -39,6 +39,8 @@ type ClientRepository interface {
 	GetAllByWorkspaceIDs(ctx context.Context, workspaceIDs []string) ([]entity.Client, error)
 	GetAllByWorkspacePaginated(ctx context.Context, workspaceSlug string, p pagination.Params) ([]entity.Client, int64, error)
 	GetAllByWorkspaceIDsPaginated(ctx context.Context, workspaceIDs []string, p pagination.Params) ([]entity.Client, int64, error)
+	CountByWorkspaceID(ctx context.Context, workspaceID string) (int64, error)
+	FetchByWorkspaceID(ctx context.Context, workspaceID string, p pagination.Params) ([]entity.Client, error)
 	UpdateClientFields(ctx context.Context, companyID string, fields map[string]interface{}) error
 }
 
@@ -677,6 +679,66 @@ func (r *clientRepo) GetAllByWorkspaceIDsPaginated(ctx context.Context, workspac
 		return nil, 0, fmt.Errorf("iterate client rows: %w", err)
 	}
 	return clients, total, nil
+}
+
+// CountByWorkspaceID returns the total number of non-blacklisted clients for a workspace ID.
+func (r *clientRepo) CountByWorkspaceID(ctx context.Context, workspaceID string) (int64, error) {
+	ctx, span := r.tracer.Start(ctx, "client.repository.CountByWorkspaceID")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query, args, err := database.PSQL.
+		Select("COUNT(*)").
+		From("clients").
+		Where(sq.And{
+			sq.Eq{"blacklisted": false},
+			sq.Eq{"workspace_id": workspaceID},
+		}).
+		ToSql()
+	if err != nil {
+		return 0, fmt.Errorf("build count query CountByWorkspaceID: %w", err)
+	}
+
+	var count int64
+	if err := r.db.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
+		return 0, fmt.Errorf("count CountByWorkspaceID: %w", err)
+	}
+	return count, nil
+}
+
+// FetchByWorkspaceID returns paginated non-blacklisted clients for a workspace ID.
+func (r *clientRepo) FetchByWorkspaceID(ctx context.Context, workspaceID string, p pagination.Params) ([]entity.Client, error) {
+	ctx, span := r.tracer.Start(ctx, "client.repository.FetchByWorkspaceID")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query := fmt.Sprintf(
+		"SELECT %s FROM clients c WHERE c.blacklisted = false AND c.workspace_id = $1 ORDER BY c.company_id LIMIT $2 OFFSET $3",
+		clientColumns,
+	)
+
+	rows, err := r.db.QueryContext(ctx, query, workspaceID, p.Limit, p.Offset)
+	if err != nil {
+		return nil, fmt.Errorf("query FetchByWorkspaceID: %w", err)
+	}
+	defer rows.Close()
+
+	var clients []entity.Client
+	for rows.Next() {
+		c, err := scanClient(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan client row: %w", err)
+		}
+		clients = append(clients, *c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate client rows: %w", err)
+	}
+	return clients, nil
 }
 
 // validUpdateColumns lists columns that are safe to update via the dashboard API.
