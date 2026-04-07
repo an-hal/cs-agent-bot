@@ -8,6 +8,7 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/router"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/response"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 )
 
@@ -37,13 +38,16 @@ func NewClientHandler(uc dashboard.DashboardUsecase) *ClientHandler {
 // @Router       /api/dashboard/clients [get]
 func (h *ClientHandler) List(w http.ResponseWriter, r *http.Request) error {
 	workspace := r.URL.Query().Get("workspace")
+	params := pagination.FromRequest(r)
 
-	clients, err := h.uc.GetClients(r.Context(), workspace)
+	clients, total, err := h.uc.GetClients(r.Context(), workspace, params)
 	if err != nil {
 		return err
 	}
-	response.StandardSuccess(w, r, http.StatusOK, "Clients", clients)
-	return nil
+	if clients == nil {
+		clients = []entity.Client{}
+	}
+	return response.StandardSuccessWithMeta(w, r, http.StatusOK, "Clients", pagination.NewMeta(params, total), clients)
 }
 
 // Get godoc
@@ -221,13 +225,16 @@ func (h *ClientHandler) Delete(w http.ResponseWriter, r *http.Request) error {
 // @Router       /api/dashboard/clients/{company_id}/invoices [get]
 func (h *ClientHandler) GetInvoices(w http.ResponseWriter, r *http.Request) error {
 	companyID := router.GetParam(r, "company_id")
+	params := pagination.FromRequest(r)
 
-	invoices, err := h.uc.GetClientInvoices(r.Context(), companyID)
+	invoices, total, err := h.uc.GetClientInvoices(r.Context(), companyID, params)
 	if err != nil {
 		return err
 	}
-	response.StandardSuccess(w, r, http.StatusOK, "Invoices", invoices)
-	return nil
+	if invoices == nil {
+		invoices = []entity.Invoice{}
+	}
+	return response.StandardSuccessWithMeta(w, r, http.StatusOK, "Invoices", pagination.NewMeta(params, total), invoices)
 }
 
 // GetEscalations godoc
@@ -240,11 +247,14 @@ func (h *ClientHandler) GetInvoices(w http.ResponseWriter, r *http.Request) erro
 // @Router       /api/dashboard/clients/{company_id}/escalations [get]
 func (h *ClientHandler) GetEscalations(w http.ResponseWriter, r *http.Request) error {
 	companyID := router.GetParam(r, "company_id")
+	params := pagination.FromRequest(r)
 
-	escalations, err := h.uc.GetClientEscalations(r.Context(), companyID)
+	escalations, total, err := h.uc.GetClientEscalations(r.Context(), companyID, params)
 	if err != nil {
 		return err
 	}
-	response.StandardSuccess(w, r, http.StatusOK, "Escalations", escalations)
-	return nil
+	if escalations == nil {
+		escalations = []entity.Escalation{}
+	}
+	return response.StandardSuccessWithMeta(w, r, http.StatusOK, "Escalations", pagination.NewMeta(params, total), escalations)
 }

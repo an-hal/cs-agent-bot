@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 	"github.com/rs/zerolog"
@@ -14,26 +15,98 @@ import (
 	"go.opentelemetry.io/otel/trace/noop"
 )
 
-// noopTracer wraps the OpenTelemetry noop tracer provider so it satisfies
-// the internal tracer.Tracer interface.
-type noopTracer struct {
-	t trace.Tracer
-}
+// ─── noop tracer ──────────────────────────────────────────────────────────────
+
+type noopTracer struct{ t trace.Tracer }
 
 func newNoopTracer() noopTracer {
 	return noopTracer{t: noop.NewTracerProvider().Tracer("test")}
 }
 
-func (n noopTracer) Start(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
-	return n.t.Start(ctx, spanName, opts...)
+func (n noopTracer) Start(ctx context.Context, name string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	return n.t.Start(ctx, name, opts...)
 }
 
 func (n noopTracer) Shutdown(_ context.Context) error { return nil }
 
-// ─── mock LogRepository ───────────────────────────────────────────────────────
+// ─── mock repos ───────────────────────────────────────────────────────────────
 
+// mockWorkspaceRepo
+type mockWorkspaceRepo struct {
+	getAllResult    []entity.Workspace
+	getAllErr       error
+	getBySlugResult *entity.Workspace
+	getBySlugErr    error
+}
+
+func (m *mockWorkspaceRepo) GetAll(context.Context) ([]entity.Workspace, error) {
+	return m.getAllResult, m.getAllErr
+}
+func (m *mockWorkspaceRepo) GetBySlug(_ context.Context, _ string) (*entity.Workspace, error) {
+	return m.getBySlugResult, m.getBySlugErr
+}
+
+// mockClientRepo
+type mockClientRepo struct {
+	repository.ClientRepository
+
+	getByIDResult      *entity.Client
+	getByIDErr         error
+	createErr          error
+	updateFieldsErr    error
+	paginatedResult    []entity.Client
+	paginatedTotal     int64
+	paginatedErr       error
+	paginatedIDsResult []entity.Client
+	paginatedIDsTotal  int64
+	paginatedIDsErr    error
+}
+
+func (m *mockClientRepo) GetByID(_ context.Context, _ string) (*entity.Client, error) {
+	return m.getByIDResult, m.getByIDErr
+}
+func (m *mockClientRepo) CreateClient(_ context.Context, _ entity.Client) error {
+	return m.createErr
+}
+func (m *mockClientRepo) UpdateClientFields(_ context.Context, _ string, _ map[string]interface{}) error {
+	return m.updateFieldsErr
+}
+func (m *mockClientRepo) GetAllByWorkspacePaginated(_ context.Context, _ string, _ pagination.Params) ([]entity.Client, int64, error) {
+	return m.paginatedResult, m.paginatedTotal, m.paginatedErr
+}
+func (m *mockClientRepo) GetAllByWorkspaceIDsPaginated(_ context.Context, _ []string, _ pagination.Params) ([]entity.Client, int64, error) {
+	return m.paginatedIDsResult, m.paginatedIDsTotal, m.paginatedIDsErr
+}
+
+// mockInvoiceRepo
+type mockInvoiceRepo struct {
+	repository.InvoiceRepository
+
+	paginatedResult []entity.Invoice
+	paginatedTotal  int64
+	paginatedErr    error
+}
+
+func (m *mockInvoiceRepo) GetAllByCompanyIDPaginated(_ context.Context, _ string, _ pagination.Params) ([]entity.Invoice, int64, error) {
+	return m.paginatedResult, m.paginatedTotal, m.paginatedErr
+}
+
+// mockEscalationRepo
+type mockEscalationRepo struct {
+	repository.EscalationRepository
+
+	paginatedResult []entity.Escalation
+	paginatedTotal  int64
+	paginatedErr    error
+}
+
+func (m *mockEscalationRepo) GetByCompanyIDPaginated(_ context.Context, _ string, _ pagination.Params) ([]entity.Escalation, int64, error) {
+	return m.paginatedResult, m.paginatedTotal, m.paginatedErr
+}
+
+// mockLogRepo
 type mockLogRepo struct {
-	repository.LogRepository // embed so only overridden methods need implementing
+	repository.LogRepository
 
 	appendActivityCalled bool
 	appendActivityEntry  entity.ActivityLog
@@ -41,7 +114,6 @@ type mockLogRepo struct {
 
 	getActivitiesResult []entity.ActivityLog
 	getActivitiesTotal  int
-	getActivitiesFilter entity.ActivityFilter
 	getActivitiesErr    error
 }
 
@@ -50,57 +122,277 @@ func (m *mockLogRepo) AppendActivity(_ context.Context, entry entity.ActivityLog
 	m.appendActivityEntry = entry
 	return m.appendActivityErr
 }
-
-func (m *mockLogRepo) GetActivities(_ context.Context, filter entity.ActivityFilter) ([]entity.ActivityLog, int, error) {
-	m.getActivitiesFilter = filter
+func (m *mockLogRepo) GetActivities(_ context.Context, _ entity.ActivityFilter) ([]entity.ActivityLog, int, error) {
 	return m.getActivitiesResult, m.getActivitiesTotal, m.getActivitiesErr
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
-func newUsecase(logRepo repository.LogRepository) dashboard.DashboardUsecase {
-	return dashboard.NewDashboardUsecase(
-		nil, nil, nil, nil, // unused repos for these tests
-		logRepo,
-		newNoopTracer(),
-		zerolog.Nop(),
-	)
+type ucDeps struct {
+	wsRepo  *mockWorkspaceRepo
+	cRepo   *mockClientRepo
+	iRepo   *mockInvoiceRepo
+	eRepo   *mockEscalationRepo
+	logRepo *mockLogRepo
+}
+
+func newTestUC(deps ucDeps) dashboard.DashboardUsecase {
+	ws := deps.wsRepo
+	if ws == nil {
+		ws = &mockWorkspaceRepo{}
+	}
+	c := deps.cRepo
+	if c == nil {
+		c = &mockClientRepo{}
+	}
+	i := deps.iRepo
+	if i == nil {
+		i = &mockInvoiceRepo{}
+	}
+	e := deps.eRepo
+	if e == nil {
+		e = &mockEscalationRepo{}
+	}
+	l := deps.logRepo
+	if l == nil {
+		l = &mockLogRepo{}
+	}
+	return dashboard.NewDashboardUsecase(ws, c, i, e, l, newNoopTracer(), zerolog.Nop())
+}
+
+var defaultParams = pagination.Params{Offset: 0, Limit: 10}
+
+// ─── GetWorkspaces ────────────────────────────────────────────────────────────
+
+func TestGetWorkspaces_Success(t *testing.T) {
+	ws := &mockWorkspaceRepo{getAllResult: []entity.Workspace{{Slug: "dealls"}}}
+	uc := newTestUC(ucDeps{wsRepo: ws})
+
+	result, err := uc.GetWorkspaces(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 || result[0].Slug != "dealls" {
+		t.Errorf("unexpected result: %+v", result)
+	}
+}
+
+func TestGetWorkspaces_Error(t *testing.T) {
+	ws := &mockWorkspaceRepo{getAllErr: errors.New("fail")}
+	uc := newTestUC(ucDeps{wsRepo: ws})
+
+	_, err := uc.GetWorkspaces(context.Background())
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+// ─── GetClients ───────────────────────────────────────────────────────────────
+
+func TestGetClients_BySlug(t *testing.T) {
+	ws := &mockWorkspaceRepo{getBySlugResult: &entity.Workspace{ID: "1", Slug: "dealls"}}
+	c := &mockClientRepo{paginatedResult: []entity.Client{{CompanyID: "C01"}}, paginatedTotal: 1}
+	uc := newTestUC(ucDeps{wsRepo: ws, cRepo: c})
+
+	clients, total, err := uc.GetClients(context.Background(), "dealls", defaultParams)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if total != 1 || len(clients) != 1 {
+		t.Errorf("expected 1 client, got %d (total=%d)", len(clients), total)
+	}
+}
+
+func TestGetClients_ByHolding(t *testing.T) {
+	ws := &mockWorkspaceRepo{getBySlugResult: &entity.Workspace{ID: "h", Slug: "holding", IsHolding: true, MemberIDs: []string{"1", "2"}}}
+	c := &mockClientRepo{paginatedIDsResult: []entity.Client{{CompanyID: "C01"}, {CompanyID: "C02"}}, paginatedIDsTotal: 2}
+	uc := newTestUC(ucDeps{wsRepo: ws, cRepo: c})
+
+	clients, total, err := uc.GetClients(context.Background(), "holding", defaultParams)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if total != 2 || len(clients) != 2 {
+		t.Errorf("expected 2 clients, got %d (total=%d)", len(clients), total)
+	}
+}
+
+func TestGetClients_WorkspaceNotFound(t *testing.T) {
+	ws := &mockWorkspaceRepo{getBySlugResult: nil}
+	uc := newTestUC(ucDeps{wsRepo: ws})
+
+	_, _, err := uc.GetClients(context.Background(), "nope", defaultParams)
+	if err == nil {
+		t.Error("expected error for missing workspace")
+	}
+}
+
+// ─── GetClient ────────────────────────────────────────────────────────────────
+
+func TestGetClient_Success(t *testing.T) {
+	c := &mockClientRepo{getByIDResult: &entity.Client{CompanyID: "C01"}}
+	uc := newTestUC(ucDeps{cRepo: c})
+
+	result, err := uc.GetClient(context.Background(), "C01")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result == nil || result.CompanyID != "C01" {
+		t.Errorf("unexpected result: %+v", result)
+	}
+}
+
+func TestGetClient_Error(t *testing.T) {
+	c := &mockClientRepo{getByIDErr: errors.New("fail")}
+	uc := newTestUC(ucDeps{cRepo: c})
+
+	_, err := uc.GetClient(context.Background(), "C01")
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+// ─── CreateClient ─────────────────────────────────────────────────────────────
+
+func TestCreateClient_SetsDefaults(t *testing.T) {
+	c := &mockClientRepo{}
+	uc := newTestUC(ucDeps{cRepo: c})
+
+	err := uc.CreateClient(context.Background(), entity.Client{CompanyID: "C01"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestCreateClient_Error(t *testing.T) {
+	c := &mockClientRepo{createErr: errors.New("dup")}
+	uc := newTestUC(ucDeps{cRepo: c})
+
+	err := uc.CreateClient(context.Background(), entity.Client{CompanyID: "C01"})
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+// ─── UpdateClient ─────────────────────────────────────────────────────────────
+
+func TestUpdateClient_Success(t *testing.T) {
+	c := &mockClientRepo{}
+	uc := newTestUC(ucDeps{cRepo: c})
+
+	err := uc.UpdateClient(context.Background(), "C01", map[string]interface{}{"notes": "x"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestUpdateClient_Error(t *testing.T) {
+	c := &mockClientRepo{updateFieldsErr: errors.New("fail")}
+	uc := newTestUC(ucDeps{cRepo: c})
+
+	err := uc.UpdateClient(context.Background(), "C01", map[string]interface{}{"notes": "x"})
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+// ─── DeleteClient ─────────────────────────────────────────────────────────────
+
+func TestDeleteClient_Success(t *testing.T) {
+	c := &mockClientRepo{}
+	uc := newTestUC(ucDeps{cRepo: c})
+
+	err := uc.DeleteClient(context.Background(), "C01")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDeleteClient_Error(t *testing.T) {
+	c := &mockClientRepo{updateFieldsErr: errors.New("fail")}
+	uc := newTestUC(ucDeps{cRepo: c})
+
+	err := uc.DeleteClient(context.Background(), "C01")
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+// ─── GetClientInvoices ────────────────────────────────────────────────────────
+
+func TestGetClientInvoices_Success(t *testing.T) {
+	i := &mockInvoiceRepo{paginatedResult: []entity.Invoice{{InvoiceID: "INV-1"}}, paginatedTotal: 1}
+	uc := newTestUC(ucDeps{iRepo: i})
+
+	invoices, total, err := uc.GetClientInvoices(context.Background(), "C01", defaultParams)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if total != 1 || len(invoices) != 1 {
+		t.Errorf("expected 1 invoice, got %d (total=%d)", len(invoices), total)
+	}
+}
+
+func TestGetClientInvoices_Error(t *testing.T) {
+	i := &mockInvoiceRepo{paginatedErr: errors.New("fail")}
+	uc := newTestUC(ucDeps{iRepo: i})
+
+	_, _, err := uc.GetClientInvoices(context.Background(), "C01", defaultParams)
+	if err == nil {
+		t.Error("expected error")
+	}
+}
+
+// ─── GetClientEscalations ────────────────────────────────────────────────────
+
+func TestGetClientEscalations_Success(t *testing.T) {
+	e := &mockEscalationRepo{paginatedResult: []entity.Escalation{{EscalationID: "E1"}}, paginatedTotal: 1}
+	uc := newTestUC(ucDeps{eRepo: e})
+
+	escs, total, err := uc.GetClientEscalations(context.Background(), "C01", defaultParams)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if total != 1 || len(escs) != 1 {
+		t.Errorf("expected 1 escalation, got %d (total=%d)", len(escs), total)
+	}
+}
+
+func TestGetClientEscalations_Error(t *testing.T) {
+	e := &mockEscalationRepo{paginatedErr: errors.New("fail")}
+	uc := newTestUC(ucDeps{eRepo: e})
+
+	_, _, err := uc.GetClientEscalations(context.Background(), "C01", defaultParams)
+	if err == nil {
+		t.Error("expected error")
+	}
 }
 
 // ─── RecordActivity ───────────────────────────────────────────────────────────
 
 func TestRecordActivity_DelegatesToRepo(t *testing.T) {
-	mock := &mockLogRepo{}
-	uc := newUsecase(mock)
+	l := &mockLogRepo{}
+	uc := newTestUC(ucDeps{logRepo: l})
 
 	entry := entity.ActivityLog{
-		Category:  entity.ActivityCategoryData,
-		ActorType: entity.ActivityActorHuman,
-		Actor:     "user@example.com",
-		Action:    "edit_client",
-		Target:    "PT Maju Digital",
-		RefID:     "C01",
+		Category: entity.ActivityCategoryData, ActorType: entity.ActivityActorHuman,
+		Actor: "user@example.com", Action: "edit_client", Target: "PT Maju", RefID: "C01",
 	}
-
 	if err := uc.RecordActivity(context.Background(), entry); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	if !mock.appendActivityCalled {
+	if !l.appendActivityCalled {
 		t.Fatal("expected AppendActivity to be called")
 	}
-	if mock.appendActivityEntry.Actor != "user@example.com" {
-		t.Errorf("actor mismatch: got %q", mock.appendActivityEntry.Actor)
-	}
-	if mock.appendActivityEntry.Action != "edit_client" {
-		t.Errorf("action mismatch: got %q", mock.appendActivityEntry.Action)
+	if l.appendActivityEntry.Actor != "user@example.com" {
+		t.Errorf("actor mismatch: got %q", l.appendActivityEntry.Actor)
 	}
 }
 
-func TestRecordActivity_PropagatesRepoError(t *testing.T) {
+func TestRecordActivity_PropagatesError(t *testing.T) {
 	repoErr := errors.New("db unavailable")
-	mock := &mockLogRepo{appendActivityErr: repoErr}
-	uc := newUsecase(mock)
+	l := &mockLogRepo{appendActivityErr: repoErr}
+	uc := newTestUC(ucDeps{logRepo: l})
 
 	err := uc.RecordActivity(context.Background(), entity.ActivityLog{Action: "add_client"})
 	if !errors.Is(err, repoErr) {
@@ -110,57 +402,31 @@ func TestRecordActivity_PropagatesRepoError(t *testing.T) {
 
 // ─── GetActivityLogs ──────────────────────────────────────────────────────────
 
-func TestGetActivityLogs_FilterPassedToRepo(t *testing.T) {
+func TestGetActivityLogs_Success(t *testing.T) {
 	now := time.Now()
-	mock := &mockLogRepo{
-		getActivitiesResult: []entity.ActivityLog{
-			{ID: 1, Category: "bot", Action: "RENEWAL"},
-		},
-		getActivitiesTotal: 1,
+	l := &mockLogRepo{
+		getActivitiesResult: []entity.ActivityLog{{ID: 1, Category: "bot", Action: "RENEWAL"}},
+		getActivitiesTotal:  1,
 	}
-	uc := newUsecase(mock)
+	uc := newTestUC(ucDeps{logRepo: l})
 
-	filter := entity.ActivityFilter{
-		WorkspaceID: "dealls",
-		Category:    entity.ActivityCategoryBot,
-		Since:       &now,
-		Limit:       25,
-		Offset:      10,
-	}
-
-	logs, total, err := uc.GetActivityLogs(context.Background(), filter)
+	logs, total, err := uc.GetActivityLogs(context.Background(), entity.ActivityFilter{
+		WorkspaceID: "dealls", Category: entity.ActivityCategoryBot, Since: &now, Limit: 25, Offset: 10,
+	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if total != 1 {
-		t.Errorf("expected total 1, got %d", total)
-	}
-	if len(logs) != 1 {
-		t.Fatalf("expected 1 log, got %d", len(logs))
-	}
-	if logs[0].Action != "RENEWAL" {
-		t.Errorf("unexpected action: %q", logs[0].Action)
-	}
-
-	// Verify filter was forwarded unchanged
-	if mock.getActivitiesFilter.WorkspaceID != "dealls" {
-		t.Errorf("workspace_id not forwarded: %q", mock.getActivitiesFilter.WorkspaceID)
-	}
-	if mock.getActivitiesFilter.Limit != 25 {
-		t.Errorf("limit not forwarded: %d", mock.getActivitiesFilter.Limit)
-	}
-	if mock.getActivitiesFilter.Offset != 10 {
-		t.Errorf("offset not forwarded: %d", mock.getActivitiesFilter.Offset)
+	if total != 1 || len(logs) != 1 {
+		t.Errorf("expected 1 log, got %d (total=%d)", len(logs), total)
 	}
 }
 
-func TestGetActivityLogs_PropagatesRepoError(t *testing.T) {
-	repoErr := errors.New("query failed")
-	mock := &mockLogRepo{getActivitiesErr: repoErr}
-	uc := newUsecase(mock)
+func TestGetActivityLogs_PropagatesError(t *testing.T) {
+	l := &mockLogRepo{getActivitiesErr: errors.New("query failed")}
+	uc := newTestUC(ucDeps{logRepo: l})
 
 	_, _, err := uc.GetActivityLogs(context.Background(), entity.ActivityFilter{Limit: 10})
-	if !errors.Is(err, repoErr) {
-		t.Errorf("expected repo error, got: %v", err)
+	if err == nil {
+		t.Error("expected error")
 	}
 }

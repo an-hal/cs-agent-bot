@@ -3,12 +3,12 @@ package dashboard
 import (
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/middleware"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/response"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 )
 
@@ -20,13 +20,6 @@ type ActivityHandler struct {
 // NewActivityHandler creates a new ActivityHandler.
 func NewActivityHandler(uc dashboard.DashboardUsecase) *ActivityHandler {
 	return &ActivityHandler{uc: uc}
-}
-
-// activityMeta is the pagination metadata returned with list responses.
-type activityMeta struct {
-	Total  int `json:"total"`
-	Limit  int `json:"limit"`
-	Offset int `json:"offset"`
 }
 
 // recordActivityRequest is the request body for the POST endpoint.
@@ -44,39 +37,23 @@ type recordActivityRequest struct {
 // @Summary      List activity logs
 // @Description  Returns paginated activity log entries across all categories (bot, data, team).
 //
-//	Filter by workspace_id, category, limit, offset, and since.
+//	Filter by workspace_id, category, offset, limit, and since.
 //
 // @Tags         Dashboard
 // @Param        workspace_id  query     string  false  "Workspace ID"
 // @Param        category      query     string  false  "Category filter: bot | data | team (default: all)"
-// @Param        limit         query     int     false  "Max entries to return (default 50, max 200)"
 // @Param        offset        query     int     false  "Pagination offset (default 0)"
+// @Param        limit         query     int     false  "Max entries to return (default 10, max 100)"
 // @Param        since         query     string  false  "ISO 8601 timestamp — return entries after this time"
 // @Success      200  {object}  response.StandardResponseWithMeta{data=[]entity.ActivityLog}
 // @Failure      500  {object}  response.StandardResponse
 // @Router       /api/dashboard/activity-logs [get]
 func (h *ActivityHandler) List(w http.ResponseWriter, r *http.Request) error {
 	sp := r.URL.Query()
+	params := pagination.FromRequest(r)
 
 	workspaceID := sp.Get("workspace_id")
 	category := sp.Get("category")
-
-	limit := 50
-	if v := sp.Get("limit"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n > 0 {
-			limit = n
-		}
-	}
-	if limit > 200 {
-		limit = 200
-	}
-
-	offset := 0
-	if v := sp.Get("offset"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
-			offset = n
-		}
-	}
 
 	var since *time.Time
 	if v := sp.Get("since"); v != "" {
@@ -89,8 +66,8 @@ func (h *ActivityHandler) List(w http.ResponseWriter, r *http.Request) error {
 		WorkspaceID: workspaceID,
 		Category:    category,
 		Since:       since,
-		Limit:       limit,
-		Offset:      offset,
+		Limit:       params.Limit,
+		Offset:      params.Offset,
 	}
 
 	logs, total, err := h.uc.GetActivityLogs(r.Context(), filter)
@@ -98,14 +75,11 @@ func (h *ActivityHandler) List(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	// Return empty slice instead of null
 	if logs == nil {
 		logs = []entity.ActivityLog{}
 	}
 
-	meta := activityMeta{Total: total, Limit: limit, Offset: offset}
-	response.StandardSuccessWithMeta(w, r, http.StatusOK, "Activity logs", meta, logs)
-	return nil
+	return response.StandardSuccessWithMeta(w, r, http.StatusOK, "Activity logs", pagination.NewMeta(params, int64(total)), logs)
 }
 
 // Record godoc
@@ -127,7 +101,6 @@ func (h *ActivityHandler) Record(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	// Bot activities are written automatically — reject manual bot writes
 	if req.Category == entity.ActivityCategoryBot {
 		response.StandardError(w, r, http.StatusBadRequest, "Category 'bot' cannot be written manually", "VALIDATION_ERROR", nil, "")
 		return nil
@@ -143,7 +116,6 @@ func (h *ActivityHandler) Record(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 
-	// Actor is always taken from the authenticated JWT — never trusted from the body
 	actor := "unknown"
 	if u, ok := middleware.GetJWTUser(r.Context()); ok {
 		actor = u.Email
@@ -165,6 +137,5 @@ func (h *ActivityHandler) Record(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	response.StandardSuccess(w, r, http.StatusCreated, "Activity recorded", entry)
-	return nil
+	return response.StandardSuccess(w, r, http.StatusCreated, "Activity recorded", entry)
 }

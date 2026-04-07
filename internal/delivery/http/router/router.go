@@ -28,13 +28,13 @@ type prefixRoute struct {
 }
 
 type Router struct {
-	parent       *Router
-	prefix       string
-	routes       []Route
-	prefixRoutes []prefixRoute
-	middleware   []func(http.Handler) http.Handler
+	parent          *Router
+	prefix          string
+	routes          []Route
+	prefixRoutes    []prefixRoute
+	middleware      []func(http.Handler) http.Handler
 	routeMiddleware map[string][]func(http.Handler) http.Handler // path-specific middleware
-	errorHandler func(middleware.ErrorHandler) http.HandlerFunc
+	errorHandler    func(middleware.ErrorHandler) http.HandlerFunc
 }
 
 func NewRouter() *Router {

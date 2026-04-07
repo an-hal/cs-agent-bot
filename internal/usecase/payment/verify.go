@@ -7,8 +7,8 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai"
-	"github.com/Sejutacita/cs-agent-bot/internal/usecase/template"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/telegram"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/template"
 	"github.com/rs/zerolog"
 )
 
@@ -24,14 +24,14 @@ type VerifyPaymentRequest struct {
 }
 
 type paymentVerifier struct {
-	clientRepo        repository.ClientRepository
-	flagsRepo         repository.FlagsRepository
-	logRepo           repository.LogRepository
-	escalationRepo    repository.EscalationRepository
-	telegramNotifier  telegram.TelegramNotifier
-	haloaiClient      haloai.HaloAIClient
-	templateResolver  template.TemplateResolver
-	logger            zerolog.Logger
+	clientRepo       repository.ClientRepository
+	flagsRepo        repository.FlagsRepository
+	logRepo          repository.LogRepository
+	escalationRepo   repository.EscalationRepository
+	telegramNotifier telegram.TelegramNotifier
+	haloaiClient     haloai.HaloAIClient
+	templateResolver template.TemplateResolver
+	logger           zerolog.Logger
 }
 
 func NewPaymentVerifier(

@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	"github.com/rs/zerolog"
@@ -13,13 +14,13 @@ import (
 type DashboardUsecase interface {
 	GetWorkspaces(ctx context.Context) ([]entity.Workspace, error)
 	GetWorkspaceBySlug(ctx context.Context, slug string) (*entity.Workspace, error)
-	GetClients(ctx context.Context, workspaceSlug string) ([]entity.Client, error)
+	GetClients(ctx context.Context, workspaceSlug string, p pagination.Params) ([]entity.Client, int64, error)
 	GetClient(ctx context.Context, companyID string) (*entity.Client, error)
 	CreateClient(ctx context.Context, client entity.Client) error
 	UpdateClient(ctx context.Context, companyID string, fields map[string]interface{}) error
 	DeleteClient(ctx context.Context, companyID string) error
-	GetClientInvoices(ctx context.Context, companyID string) ([]entity.Invoice, error)
-	GetClientEscalations(ctx context.Context, companyID string) ([]entity.Escalation, error)
+	GetClientInvoices(ctx context.Context, companyID string, p pagination.Params) ([]entity.Invoice, int64, error)
+	GetClientEscalations(ctx context.Context, companyID string, p pagination.Params) ([]entity.Escalation, int64, error)
 	RecordActivity(ctx context.Context, entry entity.ActivityLog) error
 	GetActivityLogs(ctx context.Context, filter entity.ActivityFilter) ([]entity.ActivityLog, int, error)
 }
@@ -66,22 +67,22 @@ func (u *dashboardUsecase) GetWorkspaceBySlug(ctx context.Context, slug string) 
 	return u.workspaceRepo.GetBySlug(ctx, slug)
 }
 
-func (u *dashboardUsecase) GetClients(ctx context.Context, workspaceSlug string) ([]entity.Client, error) {
+func (u *dashboardUsecase) GetClients(ctx context.Context, workspaceSlug string, p pagination.Params) ([]entity.Client, int64, error) {
 	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetClients")
 	defer span.End()
 
 	ws, err := u.workspaceRepo.GetBySlug(ctx, workspaceSlug)
 	if err != nil {
-		return nil, fmt.Errorf("get workspace: %w", err)
+		return nil, 0, fmt.Errorf("get workspace: %w", err)
 	}
 	if ws == nil {
-		return nil, fmt.Errorf("workspace not found: %s", workspaceSlug)
+		return nil, 0, fmt.Errorf("workspace not found: %s", workspaceSlug)
 	}
 
 	if ws.IsHolding && len(ws.MemberIDs) > 0 {
-		return u.clientRepo.GetAllByWorkspaceIDs(ctx, ws.MemberIDs)
+		return u.clientRepo.GetAllByWorkspaceIDsPaginated(ctx, ws.MemberIDs, p)
 	}
-	return u.clientRepo.GetAllByWorkspace(ctx, workspaceSlug)
+	return u.clientRepo.GetAllByWorkspacePaginated(ctx, workspaceSlug, p)
 }
 
 func (u *dashboardUsecase) GetClient(ctx context.Context, companyID string) (*entity.Client, error) {
@@ -117,16 +118,16 @@ func (u *dashboardUsecase) DeleteClient(ctx context.Context, companyID string) e
 	})
 }
 
-func (u *dashboardUsecase) GetClientInvoices(ctx context.Context, companyID string) ([]entity.Invoice, error) {
+func (u *dashboardUsecase) GetClientInvoices(ctx context.Context, companyID string, p pagination.Params) ([]entity.Invoice, int64, error) {
 	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetClientInvoices")
 	defer span.End()
-	return u.invoiceRepo.GetAllByCompanyID(ctx, companyID)
+	return u.invoiceRepo.GetAllByCompanyIDPaginated(ctx, companyID, p)
 }
 
-func (u *dashboardUsecase) GetClientEscalations(ctx context.Context, companyID string) ([]entity.Escalation, error) {
+func (u *dashboardUsecase) GetClientEscalations(ctx context.Context, companyID string, p pagination.Params) ([]entity.Escalation, int64, error) {
 	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetClientEscalations")
 	defer span.End()
-	return u.escalationRepo.GetByCompanyID(ctx, companyID)
+	return u.escalationRepo.GetByCompanyIDPaginated(ctx, companyID, p)
 }
 
 func (u *dashboardUsecase) RecordActivity(ctx context.Context, entry entity.ActivityLog) error {

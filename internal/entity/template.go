@@ -16,15 +16,15 @@ type Template struct {
 
 // Template Category constants
 const (
-	TemplateCategoryRenewal   = "renewal"
-	TemplateCategoryCheckin   = "checkin"
-	TemplateCategoryInvoice   = "invoice"
-	TemplateCategoryOverdue   = "overdue"
-	TemplateCategoryNPS       = "nps"
-	TemplateCategoryReferral  = "referral"
-	TemplateCategoryHealth    = "health"
-	TemplateCategoryCrossSell = "cross_sell"
-	TemplateCategoryExpansion = "expansion"
+	TemplateCategoryRenewal    = "renewal"
+	TemplateCategoryCheckin    = "checkin"
+	TemplateCategoryInvoice    = "invoice"
+	TemplateCategoryOverdue    = "overdue"
+	TemplateCategoryNPS        = "nps"
+	TemplateCategoryReferral   = "referral"
+	TemplateCategoryHealth     = "health"
+	TemplateCategoryCrossSell  = "cross_sell"
+	TemplateCategoryExpansion  = "expansion"
 	TemplateCategoryEscalation = "escalation"
 )
 

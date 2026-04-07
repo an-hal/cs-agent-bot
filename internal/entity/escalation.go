@@ -3,19 +3,19 @@ package entity
 import "time"
 
 type Escalation struct {
-	EscalationID       string     `json:"escalation_id"`
-	CompanyID          string     `json:"company_id"`
-	EscID              string     `json:"esc_id"`
-	Status             string     `json:"status"`
-	CreatedAt          time.Time  `json:"created_at"`
-	ResolvedAt         *time.Time `json:"resolved_at,omitempty"`
-	Priority           string     `json:"priority"`
-	Reason             string     `json:"reason"`
-	NotifiedParty      string     `json:"notified_party"`
-	TelegramMessageSent string    `json:"telegram_message_sent"`
-	ResolvedBy         string     `json:"resolved_by"`
-	EscNotes           string     `json:"notes"`
-	WorkspaceID        string     `json:"workspace_id"`
+	EscalationID        string     `json:"escalation_id"`
+	CompanyID           string     `json:"company_id"`
+	EscID               string     `json:"esc_id"`
+	Status              string     `json:"status"`
+	CreatedAt           time.Time  `json:"created_at"`
+	ResolvedAt          *time.Time `json:"resolved_at,omitempty"`
+	Priority            string     `json:"priority"`
+	Reason              string     `json:"reason"`
+	NotifiedParty       string     `json:"notified_party"`
+	TelegramMessageSent string     `json:"telegram_message_sent"`
+	ResolvedBy          string     `json:"resolved_by"`
+	EscNotes            string     `json:"notes"`
+	WorkspaceID         string     `json:"workspace_id"`
 }
 
 const (

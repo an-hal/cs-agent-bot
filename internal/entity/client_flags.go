@@ -26,10 +26,10 @@ type ClientFlags struct {
 	CheckinReplied bool `json:"checkin_replied"`
 
 	// NPS + Referral — reset each cycle
-	NPS1Sent             bool `json:"nps1_sent"`
-	NPS2Sent             bool `json:"nps2_sent"`
-	NPS3Sent             bool `json:"nps3_sent"`
-	NPSReplied           bool `json:"nps_replied"`
+	NPS1Sent              bool `json:"nps1_sent"`
+	NPS2Sent              bool `json:"nps2_sent"`
+	NPS3Sent              bool `json:"nps3_sent"`
+	NPSReplied            bool `json:"nps_replied"`
 	ReferralSentThisCycle bool `json:"referral_sent_this_cycle"`
 
 	LowUsageMsgSent bool `json:"low_usage_msg_sent"`

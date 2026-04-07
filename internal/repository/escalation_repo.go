@@ -9,6 +9,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -17,6 +18,7 @@ import (
 type EscalationRepository interface {
 	GetOpenByCompanyAndEscID(ctx context.Context, companyID, escID string) (*entity.Escalation, error)
 	GetByCompanyID(ctx context.Context, companyID string) ([]entity.Escalation, error)
+	GetByCompanyIDPaginated(ctx context.Context, companyID string, p pagination.Params) ([]entity.Escalation, int64, error)
 	OpenEscalation(ctx context.Context, esc entity.Escalation) error
 }
 
@@ -137,6 +139,60 @@ func (r *escalationRepo) OpenEscalation(ctx context.Context, esc entity.Escalati
 	}
 
 	return nil
+}
+
+// GetByCompanyIDPaginated returns paginated escalations for a given company, newest first.
+func (r *escalationRepo) GetByCompanyIDPaginated(ctx context.Context, companyID string, p pagination.Params) ([]entity.Escalation, int64, error) {
+	ctx, span := r.tracer.Start(ctx, "escalation.repository.GetByCompanyIDPaginated")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	countQ, countArgs, err := database.PSQL.
+		Select("COUNT(*)").
+		From("escalations").
+		Where(sq.Eq{"company_id": companyID}).
+		ToSql()
+	if err != nil {
+		return nil, 0, fmt.Errorf("build count query: %w", err)
+	}
+	var total int64
+	if err := r.db.QueryRowContext(ctx, countQ, countArgs...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count escalations: %w", err)
+	}
+
+	dataQ, dataArgs, err := database.PSQL.
+		Select(escalationColumns).
+		From("escalations").
+		Where(sq.Eq{"company_id": companyID}).
+		OrderBy("triggered_at DESC").
+		Limit(uint64(p.Limit)).
+		Offset(uint64(p.Offset)).
+		ToSql()
+	if err != nil {
+		return nil, 0, fmt.Errorf("build data query: %w", err)
+	}
+
+	rows, err := r.db.QueryContext(ctx, dataQ, dataArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("query escalations: %w", err)
+	}
+	defer rows.Close()
+
+	var escalations []entity.Escalation
+	for rows.Next() {
+		var esc entity.Escalation
+		if err := rows.Scan(
+			&esc.EscalationID, &esc.EscID, &esc.CompanyID, &esc.Status, &esc.CreatedAt,
+			&esc.Priority, &esc.Reason, &esc.NotifiedParty, &esc.TelegramMessageSent,
+			&esc.ResolvedAt, &esc.ResolvedBy, &esc.EscNotes, &esc.WorkspaceID,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan escalation: %w", err)
+		}
+		escalations = append(escalations, esc)
+	}
+	return escalations, total, rows.Err()
 }
 
 // GetByCompanyID returns all escalations for a given company, newest first.

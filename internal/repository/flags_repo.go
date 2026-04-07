@@ -76,7 +76,7 @@ func scanFlags(scanner interface {
 		&f.CSH7, &f.CSH14, &f.CSH21, &f.CSH30, &f.CSH45, &f.CSH60, &f.CSH75, &f.CSH90,
 		&f.CSLT1, &f.CSLT2, &f.CSLT3,
 		&f.FeatureUpdateSent,
-	&f.WorkspaceID,
+		&f.WorkspaceID,
 	)
 	if err != nil {
 		return nil, err
@@ -97,7 +97,7 @@ func flagValues(f entity.ClientFlags) []interface{} {
 		f.CSH7, f.CSH14, f.CSH21, f.CSH30, f.CSH45, f.CSH60, f.CSH75, f.CSH90,
 		f.CSLT1, f.CSLT2, f.CSLT3,
 		f.FeatureUpdateSent,
-	f.WorkspaceID,
+		f.WorkspaceID,
 	}
 }
 
@@ -203,8 +203,8 @@ var cycleFlagColumns = map[string]interface{}{
 	"checkin_a2_form_sent": false, "checkin_a2_call_sent": false,
 	"checkin_b1_form_sent": false, "checkin_b1_call_sent": false,
 	"checkin_b2_form_sent": false, "checkin_b2_call_sent": false,
-	"checkin_replied":       false,
-	"nps1_sent": false, "nps2_sent": false, "nps3_sent": false, "nps_replied": false,
+	"checkin_replied": false,
+	"nps1_sent":       false, "nps2_sent": false, "nps3_sent": false, "nps_replied": false,
 	"referral_sent_this_cycle": false,
 	"low_usage_msg_sent":       false,
 	"low_nps_msg_sent":         false,

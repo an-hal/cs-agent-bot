@@ -9,6 +9,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	"github.com/rs/zerolog"
 )
@@ -16,6 +17,7 @@ import (
 type InvoiceRepository interface {
 	GetActiveByCompanyID(ctx context.Context, companyID string) (*entity.Invoice, error)
 	GetAllByCompanyID(ctx context.Context, companyID string) ([]entity.Invoice, error)
+	GetAllByCompanyIDPaginated(ctx context.Context, companyID string, p pagination.Params) ([]entity.Invoice, int64, error)
 	CreateInvoice(ctx context.Context, inv entity.Invoice) error
 	UpdateFlags(ctx context.Context, invoiceID string, flags map[string]bool) error
 }
@@ -123,6 +125,62 @@ func (r *invoiceRepo) UpdateFlags(ctx context.Context, invoiceID string, flags m
 		"UpdateFlags called but Invoice table lacks reminder flag columns. " +
 			"Consider adding columns: Pre14Sent, Pre7Sent, Pre3Sent, Post1Sent, Post4Sent, Post8Sent")
 	return nil
+}
+
+// GetAllByCompanyIDPaginated returns paginated invoices for a given company, newest first.
+func (r *invoiceRepo) GetAllByCompanyIDPaginated(ctx context.Context, companyID string, p pagination.Params) ([]entity.Invoice, int64, error) {
+	ctx, span := r.tracer.Start(ctx, "invoice.repository.GetAllByCompanyIDPaginated")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	// Count
+	countQ, countArgs, err := database.PSQL.
+		Select("COUNT(*)").
+		From("invoices").
+		Where(sq.Eq{"company_id": companyID}).
+		ToSql()
+	if err != nil {
+		return nil, 0, fmt.Errorf("build count query: %w", err)
+	}
+	var total int64
+	if err := r.DB.QueryRowContext(ctx, countQ, countArgs...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count invoices: %w", err)
+	}
+
+	// Data
+	dataQ, dataArgs, err := database.PSQL.
+		Select("invoice_id", "company_id", "issue_date", "due_date", "amount", "payment_status", "paid_at", "amount_paid", "reminder_count", "collection_stage", "created_at", "COALESCE(notes, '') as notes", "COALESCE(link_invoice, '') as link_invoice", "last_reminder_date", "COALESCE(workspace_id::text, '') as workspace_id").
+		From("invoices").
+		Where(sq.Eq{"company_id": companyID}).
+		OrderBy("created_at DESC").
+		Limit(uint64(p.Limit)).
+		Offset(uint64(p.Offset)).
+		ToSql()
+	if err != nil {
+		return nil, 0, fmt.Errorf("build data query: %w", err)
+	}
+
+	rows, err := r.DB.QueryContext(ctx, dataQ, dataArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("query invoices: %w", err)
+	}
+	defer rows.Close()
+
+	var invoices []entity.Invoice
+	for rows.Next() {
+		var inv entity.Invoice
+		if err := rows.Scan(
+			&inv.InvoiceID, &inv.CompanyID, &inv.IssueDate, &inv.DueDate, &inv.Amount, &inv.PaymentStatus,
+			&inv.PaidAt, &inv.AmountPaid, &inv.ReminderCount, &inv.CollectionStage, &inv.CreatedAt,
+			&inv.Notes, &inv.LinkInvoice, &inv.LastReminderDate, &inv.WorkspaceID,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan invoice: %w", err)
+		}
+		invoices = append(invoices, inv)
+	}
+	return invoices, total, rows.Err()
 }
 
 // GetAllByCompanyID returns all invoices for a given company, newest first.

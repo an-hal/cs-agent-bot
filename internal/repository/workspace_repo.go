@@ -7,10 +7,10 @@ import (
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
-	"github.com/lib/pq"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
+	"github.com/lib/pq"
 	"github.com/rs/zerolog"
 )
 
@@ -39,7 +39,9 @@ func (r *workspaceRepo) withTimeout(ctx context.Context) (context.Context, conte
 
 const workspaceColumns = "id::text, slug, name, logo, color, plan, is_holding, member_ids::text[], created_at"
 
-func scanWorkspace(scanner interface{ Scan(dest ...interface{}) error }) (*entity.Workspace, error) {
+func scanWorkspace(scanner interface {
+	Scan(dest ...interface{}) error
+}) (*entity.Workspace, error) {
 	var w entity.Workspace
 	err := scanner.Scan(&w.ID, &w.Slug, &w.Name, &w.Logo, &w.Color, &w.Plan, &w.IsHolding, pq.Array(&w.MemberIDs), &w.CreatedAt)
 	if err != nil {

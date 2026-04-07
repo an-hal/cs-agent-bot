@@ -9,8 +9,9 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
-	"github.com/lib/pq"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
+	"github.com/lib/pq"
 	"github.com/rs/zerolog"
 )
 
@@ -36,6 +37,8 @@ type ClientRepository interface {
 	UpdatePaymentStatus(ctx context.Context, companyID, status string) error
 	GetAllByWorkspace(ctx context.Context, workspaceSlug string) ([]entity.Client, error)
 	GetAllByWorkspaceIDs(ctx context.Context, workspaceIDs []string) ([]entity.Client, error)
+	GetAllByWorkspacePaginated(ctx context.Context, workspaceSlug string, p pagination.Params) ([]entity.Client, int64, error)
+	GetAllByWorkspaceIDsPaginated(ctx context.Context, workspaceIDs []string, p pagination.Params) ([]entity.Client, int64, error)
 	UpdateClientFields(ctx context.Context, companyID string, fields map[string]interface{}) error
 }
 
@@ -75,7 +78,9 @@ const clientColumns = `company_id, company_name, pic_name, pic_wa, owner_name, o
 const invoiceColumns = "invoice_id, company_id, due_date, amount, payment_status"
 
 // scanClient scans a single client row from the current position of the provided scanner.
-func scanClient(scanner interface{ Scan(dest ...interface{}) error }) (*entity.Client, error) {
+func scanClient(scanner interface {
+	Scan(dest ...interface{}) error
+}) (*entity.Client, error) {
 	var c entity.Client
 	err := scanner.Scan(
 		&c.CompanyID,
@@ -296,7 +301,7 @@ func (r *clientRepo) UpdatePaymentStatus(ctx context.Context, companyID, status 
 	query, args, err := database.PSQL.
 		Update("clients").
 		SetMap(map[string]interface{}{
-			"payment_status":       status,
+			"payment_status":        status,
 			"last_interaction_date": sq.Expr("NOW()"),
 		}).
 		Where(sq.Eq{"company_id": companyID}).
@@ -387,53 +392,53 @@ func (r *clientRepo) CreateClient(ctx context.Context, client entity.Client) err
 	defer cancel()
 
 	upsertSuffix := fmt.Sprintf(
-		"ON CONFLICT (company_id) DO UPDATE SET "+
-			"company_name = EXCLUDED.company_name, "+
-			"pic_name = EXCLUDED.pic_name, "+
-			"pic_wa = EXCLUDED.pic_wa, "+
-			"pic_email = EXCLUDED.pic_email, "+
-			"pic_role = EXCLUDED.pic_role, "+
-			"hc_size = EXCLUDED.hc_size, "+
-			"owner_name = EXCLUDED.owner_name, "+
-			"owner_wa = EXCLUDED.owner_wa, "+
-			"owner_telegram_id = EXCLUDED.owner_telegram_id, "+
-			"segment = EXCLUDED.segment, "+
-			"plan_type = EXCLUDED.plan_type, "+
-			"payment_terms = EXCLUDED.payment_terms, "+
-			"contract_months = EXCLUDED.contract_months, "+
-			"contract_start = EXCLUDED.contract_start, "+
-			"contract_end = EXCLUDED.contract_end, "+
-			"activation_date = EXCLUDED.activation_date, "+
-			"final_price = EXCLUDED.final_price, "+
-			"quotation_link = EXCLUDED.quotation_link, "+
-			"renewal_date = EXCLUDED.renewal_date, "+
-			"notes = EXCLUDED.notes, "+
-			"payment_status = EXCLUDED.payment_status, "+
-			"last_payment_date = EXCLUDED.last_payment_date, "+
-			"nps_score = EXCLUDED.nps_score, "+
-			"usage_score = EXCLUDED.usage_score, "+
-			"churn_reason = EXCLUDED.churn_reason, "+
-			"bot_active = EXCLUDED.bot_active, "+
-			"blacklisted = EXCLUDED.blacklisted, "+
-			"wa_undeliverable = EXCLUDED.wa_undeliverable, "+
-			"response_status = EXCLUDED.response_status, "+
-			"renewed = EXCLUDED.renewed, "+
-			"rejected = EXCLUDED.rejected, "+
-			"sequence_cs = EXCLUDED.sequence_cs, "+
-			"cross_sell_rejected = EXCLUDED.cross_sell_rejected, "+
-			"cross_sell_interested = EXCLUDED.cross_sell_interested, "+
-			"cross_sell_resume_date = EXCLUDED.cross_sell_resume_date, "+
-			"feature_update_sent = EXCLUDED.feature_update_sent, "+
-			"days_since_cs_last_sent = EXCLUDED.days_since_cs_last_sent, "+
-			"checkin_replied = EXCLUDED.checkin_replied, "+
-			"pre14_sent = EXCLUDED.pre14_sent, "+
-			"pre7_sent = EXCLUDED.pre7_sent, "+
-			"pre3_sent = EXCLUDED.pre3_sent, "+
-			"post1_sent = EXCLUDED.post1_sent, "+
-			"post4_sent = EXCLUDED.post4_sent, "+
-			"post8_sent = EXCLUDED.post8_sent, "+
-			"post15_sent = EXCLUDED.post15_sent, "+
-			"last_interaction_date = EXCLUDED.last_interaction_date, "+
+		"ON CONFLICT (company_id) DO UPDATE SET " +
+			"company_name = EXCLUDED.company_name, " +
+			"pic_name = EXCLUDED.pic_name, " +
+			"pic_wa = EXCLUDED.pic_wa, " +
+			"pic_email = EXCLUDED.pic_email, " +
+			"pic_role = EXCLUDED.pic_role, " +
+			"hc_size = EXCLUDED.hc_size, " +
+			"owner_name = EXCLUDED.owner_name, " +
+			"owner_wa = EXCLUDED.owner_wa, " +
+			"owner_telegram_id = EXCLUDED.owner_telegram_id, " +
+			"segment = EXCLUDED.segment, " +
+			"plan_type = EXCLUDED.plan_type, " +
+			"payment_terms = EXCLUDED.payment_terms, " +
+			"contract_months = EXCLUDED.contract_months, " +
+			"contract_start = EXCLUDED.contract_start, " +
+			"contract_end = EXCLUDED.contract_end, " +
+			"activation_date = EXCLUDED.activation_date, " +
+			"final_price = EXCLUDED.final_price, " +
+			"quotation_link = EXCLUDED.quotation_link, " +
+			"renewal_date = EXCLUDED.renewal_date, " +
+			"notes = EXCLUDED.notes, " +
+			"payment_status = EXCLUDED.payment_status, " +
+			"last_payment_date = EXCLUDED.last_payment_date, " +
+			"nps_score = EXCLUDED.nps_score, " +
+			"usage_score = EXCLUDED.usage_score, " +
+			"churn_reason = EXCLUDED.churn_reason, " +
+			"bot_active = EXCLUDED.bot_active, " +
+			"blacklisted = EXCLUDED.blacklisted, " +
+			"wa_undeliverable = EXCLUDED.wa_undeliverable, " +
+			"response_status = EXCLUDED.response_status, " +
+			"renewed = EXCLUDED.renewed, " +
+			"rejected = EXCLUDED.rejected, " +
+			"sequence_cs = EXCLUDED.sequence_cs, " +
+			"cross_sell_rejected = EXCLUDED.cross_sell_rejected, " +
+			"cross_sell_interested = EXCLUDED.cross_sell_interested, " +
+			"cross_sell_resume_date = EXCLUDED.cross_sell_resume_date, " +
+			"feature_update_sent = EXCLUDED.feature_update_sent, " +
+			"days_since_cs_last_sent = EXCLUDED.days_since_cs_last_sent, " +
+			"checkin_replied = EXCLUDED.checkin_replied, " +
+			"pre14_sent = EXCLUDED.pre14_sent, " +
+			"pre7_sent = EXCLUDED.pre7_sent, " +
+			"pre3_sent = EXCLUDED.pre3_sent, " +
+			"post1_sent = EXCLUDED.post1_sent, " +
+			"post4_sent = EXCLUDED.post4_sent, " +
+			"post8_sent = EXCLUDED.post8_sent, " +
+			"post15_sent = EXCLUDED.post15_sent, " +
+			"last_interaction_date = EXCLUDED.last_interaction_date, " +
 			"workspace_id = EXCLUDED.workspace_id",
 	)
 
@@ -592,6 +597,86 @@ func (r *clientRepo) GetAllByWorkspaceIDs(ctx context.Context, workspaceIDs []st
 		return nil, fmt.Errorf("iterate client rows: %w", err)
 	}
 	return clients, nil
+}
+
+// GetAllByWorkspacePaginated returns paginated non-blacklisted clients for a workspace slug.
+func (r *clientRepo) GetAllByWorkspacePaginated(ctx context.Context, workspaceSlug string, p pagination.Params) ([]entity.Client, int64, error) {
+	ctx, span := r.tracer.Start(ctx, "client.repository.GetAllByWorkspacePaginated")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	whereClause := "c.blacklisted = false AND c.workspace_id = (SELECT id FROM workspaces WHERE slug = $1)"
+
+	var total int64
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM clients c WHERE %s", whereClause)
+	if err := r.db.QueryRowContext(ctx, countQuery, workspaceSlug).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count GetAllByWorkspacePaginated: %w", err)
+	}
+
+	dataQuery := fmt.Sprintf(
+		"SELECT %s FROM clients c WHERE %s ORDER BY c.company_id LIMIT $2 OFFSET $3",
+		clientColumns, whereClause,
+	)
+
+	rows, err := r.db.QueryContext(ctx, dataQuery, workspaceSlug, p.Limit, p.Offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("query GetAllByWorkspacePaginated: %w", err)
+	}
+	defer rows.Close()
+
+	var clients []entity.Client
+	for rows.Next() {
+		c, err := scanClient(rows)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scan client row: %w", err)
+		}
+		clients = append(clients, *c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterate client rows: %w", err)
+	}
+	return clients, total, nil
+}
+
+// GetAllByWorkspaceIDsPaginated returns paginated non-blacklisted clients for multiple workspace IDs.
+func (r *clientRepo) GetAllByWorkspaceIDsPaginated(ctx context.Context, workspaceIDs []string, p pagination.Params) ([]entity.Client, int64, error) {
+	ctx, span := r.tracer.Start(ctx, "client.repository.GetAllByWorkspaceIDsPaginated")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	var total int64
+	countQuery := "SELECT COUNT(*) FROM clients c WHERE c.blacklisted = false AND c.workspace_id::text = ANY($1)"
+	if err := r.db.QueryRowContext(ctx, countQuery, pq.Array(workspaceIDs)).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count GetAllByWorkspaceIDsPaginated: %w", err)
+	}
+
+	dataQuery := fmt.Sprintf(
+		"SELECT %s FROM clients c WHERE c.blacklisted = false AND c.workspace_id::text = ANY($1) ORDER BY c.company_id LIMIT $2 OFFSET $3",
+		clientColumns,
+	)
+
+	rows, err := r.db.QueryContext(ctx, dataQuery, pq.Array(workspaceIDs), p.Limit, p.Offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("query GetAllByWorkspaceIDsPaginated: %w", err)
+	}
+	defer rows.Close()
+
+	var clients []entity.Client
+	for rows.Next() {
+		c, err := scanClient(rows)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scan client row: %w", err)
+		}
+		clients = append(clients, *c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("iterate client rows: %w", err)
+	}
+	return clients, total, nil
 }
 
 // validUpdateColumns lists columns that are safe to update via the dashboard API.
