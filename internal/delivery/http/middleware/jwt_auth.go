@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sejutacita/cs-agent-bot/internal/delivery/response"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/apperror"
 	"github.com/rs/zerolog"
 )
 
@@ -65,39 +65,35 @@ func GetJWTUser(ctx context.Context) (*JWTUser, bool) {
 // JWTAuthMiddleware validates JWT tokens by calling the Sejutacita self-validation endpoint.
 // It extracts the Bearer token from the Authorization header and forwards it to the
 // validation service. On success, user info is stored in the request context.
-func JWTAuthMiddleware(validateURL string, logger zerolog.Logger) func(http.Handler) http.Handler {
+func JWTAuthMiddleware(validateURL string, logger zerolog.Logger) func(ErrorHandler) ErrorHandler {
 	client := &http.Client{Timeout: 10 * time.Second}
 
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return func(next ErrorHandler) ErrorHandler {
+		return func(w http.ResponseWriter, r *http.Request) error {
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
 				logger.Warn().Msg("JWT: missing Authorization header")
-				response.StandardError(w, r, http.StatusUnauthorized, "missing authorization header", "UNAUTHORIZED", nil, "")
-				return
+				return apperror.Unauthorized("missing authorization header")
 			}
 
 			token := strings.TrimPrefix(authHeader, "Bearer ")
 			if token == authHeader {
 				logger.Warn().Msg("JWT: invalid Authorization header format")
-				response.StandardError(w, r, http.StatusUnauthorized, "invalid authorization header format", "UNAUTHORIZED", nil, "")
-				return
+				return apperror.Unauthorized("invalid authorization header format")
 			}
 
 			// Call the self-validation endpoint
 			req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, validateURL, nil)
 			if err != nil {
 				logger.Error().Err(err).Msg("JWT: failed to create validation request")
-				response.StandardError(w, r, http.StatusInternalServerError, "internal server error", "INTERNAL_SERVER_ERROR", nil, "")
-				return
+				return apperror.InternalError(err)
 			}
 			req.Header.Set("Authorization", "Bearer "+token)
 
 			resp, err := client.Do(req)
 			if err != nil {
 				logger.Error().Err(err).Msg("JWT: validation request failed")
-				response.StandardError(w, r, http.StatusInternalServerError, "internal server error", "INTERNAL_SERVER_ERROR", nil, "")
-				return
+				return apperror.InternalError(err)
 			}
 			defer resp.Body.Close()
 
@@ -107,15 +103,13 @@ func JWTAuthMiddleware(validateURL string, logger zerolog.Logger) func(http.Hand
 					Int("status", resp.StatusCode).
 					Str("body", string(body)).
 					Msg("JWT: token validation failed")
-				response.StandardError(w, r, http.StatusUnauthorized, "unauthorized", "UNAUTHORIZED", nil, "")
-				return
+				return apperror.Unauthorized("unauthorized")
 			}
 
 			var authResp JWTAuthResponse
 			if err := json.NewDecoder(resp.Body).Decode(&authResp); err != nil {
 				logger.Error().Err(err).Msg("JWT: failed to decode validation response")
-				response.StandardError(w, r, http.StatusInternalServerError, "internal server error", "INTERNAL_SERVER_ERROR", nil, "")
-				return
+				return apperror.InternalError(err)
 			}
 
 			ctx := WithJWTUser(r.Context(), JWTUser{
@@ -132,8 +126,8 @@ func JWTAuthMiddleware(validateURL string, logger zerolog.Logger) func(http.Hand
 				Str("email", authResp.Data.Email).
 				Msg("JWT: authenticated")
 
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
+			return next(w, r.WithContext(ctx))
+		}
 	}
 }
 

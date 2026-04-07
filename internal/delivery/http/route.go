@@ -16,12 +16,15 @@ import (
 )
 
 func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
+	// Initialize handlers
 	healthH := health.NewHealthHandler(deps.Logger, deps.Tracer)
 	cronH := cronHandler.NewCronHandler(deps.CronRunner, deps.Logger)
 	waH := webhookHandler.NewWAWebhookHandler(deps.ReplyHandler, deps.Logger)
 	checkinH := webhookHandler.NewCheckinFormHTTPHandler(deps.CheckinHandler, deps.Logger)
 	handoffH := webhookHandler.NewHandoffHTTPHandler(deps.HandoffHandler, deps.Logger)
 	paymentVerifyH := paymentHandler.NewVerifyPaymentHTTPHandler(deps.PaymentVerifier, deps.Logger)
+	dashboardH := dashboard.NewClientHandler(deps.DashboardUsecase)
+	workspaceH := dashboard.NewWorkspaceHandler(deps.DashboardUsecase)
 
 	// Per-route auth wrappers
 	oidcAuth := middleware.OIDCAuthMiddleware(deps.Cfg.AppURL, deps.Cfg.SchedulerSAEmail, deps.Cfg.Env, deps.Logger)
@@ -42,49 +45,27 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	// Health check
 	r.Handle(http.MethodGet, "/readiness", healthH.Check)
 
-	// Cron — OIDC auth
-	wrappedCronRun := middleware.WrapErrorHandler(cronH.Run, deps.ExceptionHandler)
-	r.Handle(http.MethodGet, "/cron/run", oidcAuth(wrappedCronRun))
-
-	// Webhook — HaloAI signature verification; immediate 200 response
-	r.Handle(http.MethodPost, "/webhook/wa", haloaiSig(waH.Handle))
-
-	// Webhook — checkin form (no auth)
-	r.Handle(http.MethodPost, "/webhook/checkin-form", checkinH.Handle)
-
-	// API — BD handoff with HMAC auth
-	wrappedHandoff := middleware.WrapErrorHandler(handoffH.Handle, deps.ExceptionHandler)
-	r.Handle(http.MethodPost, "/api/handoff/new-client", hmacAuth(wrappedHandoff))
-
-	// API — Payment verification with HMAC auth
-	wrappedPaymentVerify := middleware.WrapErrorHandler(paymentVerifyH.Handle, deps.ExceptionHandler)
-	r.Handle(http.MethodPost, "/api/payment/verify", hmacAuth(wrappedPaymentVerify))
-
-	// Dashboard API — JWT auth
-	dashboardH := dashboard.NewClientHandler(deps.DashboardUsecase)
-	workspaceH := dashboard.NewWorkspaceHandler(deps.DashboardUsecase)
-
-	wrappedWorkspaceList := middleware.WrapErrorHandler(workspaceH.List, deps.ExceptionHandler)
-	r.Handle(http.MethodGet, "/api/dashboard/workspaces", jwtAuth(wrappedWorkspaceList))
-
-	wrappedClientList := middleware.WrapErrorHandler(dashboardH.List, deps.ExceptionHandler)
-	r.Handle(http.MethodGet, "/api/dashboard/clients", jwtAuth(wrappedClientList))
-	wrappedClientGet := middleware.WrapErrorHandler(dashboardH.Get, deps.ExceptionHandler)
-	r.Handle(http.MethodGet, "/api/dashboard/clients/{company_id}", jwtAuth(wrappedClientGet))
-	wrappedClientCreate := middleware.WrapErrorHandler(dashboardH.Create, deps.ExceptionHandler)
-	r.Handle(http.MethodPost, "/api/dashboard/clients", jwtAuth(wrappedClientCreate))
-	wrappedClientUpdate := middleware.WrapErrorHandler(dashboardH.Update, deps.ExceptionHandler)
-	r.Handle(http.MethodPut, "/api/dashboard/clients/{company_id}", jwtAuth(wrappedClientUpdate))
-	wrappedClientDelete := middleware.WrapErrorHandler(dashboardH.Delete, deps.ExceptionHandler)
-	r.Handle(http.MethodDelete, "/api/dashboard/clients/{company_id}", jwtAuth(wrappedClientDelete))
-	wrappedClientInvoices := middleware.WrapErrorHandler(dashboardH.GetInvoices, deps.ExceptionHandler)
-	r.Handle(http.MethodGet, "/api/dashboard/clients/{company_id}/invoices", jwtAuth(wrappedClientInvoices))
-	wrappedClientEscalations := middleware.WrapErrorHandler(dashboardH.GetEscalations, deps.ExceptionHandler)
-	r.Handle(http.MethodGet, "/api/dashboard/clients/{company_id}/escalations", jwtAuth(wrappedClientEscalations))
+	// API routes
+	api := r.Group(deps.Cfg.RoutePrefix)
+	api.Handle(http.MethodGet, "/cron/run", oidcAuth(cronH.Run))
+	api.Handle(http.MethodPost, "/handoff/new-client", hmacAuth(handoffH.Handle))
+	api.Handle(http.MethodPost, "/payment/verify", hmacAuth(paymentVerifyH.Handle))
+	api.Handle(http.MethodGet, "/dashboard/workspaces", jwtAuth(workspaceH.List))
+	api.Handle(http.MethodGet, "/dashboard/clients", jwtAuth(dashboardH.List))
+	api.Handle(http.MethodGet, "/dashboard/clients/{company_id}", jwtAuth(dashboardH.Get))
+	api.Handle(http.MethodPost, "/dashboard/clients", jwtAuth(dashboardH.Create))
+	api.Handle(http.MethodPut, "/dashboard/clients/{company_id}", jwtAuth(dashboardH.Update))
+	api.Handle(http.MethodDelete, "/dashboard/clients/{company_id}", jwtAuth(dashboardH.Delete))
+	api.Handle(http.MethodGet, "/dashboard/clients/{company_id}/invoices", jwtAuth(dashboardH.GetInvoices))
+	api.Handle(http.MethodGet, "/dashboard/clients/{company_id}/escalations", jwtAuth(dashboardH.GetEscalations))
 
 	// Swagger
-	api := r.Group(deps.Cfg.RoutePrefix)
 	api.HandlePrefix(http.MethodGet, "/swagger/", httpSwagger.WrapHandler)
+
+	// Webhook
+	webhook := api.Group("/webhook")
+	webhook.Handle(http.MethodPost, "/wa", haloaiSig(waH.Handle))
+	webhook.Handle(http.MethodPost, "/checkin-form", checkinH.Handle)
 
 	return r
 }
