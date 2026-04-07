@@ -35,6 +35,7 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/escalation"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai"
 	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/telegram"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/template"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/trigger"
@@ -99,6 +100,7 @@ func main() {
 	logRepo := repository.NewLogRepo(db, queryTimeout, tracerInstance, logger)
 	escalationRepo := repository.NewEscalationRepo(db, queryTimeout, tracerInstance, logger)
 	configRepo := repository.NewConfigRepo(db, queryTimeout, tracerInstance, logger)
+	workspaceRepo := repository.NewWorkspaceRepo(db, queryTimeout, tracerInstance, logger)
 
 	templateResolver := template.NewTemplateResolver(configRepo, logger)
 
@@ -180,6 +182,15 @@ func main() {
 		logger,
 	)
 
+	dashboardUsecase := dashboard.NewDashboardUsecase(
+		workspaceRepo,
+		clientRepo,
+		invoiceRepo,
+		escalationRepo,
+		tracerInstance,
+		logger,
+	)
+
 	validate := pkgValidator.New()
 
 	exceptionHandler := response.NewHTTPExceptionHandler(logger, cfg.EnableStackTrace)
@@ -195,6 +206,7 @@ func main() {
 		CheckinHandler:   checkinHandler,
 		HandoffHandler:   handoffHandler,
 		PaymentVerifier:  paymentVerifier,
+		DashboardUsecase: dashboardUsecase,
 	})
 
 	server := &http.Server{

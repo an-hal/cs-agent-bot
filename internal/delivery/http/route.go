@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	cronHandler "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/cron"
+	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/dashboard"
 	deliveryHttpDeps "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/deps"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/health"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/middleware"
@@ -57,6 +58,28 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	// API — Payment verification with HMAC auth
 	wrappedPaymentVerify := middleware.WrapErrorHandler(paymentVerifyH.Handle, deps.ExceptionHandler)
 	r.Handle(http.MethodPost, "/api/payment/verify", hmacAuth(wrappedPaymentVerify))
+
+	// Dashboard API — HMAC auth
+	dashboardH := dashboard.NewClientHandler(deps.DashboardUsecase)
+	workspaceH := dashboard.NewWorkspaceHandler(deps.DashboardUsecase)
+
+	wrappedWorkspaceList := middleware.WrapErrorHandler(workspaceH.List, deps.ExceptionHandler)
+	r.Handle(http.MethodGet, "/api/dashboard/workspaces", wrappedWorkspaceList)
+
+	wrappedClientList := middleware.WrapErrorHandler(dashboardH.List, deps.ExceptionHandler)
+	r.Handle(http.MethodGet, "/api/dashboard/clients", wrappedClientList)
+	wrappedClientGet := middleware.WrapErrorHandler(dashboardH.Get, deps.ExceptionHandler)
+	r.Handle(http.MethodGet, "/api/dashboard/clients/{company_id}", wrappedClientGet)
+	wrappedClientCreate := middleware.WrapErrorHandler(dashboardH.Create, deps.ExceptionHandler)
+	r.Handle(http.MethodPost, "/api/dashboard/clients", wrappedClientCreate)
+	wrappedClientUpdate := middleware.WrapErrorHandler(dashboardH.Update, deps.ExceptionHandler)
+	r.Handle(http.MethodPut, "/api/dashboard/clients/{company_id}", wrappedClientUpdate)
+	wrappedClientDelete := middleware.WrapErrorHandler(dashboardH.Delete, deps.ExceptionHandler)
+	r.Handle(http.MethodDelete, "/api/dashboard/clients/{company_id}", wrappedClientDelete)
+	wrappedClientInvoices := middleware.WrapErrorHandler(dashboardH.GetInvoices, deps.ExceptionHandler)
+	r.Handle(http.MethodGet, "/api/dashboard/clients/{company_id}/invoices", wrappedClientInvoices)
+	wrappedClientEscalations := middleware.WrapErrorHandler(dashboardH.GetEscalations, deps.ExceptionHandler)
+	r.Handle(http.MethodGet, "/api/dashboard/clients/{company_id}/escalations", wrappedClientEscalations)
 
 	// Swagger
 	api := r.Group(deps.Cfg.RoutePrefix)

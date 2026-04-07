@@ -7,6 +7,33 @@ definitions:
       message:
         type: string
     type: object
+  dashboard.CreateClientRequest:
+    properties:
+      company_id:
+        type: string
+      company_name:
+        type: string
+      hc_size:
+        type: string
+      owner_name:
+        type: string
+      owner_telegram_id:
+        type: string
+      owner_wa:
+        type: string
+      pic_email:
+        type: string
+      pic_name:
+        type: string
+      pic_role:
+        type: string
+      pic_wa:
+        type: string
+      plan_type:
+        type: string
+      segment:
+        type: string
+    type: object
   dto.CheckinFormRequest:
     properties:
       company_id:
@@ -14,6 +41,13 @@ definitions:
         type: string
     required:
     - company_id
+    type: object
+  dto.CustomerDTO:
+    properties:
+      name:
+        type: string
+      phone:
+        type: string
     type: object
   dto.HandoffCreateRequest:
     properties:
@@ -65,23 +99,260 @@ definitions:
     - pic_wa
     - segment
     type: object
-  dto.WAWebhookRequest:
+  dto.MessageDTO:
     properties:
-      message_id:
-        example: msg_1234567890
+      ack:
+        type: integer
+      body:
         type: string
-      message_type:
-        description: text, image, voice, video, document
-        example: text
+      from_me:
+        type: boolean
+      has_media:
+        type: boolean
+      timestamp:
+        type: integer
+    type: object
+  dto.TriggerDTO:
+    properties:
+      message:
         type: string
-      phone_number:
-        example: "6281234567890"
-        type: string
-      text:
-        example: Thank you for the reminder.
+      messageId:
         type: string
       timestamp:
-        example: "2025-03-26T10:30:00Z"
+        type: integer
+      type:
+        type: string
+    type: object
+  dto.UTMDOT:
+    properties:
+      utm_campaign:
+        type: string
+      utm_medium:
+        type: string
+      utm_source:
+        type: string
+    type: object
+  dto.WAWebhookRequest:
+    properties:
+      customer:
+        $ref: '#/definitions/dto.CustomerDTO'
+      event:
+        type: string
+      message:
+        $ref: '#/definitions/dto.MessageDTO'
+      request_id:
+        type: string
+      room_id:
+        type: string
+      trigger:
+        $ref: '#/definitions/dto.TriggerDTO'
+      utm:
+        $ref: '#/definitions/dto.UTMDOT'
+    type: object
+  entity.Client:
+    properties:
+      activation_date:
+        type: string
+      ae_assigned:
+        type: boolean
+      ae_telegram_id:
+        type: string
+      backup_owner_telegram_id:
+        type: string
+      bd_prospect_id:
+        type: string
+      blacklisted:
+        type: boolean
+      bot_active:
+        type: boolean
+      checkin_replied:
+        type: boolean
+      churn_reason:
+        type: string
+      company_id:
+        type: string
+      company_name:
+        type: string
+      contract_end:
+        type: string
+      contract_months:
+        type: integer
+      contract_start:
+        type: string
+      created_at:
+        type: string
+      cross_sell_interested:
+        type: boolean
+      cross_sell_rejected:
+        type: boolean
+      cross_sell_resume_date:
+        type: string
+      days_since_cs_last_sent:
+        type: integer
+      feature_update_sent:
+        type: boolean
+      final_price:
+        type: number
+      first_time_discount_pct:
+        type: number
+      hc_size:
+        type: string
+      last_interaction_date:
+        type: string
+      last_payment_date:
+        type: string
+      next_discount_pct_manual:
+        type: number
+      notes:
+        type: string
+      nps_score:
+        type: integer
+      owner_name:
+        type: string
+      owner_telegram_id:
+        type: string
+      owner_wa:
+        type: string
+      payment_status:
+        type: string
+      payment_terms:
+        type: string
+      pic_email:
+        description: Fields from existing DB columns previously not mapped
+        type: string
+      pic_name:
+        type: string
+      pic_role:
+        type: string
+      pic_wa:
+        type: string
+      plan_type:
+        type: string
+      post1_sent:
+        type: boolean
+      post4_sent:
+        type: boolean
+      post8_sent:
+        type: boolean
+      post15_sent:
+        type: boolean
+      pre3_sent:
+        type: boolean
+      pre7_sent:
+        type: boolean
+      pre14_sent:
+        description: Invoice reminder flags (from Master Client sheet columns 27-33)
+        type: boolean
+      quotation_link:
+        type: string
+      quotation_link_expires:
+        type: string
+      rejected:
+        type: boolean
+      renewal_date:
+        type: string
+      renewed:
+        type: boolean
+      response_status:
+        type: string
+      risk_flag:
+        type: boolean
+      segment:
+        type: string
+      sequence_cs:
+        type: string
+      usage_score:
+        type: integer
+      usage_score_avg_30d:
+        type: integer
+      wa_undeliverable:
+        type: boolean
+      workspace_id:
+        type: string
+    type: object
+  entity.Escalation:
+    properties:
+      company_id:
+        type: string
+      created_at:
+        type: string
+      esc_id:
+        type: string
+      escalation_id:
+        type: string
+      notes:
+        type: string
+      notified_party:
+        type: string
+      priority:
+        type: string
+      reason:
+        type: string
+      resolved_at:
+        type: string
+      resolved_by:
+        type: string
+      status:
+        type: string
+      telegram_message_sent:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  entity.Invoice:
+    properties:
+      amount:
+        type: number
+      amount_paid:
+        type: number
+      collection_stage:
+        type: string
+      company_id:
+        type: string
+      created_at:
+        type: string
+      due_date:
+        type: string
+      invoice_id:
+        type: string
+      issue_date:
+        type: string
+      last_reminder_date:
+        type: string
+      link_invoice:
+        type: string
+      notes:
+        type: string
+      paid_at:
+        type: string
+      payment_status:
+        type: string
+      reminder_count:
+        type: integer
+      workspace_id:
+        type: string
+    type: object
+  entity.Workspace:
+    properties:
+      color:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      is_holding:
+        type: boolean
+      logo:
+        type: string
+      member_ids:
+        items:
+          type: string
+        type: array
+      name:
+        type: string
+      plan:
+        type: string
+      slug:
         type: string
     type: object
   internal_delivery_http_payment.VerifyPaymentRequest:
@@ -125,6 +396,232 @@ info:
   title: Customer Service Agent Bot API
   version: "1.0"
 paths:
+  /api/dashboard/clients:
+    get:
+      description: Returns all clients for a given workspace. Use "holding" to aggregate
+        across member workspaces. Defaults to "dealls" if omitted.
+      parameters:
+      - default: dealls
+        description: Workspace slug
+        in: query
+        name: workspace
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.Client'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: List clients
+      tags:
+      - Dashboard
+    post:
+      description: Creates a new client in the specified workspace. Defaults to "dealls"
+        workspace if omitted.
+      parameters:
+      - default: dealls
+        description: Workspace slug
+        in: query
+        name: workspace
+        type: string
+      - description: Client payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dashboard.CreateClientRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Client'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Create client
+      tags:
+      - Dashboard
+  /api/dashboard/clients/{company_id}:
+    delete:
+      description: Soft-deletes a client by company_id (sets blacklisted=true, bot_active=false).
+      parameters:
+      - description: Company ID
+        in: path
+        name: company_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Delete client
+      tags:
+      - Dashboard
+    get:
+      description: Returns a single client by company_id.
+      parameters:
+      - description: Company ID
+        in: path
+        name: company_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Client'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Get client by ID
+      tags:
+      - Dashboard
+    put:
+      description: Partially updates a client by company_id. Accepts a JSON object
+        with fields to update.
+      parameters:
+      - description: Company ID
+        in: path
+        name: company_id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Update client
+      tags:
+      - Dashboard
+  /api/dashboard/clients/{company_id}/escalations:
+    get:
+      description: Returns all escalation records for a given client.
+      parameters:
+      - description: Company ID
+        in: path
+        name: company_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.Escalation'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Get client escalations
+      tags:
+      - Dashboard
+  /api/dashboard/clients/{company_id}/invoices:
+    get:
+      description: Returns all invoices for a given client.
+      parameters:
+      - description: Company ID
+        in: path
+        name: company_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.Invoice'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Get client invoices
+      tags:
+      - Dashboard
+  /api/dashboard/workspaces:
+    get:
+      description: Returns all workspaces. Holding workspace aggregates data from
+        member workspaces.
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.Workspace'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: List workspaces
+      tags:
+      - Dashboard
   /api/handoff/new-client:
     post:
       description: Creates a new client record when a Business Development team member

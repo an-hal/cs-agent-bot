@@ -16,6 +16,7 @@ import (
 
 type EscalationRepository interface {
 	GetOpenByCompanyAndEscID(ctx context.Context, companyID, escID string) (*entity.Escalation, error)
+	GetByCompanyID(ctx context.Context, companyID string) ([]entity.Escalation, error)
 	OpenEscalation(ctx context.Context, esc entity.Escalation) error
 }
 
@@ -136,4 +137,43 @@ func (r *escalationRepo) OpenEscalation(ctx context.Context, esc entity.Escalati
 	}
 
 	return nil
+}
+
+// GetByCompanyID returns all escalations for a given company, newest first.
+func (r *escalationRepo) GetByCompanyID(ctx context.Context, companyID string) ([]entity.Escalation, error) {
+	ctx, span := r.tracer.Start(ctx, "escalation.repository.GetByCompanyID")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query, args, err := database.PSQL.
+		Select(escalationColumns).
+		From("escalations").
+		Where(sq.Eq{"company_id": companyID}).
+		OrderBy("triggered_at DESC").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build query GetByCompanyID: %w", err)
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query GetByCompanyID: %w", err)
+	}
+	defer rows.Close()
+
+	var escalations []entity.Escalation
+	for rows.Next() {
+		var esc entity.Escalation
+		if err := rows.Scan(
+			&esc.EscalationID, &esc.EscID, &esc.CompanyID, &esc.Status, &esc.CreatedAt,
+			&esc.Priority, &esc.Reason, &esc.NotifiedParty, &esc.TelegramMessageSent,
+			&esc.ResolvedAt, &esc.ResolvedBy, &esc.EscNotes, &esc.WorkspaceID,
+		); err != nil {
+			return nil, fmt.Errorf("scan escalation: %w", err)
+		}
+		escalations = append(escalations, esc)
+	}
+	return escalations, rows.Err()
 }

@@ -15,6 +15,7 @@ import (
 
 type InvoiceRepository interface {
 	GetActiveByCompanyID(ctx context.Context, companyID string) (*entity.Invoice, error)
+	GetAllByCompanyID(ctx context.Context, companyID string) ([]entity.Invoice, error)
 	CreateInvoice(ctx context.Context, inv entity.Invoice) error
 	UpdateFlags(ctx context.Context, invoiceID string, flags map[string]bool) error
 }
@@ -122,4 +123,43 @@ func (r *invoiceRepo) UpdateFlags(ctx context.Context, invoiceID string, flags m
 		"UpdateFlags called but Invoice table lacks reminder flag columns. " +
 			"Consider adding columns: Pre14Sent, Pre7Sent, Pre3Sent, Post1Sent, Post4Sent, Post8Sent")
 	return nil
+}
+
+// GetAllByCompanyID returns all invoices for a given company, newest first.
+func (r *invoiceRepo) GetAllByCompanyID(ctx context.Context, companyID string) ([]entity.Invoice, error) {
+	ctx, span := r.tracer.Start(ctx, "invoice.repository.GetAllByCompanyID")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query, args, err := database.PSQL.
+		Select("invoice_id", "company_id", "issue_date", "due_date", "amount", "payment_status", "paid_at", "amount_paid", "reminder_count", "collection_stage", "created_at", "COALESCE(notes, '') as notes", "COALESCE(link_invoice, '') as link_invoice", "last_reminder_date", "COALESCE(workspace_id::text, '') as workspace_id").
+		From("invoices").
+		Where(sq.Eq{"company_id": companyID}).
+		OrderBy("created_at DESC").
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build query: %w", err)
+	}
+
+	rows, err := r.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query invoices: %w", err)
+	}
+	defer rows.Close()
+
+	var invoices []entity.Invoice
+	for rows.Next() {
+		var inv entity.Invoice
+		if err := rows.Scan(
+			&inv.InvoiceID, &inv.CompanyID, &inv.IssueDate, &inv.DueDate, &inv.Amount, &inv.PaymentStatus,
+			&inv.PaidAt, &inv.AmountPaid, &inv.ReminderCount, &inv.CollectionStage, &inv.CreatedAt,
+			&inv.Notes, &inv.LinkInvoice, &inv.LastReminderDate, &inv.WorkspaceID,
+		); err != nil {
+			return nil, fmt.Errorf("scan invoice: %w", err)
+		}
+		invoices = append(invoices, inv)
+	}
+	return invoices, rows.Err()
 }

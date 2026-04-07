@@ -9,6 +9,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
+	"github.com/lib/pq"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	"github.com/rs/zerolog"
 )
@@ -33,6 +34,9 @@ type ClientRepository interface {
 	CreateClient(ctx context.Context, client entity.Client) error
 	UpdateInvoiceReminderFlags(ctx context.Context, companyID string, flags map[string]bool) error
 	UpdatePaymentStatus(ctx context.Context, companyID, status string) error
+	GetAllByWorkspace(ctx context.Context, workspaceSlug string) ([]entity.Client, error)
+	GetAllByWorkspaceIDs(ctx context.Context, workspaceIDs []string) ([]entity.Client, error)
+	UpdateClientFields(ctx context.Context, companyID string, fields map[string]interface{}) error
 }
 
 type clientRepo struct {
@@ -202,7 +206,7 @@ func (r *clientRepo) GetByID(ctx context.Context, companyID string) (*entity.Cli
 	c, err := scanClient(row)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("client not found: %s", companyID)
+			return nil, nil
 		}
 		return nil, fmt.Errorf("query GetByID: %w", err)
 	}
@@ -381,27 +385,41 @@ func (r *clientRepo) CreateClient(ctx context.Context, client entity.Client) err
 			"company_name = EXCLUDED.company_name, "+
 			"pic_name = EXCLUDED.pic_name, "+
 			"pic_wa = EXCLUDED.pic_wa, "+
+			"pic_email = EXCLUDED.pic_email, "+
+			"pic_role = EXCLUDED.pic_role, "+
+			"hc_size = EXCLUDED.hc_size, "+
 			"owner_name = EXCLUDED.owner_name, "+
 			"owner_wa = EXCLUDED.owner_wa, "+
 			"owner_telegram_id = EXCLUDED.owner_telegram_id, "+
 			"segment = EXCLUDED.segment, "+
+			"plan_type = EXCLUDED.plan_type, "+
+			"payment_terms = EXCLUDED.payment_terms, "+
 			"contract_months = EXCLUDED.contract_months, "+
 			"contract_start = EXCLUDED.contract_start, "+
 			"contract_end = EXCLUDED.contract_end, "+
 			"activation_date = EXCLUDED.activation_date, "+
+			"final_price = EXCLUDED.final_price, "+
+			"quotation_link = EXCLUDED.quotation_link, "+
+			"renewal_date = EXCLUDED.renewal_date, "+
+			"notes = EXCLUDED.notes, "+
 			"payment_status = EXCLUDED.payment_status, "+
+			"last_payment_date = EXCLUDED.last_payment_date, "+
 			"nps_score = EXCLUDED.nps_score, "+
 			"usage_score = EXCLUDED.usage_score, "+
+			"churn_reason = EXCLUDED.churn_reason, "+
 			"bot_active = EXCLUDED.bot_active, "+
 			"blacklisted = EXCLUDED.blacklisted, "+
+			"wa_undeliverable = EXCLUDED.wa_undeliverable, "+
+			"response_status = EXCLUDED.response_status, "+
 			"renewed = EXCLUDED.renewed, "+
 			"rejected = EXCLUDED.rejected, "+
-			"quotation_link = EXCLUDED.quotation_link, "+
 			"sequence_cs = EXCLUDED.sequence_cs, "+
 			"cross_sell_rejected = EXCLUDED.cross_sell_rejected, "+
 			"cross_sell_interested = EXCLUDED.cross_sell_interested, "+
+			"cross_sell_resume_date = EXCLUDED.cross_sell_resume_date, "+
+			"feature_update_sent = EXCLUDED.feature_update_sent, "+
+			"days_since_cs_last_sent = EXCLUDED.days_since_cs_last_sent, "+
 			"checkin_replied = EXCLUDED.checkin_replied, "+
-			"response_status = EXCLUDED.response_status, "+
 			"pre14_sent = EXCLUDED.pre14_sent, "+
 			"pre7_sent = EXCLUDED.pre7_sent, "+
 			"pre3_sent = EXCLUDED.pre3_sent, "+
@@ -409,38 +427,53 @@ func (r *clientRepo) CreateClient(ctx context.Context, client entity.Client) err
 			"post4_sent = EXCLUDED.post4_sent, "+
 			"post8_sent = EXCLUDED.post8_sent, "+
 			"post15_sent = EXCLUDED.post15_sent, "+
-			"last_interaction_date = EXCLUDED.last_interaction_date",
+			"last_interaction_date = EXCLUDED.last_interaction_date, "+
+			"workspace_id = EXCLUDED.workspace_id",
 	)
 
 	query, args, err := database.PSQL.
 		Insert("clients").
 		Columns(
-			"company_id", "company_name", "pic_name", "pic_wa",
+			"company_id", "company_name", "pic_name", "pic_wa", "pic_email", "pic_role", "hc_size",
 			"owner_name", "owner_wa", "owner_telegram_id",
-			"segment", "contract_months", "contract_start", "contract_end",
+			"segment", "plan_type", "payment_terms",
+			"contract_months", "contract_start", "contract_end",
 			"activation_date", "payment_status",
+			"final_price", "quotation_link", "renewal_date", "notes",
+			"last_payment_date",
 			"nps_score", "usage_score",
-			"bot_active", "blacklisted", "renewed", "rejected",
-			"quotation_link", "sequence_cs",
-			"cross_sell_rejected", "cross_sell_interested",
+			"churn_reason",
+			"bot_active", "blacklisted", "wa_undeliverable",
+			"renewed", "rejected",
+			"sequence_cs",
+			"cross_sell_rejected", "cross_sell_interested", "cross_sell_resume_date",
+			"feature_update_sent", "days_since_cs_last_sent",
 			"checkin_replied", "response_status",
 			"pre14_sent", "pre7_sent", "pre3_sent",
 			"post1_sent", "post4_sent", "post8_sent", "post15_sent",
 			"last_interaction_date",
+			"workspace_id",
 		).
 		Values(
-			client.CompanyID, client.CompanyName, client.PICName, client.PICWA,
+			client.CompanyID, client.CompanyName, client.PICName, client.PICWA, client.PICEmail, client.PICRole, client.HCSize,
 			client.OwnerName, client.OwnerWA, client.OwnerTelegramID,
-			client.Segment, client.ContractMonths, client.ContractStart, client.ContractEnd,
+			client.Segment, client.PlanType, client.PaymentTerms,
+			client.ContractMonths, client.ContractStart, client.ContractEnd,
 			client.ActivationDate, client.PaymentStatus,
+			client.FinalPrice, client.QuotationLink, client.RenewalDate, client.Notes,
+			client.LastPaymentDate,
 			client.NPSScore, client.UsageScore,
-			client.BotActive, client.Blacklisted, client.Renewed, client.Rejected,
-			client.QuotationLink, client.SequenceCS,
-			client.CrossSellRejected, client.CrossSellInterested,
+			client.ChurnReason,
+			client.BotActive, client.Blacklisted, client.WAUndeliverable,
+			client.Renewed, client.Rejected,
+			client.SequenceCS,
+			client.CrossSellRejected, client.CrossSellInterested, client.CrossSellResumeDate,
+			client.FeatureUpdateSent, client.DaysSinceCSLastSent,
 			client.CheckinReplied, client.ResponseStatus,
 			client.Pre14Sent, client.Pre7Sent, client.Pre3Sent,
 			client.Post1Sent, client.Post4Sent, client.Post8Sent, client.Post15Sent,
 			client.LastInteractionDate,
+			client.WorkspaceID,
 		).
 		Suffix(upsertSuffix).
 		ToSql()
@@ -483,5 +516,110 @@ func (r *clientRepo) UpdateLastInteraction(ctx context.Context, companyID string
 		return fmt.Errorf("client not found: %s", companyID)
 	}
 
+	return nil
+}
+
+// GetAllByWorkspace returns all non-blacklisted clients for a workspace slug,
+// with JOINed latest invoice and conversation state.
+func (r *clientRepo) GetAllByWorkspace(ctx context.Context, workspaceSlug string) ([]entity.Client, error) {
+	ctx, span := r.tracer.Start(ctx, "client.repository.GetAllByWorkspace")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query := fmt.Sprintf(
+		"SELECT %s FROM clients c WHERE c.blacklisted = false AND c.workspace_id = (SELECT id FROM workspaces WHERE slug = $1) ORDER BY c.company_id",
+		clientColumns,
+	)
+
+	rows, err := r.db.QueryContext(ctx, query, workspaceSlug)
+	if err != nil {
+		return nil, fmt.Errorf("query GetAllByWorkspace: %w", err)
+	}
+	defer rows.Close()
+
+	var clients []entity.Client
+	for rows.Next() {
+		c, err := scanClient(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan client row: %w", err)
+		}
+		clients = append(clients, *c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate client rows: %w", err)
+	}
+	return clients, nil
+}
+
+// GetAllByWorkspaceIDs returns all non-blacklisted clients for multiple workspace IDs (holding mode).
+func (r *clientRepo) GetAllByWorkspaceIDs(ctx context.Context, workspaceIDs []string) ([]entity.Client, error) {
+	ctx, span := r.tracer.Start(ctx, "client.repository.GetAllByWorkspaceIDs")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query := fmt.Sprintf(
+		"SELECT %s FROM clients c WHERE c.blacklisted = false AND c.workspace_id::text = ANY($1) ORDER BY c.company_id",
+		clientColumns,
+	)
+
+	ids := make([]interface{}, len(workspaceIDs))
+	for i, id := range workspaceIDs {
+		ids[i] = id
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, pq.Array(workspaceIDs))
+	if err != nil {
+		return nil, fmt.Errorf("query GetAllByWorkspaceIDs: %w", err)
+	}
+	defer rows.Close()
+
+	var clients []entity.Client
+	for rows.Next() {
+		c, err := scanClient(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan client row: %w", err)
+		}
+		clients = append(clients, *c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate client rows: %w", err)
+	}
+	return clients, nil
+}
+
+// UpdateClientFields dynamically updates specified fields for a client.
+func (r *clientRepo) UpdateClientFields(ctx context.Context, companyID string, fields map[string]interface{}) error {
+	ctx, span := r.tracer.Start(ctx, "client.repository.UpdateClientFields")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	if len(fields) == 0 {
+		return nil
+	}
+
+	query, args, err := database.PSQL.
+		Update("clients").
+		SetMap(fields).
+		Where(sq.Eq{"company_id": companyID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("build query UpdateClientFields: %w", err)
+	}
+
+	result, err := r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("exec UpdateClientFields: %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("client not found: %s", companyID)
+	}
 	return nil
 }
