@@ -68,6 +68,9 @@ func getAppliedVersions(db *sql.DB) map[string]bool {
 		}
 		versions[version] = true
 	}
+	if err := rows.Err(); err != nil {
+		log.Fatalf("Failed to iterate migration versions: %v", err)
+	}
 
 	return versions
 }

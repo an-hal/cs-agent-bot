@@ -62,6 +62,9 @@ func (v *paymentVerifier) VerifyPayment(ctx context.Context, req VerifyPaymentRe
 	if err != nil {
 		return fmt.Errorf("client not found: %s: %w", req.CompanyID, err)
 	}
+	if client == nil {
+		return fmt.Errorf("client not found: %s", req.CompanyID)
+	}
 
 	// 2. Update PaymentStatus to "Paid"
 	client.UpdatePaymentStatus(entity.PaymentStatusPaid)

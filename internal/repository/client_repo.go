@@ -310,7 +310,10 @@ func (r *clientRepo) UpdatePaymentStatus(ctx context.Context, companyID, status 
 		return fmt.Errorf("exec UpdatePaymentStatus: %w", err)
 	}
 
-	rowsAffected, _ := result.RowsAffected()
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
 	if rowsAffected == 0 {
 		return fmt.Errorf("client not found: %s", companyID)
 	}
@@ -364,7 +367,10 @@ func (r *clientRepo) UpdateInvoiceReminderFlags(ctx context.Context, companyID s
 		return fmt.Errorf("exec UpdateInvoiceReminderFlags: %w", err)
 	}
 
-	rowsAffected, _ := result.RowsAffected()
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
 	if rowsAffected == 0 {
 		return fmt.Errorf("client not found: %s", companyID)
 	}
@@ -511,7 +517,10 @@ func (r *clientRepo) UpdateLastInteraction(ctx context.Context, companyID string
 		return fmt.Errorf("exec UpdateLastInteraction: %w", err)
 	}
 
-	rowsAffected, _ := result.RowsAffected()
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
 	if rowsAffected == 0 {
 		return fmt.Errorf("client not found: %s", companyID)
 	}
@@ -565,12 +574,6 @@ func (r *clientRepo) GetAllByWorkspaceIDs(ctx context.Context, workspaceIDs []st
 		"SELECT %s FROM clients c WHERE c.blacklisted = false AND c.workspace_id::text = ANY($1) ORDER BY c.company_id",
 		clientColumns,
 	)
-
-	ids := make([]interface{}, len(workspaceIDs))
-	for i, id := range workspaceIDs {
-		ids[i] = id
-	}
-
 	rows, err := r.db.QueryContext(ctx, query, pq.Array(workspaceIDs))
 	if err != nil {
 		return nil, fmt.Errorf("query GetAllByWorkspaceIDs: %w", err)
@@ -591,6 +594,20 @@ func (r *clientRepo) GetAllByWorkspaceIDs(ctx context.Context, workspaceIDs []st
 	return clients, nil
 }
 
+// validUpdateColumns lists columns that are safe to update via the dashboard API.
+var validUpdateColumns = map[string]bool{
+	"pic_name": true, "pic_wa": true, "pic_email": true, "pic_role": true,
+	"owner_name": true, "owner_wa": true, "owner_telegram_id": true,
+	"segment": true, "plan_type": true, "hc_size": true,
+	"payment_terms": true, "contract_months": true,
+	"contract_start": true, "contract_end": true,
+	"activation_date": true, "payment_status": true,
+	"final_price": true, "quotation_link": true, "renewal_date": true,
+	"notes": true, "nps_score": true, "usage_score": true,
+	"bot_active": true, "blacklisted": true, "renewed": true,
+	"rejected": true, "sequence_cs": true,
+}
+
 // UpdateClientFields dynamically updates specified fields for a client.
 func (r *clientRepo) UpdateClientFields(ctx context.Context, companyID string, fields map[string]interface{}) error {
 	ctx, span := r.tracer.Start(ctx, "client.repository.UpdateClientFields")
@@ -603,9 +620,17 @@ func (r *clientRepo) UpdateClientFields(ctx context.Context, companyID string, f
 		return nil
 	}
 
+	safeFields := make(map[string]interface{}, len(fields))
+	for k, v := range fields {
+		if !validUpdateColumns[k] {
+			return fmt.Errorf("field not allowed for update: %s", k)
+		}
+		safeFields[k] = v
+	}
+
 	query, args, err := database.PSQL.
 		Update("clients").
-		SetMap(fields).
+		SetMap(safeFields).
 		Where(sq.Eq{"company_id": companyID}).
 		ToSql()
 	if err != nil {
@@ -617,7 +642,10 @@ func (r *clientRepo) UpdateClientFields(ctx context.Context, companyID string, f
 		return fmt.Errorf("exec UpdateClientFields: %w", err)
 	}
 
-	rowsAffected, _ := result.RowsAffected()
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
 	if rowsAffected == 0 {
 		return fmt.Errorf("client not found: %s", companyID)
 	}

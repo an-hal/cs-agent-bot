@@ -87,6 +87,9 @@ type AppConfig struct {
 
 	// Error Handling
 	EnableStackTrace bool
+
+	// JWT Auth
+	JWTValidateURL string
 }
 
 func LoadConfig() *AppConfig {
@@ -170,6 +173,9 @@ func LoadConfig() *AppConfig {
 
 		// Error Handling
 		EnableStackTrace: getEnvBool("ENABLE_STACK_TRACE", false),
+
+		// JWT Auth
+		JWTValidateURL: getEnv("JWT_VALIDATE_URL", "https://api.sejutacita.id/v1/login/self"),
 	}
 
 	validateRequired(cfg)

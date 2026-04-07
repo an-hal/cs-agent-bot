@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -148,6 +149,9 @@ func (r *cronRepo) GetPendingClients(ctx context.Context, runDate time.Time) ([]
 			return nil, err
 		}
 		companyIDs = append(companyIDs, companyID)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate cron rows: %w", err)
 	}
 
 	return companyIDs, nil

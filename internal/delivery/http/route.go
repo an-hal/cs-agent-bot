@@ -27,6 +27,7 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	oidcAuth := middleware.OIDCAuthMiddleware(deps.Cfg.AppURL, deps.Cfg.SchedulerSAEmail, deps.Cfg.Env, deps.Logger)
 	haloaiSig := middleware.HaloAISignatureMiddleware(deps.Cfg.WAWebhookSecret, deps.Cfg.Env, deps.Logger)
 	hmacAuth := middleware.HMACAuthMiddleware(deps.Cfg.HandoffWebhookSecret, deps.Cfg.Env, deps.Logger)
+	jwtAuth := middleware.JWTAuthMiddleware(deps.Cfg.JWTValidateURL, deps.Logger)
 
 	r := router.NewRouter()
 
@@ -59,27 +60,27 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	wrappedPaymentVerify := middleware.WrapErrorHandler(paymentVerifyH.Handle, deps.ExceptionHandler)
 	r.Handle(http.MethodPost, "/api/payment/verify", hmacAuth(wrappedPaymentVerify))
 
-	// Dashboard API — HMAC auth
+	// Dashboard API — JWT auth
 	dashboardH := dashboard.NewClientHandler(deps.DashboardUsecase)
 	workspaceH := dashboard.NewWorkspaceHandler(deps.DashboardUsecase)
 
 	wrappedWorkspaceList := middleware.WrapErrorHandler(workspaceH.List, deps.ExceptionHandler)
-	r.Handle(http.MethodGet, "/api/dashboard/workspaces", wrappedWorkspaceList)
+	r.Handle(http.MethodGet, "/api/dashboard/workspaces", jwtAuth(wrappedWorkspaceList))
 
 	wrappedClientList := middleware.WrapErrorHandler(dashboardH.List, deps.ExceptionHandler)
-	r.Handle(http.MethodGet, "/api/dashboard/clients", wrappedClientList)
+	r.Handle(http.MethodGet, "/api/dashboard/clients", jwtAuth(wrappedClientList))
 	wrappedClientGet := middleware.WrapErrorHandler(dashboardH.Get, deps.ExceptionHandler)
-	r.Handle(http.MethodGet, "/api/dashboard/clients/{company_id}", wrappedClientGet)
+	r.Handle(http.MethodGet, "/api/dashboard/clients/{company_id}", jwtAuth(wrappedClientGet))
 	wrappedClientCreate := middleware.WrapErrorHandler(dashboardH.Create, deps.ExceptionHandler)
-	r.Handle(http.MethodPost, "/api/dashboard/clients", wrappedClientCreate)
+	r.Handle(http.MethodPost, "/api/dashboard/clients", jwtAuth(wrappedClientCreate))
 	wrappedClientUpdate := middleware.WrapErrorHandler(dashboardH.Update, deps.ExceptionHandler)
-	r.Handle(http.MethodPut, "/api/dashboard/clients/{company_id}", wrappedClientUpdate)
+	r.Handle(http.MethodPut, "/api/dashboard/clients/{company_id}", jwtAuth(wrappedClientUpdate))
 	wrappedClientDelete := middleware.WrapErrorHandler(dashboardH.Delete, deps.ExceptionHandler)
-	r.Handle(http.MethodDelete, "/api/dashboard/clients/{company_id}", wrappedClientDelete)
+	r.Handle(http.MethodDelete, "/api/dashboard/clients/{company_id}", jwtAuth(wrappedClientDelete))
 	wrappedClientInvoices := middleware.WrapErrorHandler(dashboardH.GetInvoices, deps.ExceptionHandler)
-	r.Handle(http.MethodGet, "/api/dashboard/clients/{company_id}/invoices", wrappedClientInvoices)
+	r.Handle(http.MethodGet, "/api/dashboard/clients/{company_id}/invoices", jwtAuth(wrappedClientInvoices))
 	wrappedClientEscalations := middleware.WrapErrorHandler(dashboardH.GetEscalations, deps.ExceptionHandler)
-	r.Handle(http.MethodGet, "/api/dashboard/clients/{company_id}/escalations", wrappedClientEscalations)
+	r.Handle(http.MethodGet, "/api/dashboard/clients/{company_id}/escalations", jwtAuth(wrappedClientEscalations))
 
 	// Swagger
 	api := r.Group(deps.Cfg.RoutePrefix)

@@ -29,7 +29,7 @@ func HaloAISignatureMiddleware(secret, env string, logger zerolog.Logger) func(h
 				return
 			}
 
-			body, err := io.ReadAll(r.Body)
+			body, err := io.ReadAll(io.LimitReader(r.Body, 10<<20)) // 10MB limit
 			if err != nil {
 				logger.Error().Err(err).Msg("HaloAI signature: failed to read body")
 				http.Error(w, "Bad Request", http.StatusBadRequest)

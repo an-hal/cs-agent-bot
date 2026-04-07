@@ -2,7 +2,6 @@ package trigger
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
@@ -47,9 +46,9 @@ func (t *TriggerService) EvalCrossSell(ctx context.Context, c entity.Client, f e
 
 func (t *TriggerService) eval90DaySequence(ctx context.Context, c entity.Client, f entity.ClientFlags, dsa int) (bool, error) {
 	type step struct {
-		dayStart   int
-		flag       *bool
-		templateID string
+		dayStart    int
+		flag        *bool
+		templateID  string
 		triggerType string
 	}
 
@@ -71,7 +70,9 @@ func (t *TriggerService) eval90DaySequence(ctx context.Context, c entity.Client,
 				deadline, err := time.Parse("2006-01-02", t.Cfg.PromoDeadline)
 				if err == nil && time.Now().After(deadline) {
 					*s.flag = true
-					_ = t.FlagsRepo.UpdateFlags(ctx, c.CompanyID, f)
+					if err := t.FlagsRepo.UpdateFlags(ctx, c.CompanyID, f); err != nil {
+						t.Logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to update flags")
+					}
 					continue
 				}
 			}
@@ -83,8 +84,6 @@ func (t *TriggerService) eval90DaySequence(ctx context.Context, c entity.Client,
 
 			// After CS_H90: transition to LONGTERM if no interest
 			if s.templateID == "CS_H90" {
-				// Update sequence_cs to LONGTERM
-				// This is stored on Sheet 1 (Master Client), column for sequence_cs
 				t.Logger.Info().
 					Str("company_id", c.CompanyID).
 					Msg("Cross-sell 90-day complete, transitioning to LONGTERM")
@@ -131,7 +130,5 @@ func (t *TriggerService) evalLongTermSequence(ctx context.Context, c entity.Clie
 		}
 	}
 
-	// All LT flags sent but not yet reset (shouldn't happen if CSLT3 resets above)
-	_ = fmt.Sprintf("") // suppress unused import
 	return false, nil
 }

@@ -47,7 +47,10 @@ func (h *handoffHandler) HandleNewClient(ctx context.Context, payload NewClientP
 
 	var activationDate time.Time
 	if payload.ActivationDate != "" {
-		activationDate, _ = time.Parse("2006-01-02", payload.ActivationDate)
+		activationDate, err = time.Parse("2006-01-02", payload.ActivationDate)
+		if err != nil {
+			h.logger.Warn().Err(err).Str("activation_date", payload.ActivationDate).Msg("Failed to parse activation_date, using zero value")
+		}
 	}
 
 	client := entity.Client{
@@ -90,7 +93,9 @@ func (h *handoffHandler) HandleNewClient(ctx context.Context, payload NewClientP
 		NextActionTriggered:    "ONBOARD",
 		LogNotes:               fmt.Sprintf("New client onboarded: %s", payload.CompanyName),
 	}
-	_ = h.logRepo.AppendLog(ctx, logEntry)
+	if err := h.logRepo.AppendLog(ctx, logEntry); err != nil {
+		h.logger.Error().Err(err).Str("company_id", payload.CompanyID).Msg("Failed to append handoff log")
+	}
 
 	h.logger.Info().Str("company_id", payload.CompanyID).Msg("New client onboarded via handoff")
 

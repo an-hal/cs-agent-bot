@@ -126,31 +126,52 @@ func (cr *cronRunner) processClient(ctx context.Context, c entity.Client) error 
 	}
 
 	// Strict priority order. First match fires and returns — no further evaluation.
-	if sent, _ := cr.triggers.EvalHealthRisk(ctx, c, *f); sent {
+	if sent, err := cr.triggers.EvalHealthRisk(ctx, c, *f); err != nil {
+		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Health risk trigger error")
+		return err
+	} else if sent {
 		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Health risk trigger fired")
 		return nil
 	}
-	if sent, _ := cr.triggers.EvalCheckIn(ctx, c, *f); sent {
+	if sent, err := cr.triggers.EvalCheckIn(ctx, c, *f); err != nil {
+		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Check-in trigger error")
+		return err
+	} else if sent {
 		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Check-in trigger fired")
 		return nil
 	}
-	if sent, _ := cr.triggers.EvalNegotiation(ctx, c, *f); sent {
+	if sent, err := cr.triggers.EvalNegotiation(ctx, c, *f); err != nil {
+		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Negotiation trigger error")
+		return err
+	} else if sent {
 		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Negotiation trigger fired")
 		return nil
 	}
-	if sent, _ := cr.triggers.EvalInvoice(ctx, c, *f, inv, convState); sent {
+	if sent, err := cr.triggers.EvalInvoice(ctx, c, *f, inv, convState); err != nil {
+		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Invoice trigger error")
+		return err
+	} else if sent {
 		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Invoice trigger fired")
 		return nil
 	}
-	if sent, _ := cr.triggers.EvalOverdue(ctx, c, *f, inv, convState); sent {
+	if sent, err := cr.triggers.EvalOverdue(ctx, c, *f, inv, convState); err != nil {
+		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Overdue trigger error")
+		return err
+	} else if sent {
 		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Overdue trigger fired")
 		return nil
 	}
-	if sent, _ := cr.triggers.EvalExpansion(ctx, c, *f); sent {
+	if sent, err := cr.triggers.EvalExpansion(ctx, c, *f); err != nil {
+		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Expansion trigger error")
+		return err
+	} else if sent {
 		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Expansion trigger fired")
 		return nil
 	}
-	if sent, _ := cr.triggers.EvalCrossSell(ctx, c, *f); sent {
+	if sent, err := cr.triggers.EvalCrossSell(ctx, c, *f); err != nil {
+		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Cross-sell trigger error")
+		return err
+	} else if sent {
 		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Cross-sell trigger fired")
 		return nil
 	}

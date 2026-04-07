@@ -20,7 +20,9 @@ func (t *TriggerService) EvalNegotiation(ctx context.Context, c entity.Client, f
 		if f.CheckinReplied {
 			f.Ren60Sent = true
 			f.Ren45Sent = true // also skip REN45 per Rule 6
-			_ = t.FlagsRepo.UpdateFlags(ctx, c.CompanyID, f)
+			if err := t.FlagsRepo.UpdateFlags(ctx, c.CompanyID, f); err != nil {
+				t.Logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to update flags")
+			}
 			return false, nil
 		}
 		if c.ResponseStatus == entity.ResponseStatusReplied {
@@ -37,7 +39,9 @@ func (t *TriggerService) EvalNegotiation(ctx context.Context, c entity.Client, f
 	if dte <= 45 && !f.Ren45Sent {
 		if f.CheckinReplied {
 			f.Ren45Sent = true
-			_ = t.FlagsRepo.UpdateFlags(ctx, c.CompanyID, f)
+			if err := t.FlagsRepo.UpdateFlags(ctx, c.CompanyID, f); err != nil {
+				t.Logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to update flags")
+			}
 			return false, nil
 		}
 		if c.ResponseStatus == entity.ResponseStatusReplied {
@@ -51,9 +55,13 @@ func (t *TriggerService) EvalNegotiation(ctx context.Context, c entity.Client, f
 				// Promo expired, skip REN45 and alert AE Lead
 				alertMsg := fmt.Sprintf("PROMO_DEADLINE expired (%s). REN45 skipped for %s (%s).",
 					t.Cfg.PromoDeadline, c.CompanyName, c.CompanyID)
-				_ = t.Telegram.SendMessage(ctx, t.Cfg.TelegramAELeadID, alertMsg)
+				if err := t.Telegram.SendMessage(ctx, t.Cfg.TelegramAELeadID, alertMsg); err != nil {
+					t.Logger.Error().Err(err).Msg("Failed to send Telegram alert to AE Lead")
+				}
 				f.Ren45Sent = true
-				_ = t.FlagsRepo.UpdateFlags(ctx, c.CompanyID, f)
+				if err := t.FlagsRepo.UpdateFlags(ctx, c.CompanyID, f); err != nil {
+					t.Logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to update flags")
+				}
 				return false, nil
 			}
 		}
@@ -70,7 +78,9 @@ func (t *TriggerService) EvalNegotiation(ctx context.Context, c entity.Client, f
 		// Check quotation_link must exist before H-30 (Rule 10)
 		if c.QuotationLink == "" {
 			alertMsg := fmt.Sprintf("quotation_link is empty for %s (%s). REN30 delayed.", c.CompanyName, c.CompanyID)
-			_ = t.Telegram.SendMessage(ctx, c.OwnerTelegramID, alertMsg)
+			if err := t.Telegram.SendMessage(ctx, c.OwnerTelegramID, alertMsg); err != nil {
+				t.Logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to send Telegram alert")
+			}
 			return false, nil
 		}
 		if err := t.sendMessage(ctx, "REN30", "REN30_SENT", c, nil); err != nil {
@@ -95,13 +105,17 @@ func (t *TriggerService) EvalNegotiation(ctx context.Context, c entity.Client, f
 			return false, err
 		}
 		f.Ren0Sent = true
-		_ = t.FlagsRepo.UpdateFlags(ctx, c.CompanyID, f)
+		if err := t.FlagsRepo.UpdateFlags(ctx, c.CompanyID, f); err != nil {
+			t.Logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to update flags")
+		}
 
 		// REN0 with no reply on Mid/High segment → ESC-004
 		if c.ResponseStatus != entity.ResponseStatusReplied &&
 			(c.Segment == entity.SegmentMid || c.Segment == entity.SegmentHigh) {
-			_ = t.Escalation.TriggerEscalation(ctx, entity.EscRen0NoReply, c,
-				"REN0 sent, no reply from Mid/High segment client", entity.EscPriorityP2High)
+			if err := t.Escalation.TriggerEscalation(ctx, entity.EscRen0NoReply, c,
+				"REN0 sent, no reply from Mid/High segment client", entity.EscPriorityP2High); err != nil {
+				t.Logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to trigger REN0 no-reply escalation")
+			}
 		}
 
 		return true, nil

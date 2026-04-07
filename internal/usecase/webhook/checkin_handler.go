@@ -43,6 +43,9 @@ func (h *checkinFormHandler) HandleCheckinForm(ctx context.Context, companyID st
 	if err != nil {
 		return fmt.Errorf("client not found: %s: %w", companyID, err)
 	}
+	if client == nil {
+		return fmt.Errorf("client not found: %s", companyID)
+	}
 
 	flags, err := h.flagsRepo.GetByCompanyID(ctx, companyID)
 	if err != nil {

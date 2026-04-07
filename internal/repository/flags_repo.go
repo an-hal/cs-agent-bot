@@ -172,10 +172,11 @@ func (r *flagsRepo) SetBotActive(ctx context.Context, companyID string, active b
 	ctx, cancel := r.withTimeout(ctx)
 	defer cancel()
 
-	upsertSuffix := fmt.Sprintf(
-		"ON CONFLICT (company_id) DO UPDATE SET bot_active = %t, updated_at = NOW()",
-		active,
-	)
+	activeStr := "false"
+	if active {
+		activeStr = "true"
+	}
+	upsertSuffix := "ON CONFLICT (company_id) DO UPDATE SET bot_active = " + activeStr + ", updated_at = NOW()"
 
 	query, args, err := database.PSQL.
 		Insert("conversation_states").

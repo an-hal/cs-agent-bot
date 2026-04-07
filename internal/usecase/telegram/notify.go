@@ -93,9 +93,9 @@ func (t *telegramNotifier) FormatEscalation(ctx context.Context, esc entity.Esca
 
 func (t *telegramNotifier) FormatPaymentClaim(client entity.Client, inv *entity.Invoice) string {
 	return fmt.Sprintf(
-		"Halo *%s*,\n\n"+
+		"Halo <b>%s</b>,\n\n"+
 			"Terdapat pembayaran invoice dengan detail berikut:\n\n"+
-			"Nama Company : *%s*\n"+
+			"Nama Company : <b>%s</b>\n"+
 			"Jatuh Tempo   : %s\n"+
 			"Nominal       : %s\n"+
 			"Status        : Paid (Need Confirmation)\n\n"+

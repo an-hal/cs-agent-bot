@@ -60,13 +60,13 @@ func NewReplyHandler(
 }
 
 func (h *replyHandler) HandleIncomingReply(ctx context.Context, payload WAWebhookPayload) error {
-	// Dedup: check message_id against action_log
 	exists, err := h.logRepo.MessageIDExists(ctx, payload.MessageID)
 	if err != nil {
 		return fmt.Errorf("dedup check failed: %w", err)
 	}
 	if exists {
 		h.logger.Info().Str("message_id", payload.MessageID).Msg("Duplicate message, skipping")
+		return nil
 	}
 
 	client, err := h.clientRepo.GetByWANumber(ctx, payload.PhoneNumber)
@@ -94,7 +94,9 @@ func (h *replyHandler) HandleIncomingReply(ctx context.Context, payload WAWebhoo
 		NextActionTriggered:    "",
 		LogNotes:               payload.Text,
 	}
-	_ = h.logRepo.AppendLog(ctx, logEntry)
+	if err := h.logRepo.AppendLog(ctx, logEntry); err != nil {
+		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to append reply log")
+	}
 
 	switch intent {
 	case classifier.IntentAngry:
@@ -119,7 +121,6 @@ func (h *replyHandler) HandleIncomingReply(ctx context.Context, payload WAWebhoo
 		return h.handlePositive(ctx, *client, payload.Text)
 
 	case classifier.IntentOOO:
-		// Ignore. Do NOT update ResponseStatus. Retry in 3 days.
 		h.logger.Info().Str("company_id", client.CompanyID).Msg("OOO reply, ignoring")
 		return nil
 
@@ -131,43 +132,62 @@ func (h *replyHandler) HandleIncomingReply(ctx context.Context, payload WAWebhoo
 }
 
 func (h *replyHandler) handleAngry(ctx context.Context, client entity.Client) error {
-	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
+	convState, err := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
+	if err != nil {
+		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to get conversation state in handleAngry")
+	}
 	convState.ResponseClassification = entity.StringPtr(entity.RespAngry)
 	convState.BotActive = false
 	convState.ReasonBotPaused = entity.StringPtr("Angry client detected")
-	_ = h.convStateRepo.CreateOrUpdate(ctx, *convState)
+	if err := h.convStateRepo.CreateOrUpdate(ctx, *convState); err != nil {
+		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to update conversation state in handleAngry")
+	}
 
-	// Blacklist immediately. ESC-006. No WA reply.
 	return h.escalation.TriggerEscalation(ctx, entity.EscAngryClient, client,
 		"Angry client detected", entity.EscPriorityP0Emergency)
 }
 
 func (h *replyHandler) handlePaidClaim(ctx context.Context, client entity.Client, replyText string) error {
-	_, _ = h.haloAI.SendWA(ctx, client.PICWA,
+	if _, err := h.haloAI.SendWA(ctx, client.PICWA,
 		"Terima kasih atas informasinya.\n"+
 			"Saat ini pembayaran Anda sedang kami lakukan proses verifikasi.\n"+
 			"Kami akan segera menginformasikan kembali setelah proses selesai.\n\n"+
-			"Terima kasih atas kesabarannya.")
+			"Terima kasih atas kesabarannya."); err != nil {
+		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to send WA acknowledgment in handlePaidClaim")
+	}
 
-	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
+	convState, err := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
+	if err != nil {
+		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to get conversation state in handlePaidClaim")
+	}
 	inv, _ := h.invoiceRepo.GetActiveByCompanyID(ctx, client.CompanyID)
 	convState.ResponseClassification = entity.StringPtr(entity.RespPaid)
 	convState.ResponseStatus = entity.ResponseStatusPending
-	_ = h.convStateRepo.CreateOrUpdate(ctx, *convState)
+	if err := h.convStateRepo.CreateOrUpdate(ctx, *convState); err != nil {
+		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to update conversation state in handlePaidClaim")
+	}
 
-	// Telegram to AE — Do NOT mark as paid
 	formatted := h.telegram.FormatPaymentClaim(client, inv)
 	return h.telegram.SendMessage(ctx, client.OwnerTelegramID, formatted)
 }
 
 func (h *replyHandler) handleNPS(ctx context.Context, client entity.Client, text string) error {
-	score, _ := strconv.Atoi(strings.TrimSpace(text))
+	score, err := strconv.Atoi(strings.TrimSpace(text))
+	if err != nil {
+		h.logger.Warn().Err(err).Str("text", text).Msg("Failed to parse NPS score")
+		score = 0
+	}
 
 	h.logger.Info().Str("company_id", client.CompanyID).Int("nps_score", score).Msg("NPS score received")
 
-	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
+	convState, err := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
+	if err != nil {
+		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to get conversation state in handleNPS")
+	}
 	convState.ResponseClassification = entity.StringPtr(entity.RespNPS)
-	_ = h.convStateRepo.CreateOrUpdate(ctx, *convState)
+	if err := h.convStateRepo.CreateOrUpdate(ctx, *convState); err != nil {
+		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to update conversation state in handleNPS")
+	}
 
 	flags, err := h.flagsRepo.GetByCompanyID(ctx, client.CompanyID)
 	if err != nil {
@@ -178,7 +198,7 @@ func (h *replyHandler) handleNPS(ctx context.Context, client entity.Client, text
 		return err
 	}
 
-	if score <= 5 { // ESC-003
+	if score <= 5 {
 		return h.escalation.TriggerEscalation(ctx, entity.EscLowNPS, client,
 			fmt.Sprintf("NPS score: %d", score), entity.EscPriorityP1Critical)
 	}
@@ -188,7 +208,6 @@ func (h *replyHandler) handleNPS(ctx context.Context, client entity.Client, text
 }
 
 func (h *replyHandler) handleCSInterested(ctx context.Context, client entity.Client) error {
-	// Set CrossSellInterested=TRUE. AE takes over P5.
 	h.logger.Info().Str("company_id", client.CompanyID).Msg("Client interested in cross-sell")
 
 	msg := fmt.Sprintf("Cross-sell interest from %s (%s). Please follow up.", client.CompanyName, client.CompanyID)
@@ -196,11 +215,16 @@ func (h *replyHandler) handleCSInterested(ctx context.Context, client entity.Cli
 }
 
 func (h *replyHandler) handleReject(ctx context.Context, client entity.Client) error {
-	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
+	convState, err := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
+	if err != nil {
+		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to get conversation state in handleReject")
+	}
 	convState.ResponseClassification = entity.StringPtr(entity.RespReject)
 	convState.BotActive = false
 	convState.ReasonBotPaused = entity.StringPtr("Client rejected automation")
-	_ = h.convStateRepo.CreateOrUpdate(ctx, *convState)
+	if err := h.convStateRepo.CreateOrUpdate(ctx, *convState); err != nil {
+		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to update conversation state in handleReject")
+	}
 
 	h.logger.Info().Str("company_id", client.CompanyID).Msg("Client rejected, stopping automation")
 
@@ -209,11 +233,16 @@ func (h *replyHandler) handleReject(ctx context.Context, client entity.Client) e
 }
 
 func (h *replyHandler) handleDelay(ctx context.Context, client entity.Client) error {
-	convState, _ := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
+	convState, err := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
+	if err != nil {
+		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to get conversation state in handleDelay")
+	}
 	convState.ResponseClassification = entity.StringPtr(entity.RespDelay)
 	convState.NextScheduledAction = entity.StringPtr("REACTIVATE_FLOW")
-	convState.NextScheduledDate = func() *time.Time { t := time.Now().AddDate(0, 1, 0); return &t }() // 30 days
-	_ = h.convStateRepo.CreateOrUpdate(ctx, *convState)
+	convState.NextScheduledDate = func() *time.Time { t := time.Now().AddDate(0, 1, 0); return &t }()
+	if err := h.convStateRepo.CreateOrUpdate(ctx, *convState); err != nil {
+		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to update conversation state in handleDelay")
+	}
 
 	h.logger.Info().Str("company_id", client.CompanyID).Msg("Client requested delay")
 

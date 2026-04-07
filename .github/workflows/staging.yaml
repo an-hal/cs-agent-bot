@@ -1,45 +1,45 @@
-name: Staging
+# name: Staging
 
-on:
-  push:
-    branches:
-      - "release/**"
+# on:
+#   push:
+#     branches:
+#       - "release/**"
 
-env:
-  IMAGE: ${{ vars.ARTIFACT_REGISTRY_CONTAINER }}/${{ vars.IMAGE_NAME }}
+# env:
+#   IMAGE: ${{ vars.ARTIFACT_REGISTRY_CONTAINER }}/${{ vars.IMAGE_NAME }}
 
-jobs:
-  build:
-    name: Build
-    runs-on: [self-hosted, backend-prioritized]
-    steps:
-      - name: Check out repo
-        uses: actions/checkout@v4
-      - name: Build image
-        run: >
-          gcloud builds submit --config ./build/cloudbuild.yaml
-          --gcs-log-dir gs://cloudbuild-sejutacita-id/logs
-          --gcs-source-staging-dir gs://cloudbuild-sejutacita-id/source
-          --substitutions _IMAGE_TAG=${{ env.IMAGE }}:staging-${{ github.run_id }},_IMAGE_TAG_LATEST=${{ env.IMAGE }}:staging-latest
+# jobs:
+#   build:
+#     name: Build
+#     runs-on: [self-hosted, backend-prioritized]
+#     steps:
+#       - name: Check out repo
+#         uses: actions/checkout@v4
+#       - name: Build image
+#         run: >
+#           gcloud builds submit --config ./build/cloudbuild.yaml
+#           --gcs-log-dir gs://cloudbuild-sejutacita-id/logs
+#           --gcs-source-staging-dir gs://cloudbuild-sejutacita-id/source
+#           --substitutions _IMAGE_TAG=${{ env.IMAGE }}:staging-${{ github.run_id }},_IMAGE_TAG_LATEST=${{ env.IMAGE }}:staging-latest
 
-  deploy:
-    name: Deploy
-    needs: [build]
-    runs-on: [self-hosted, backend-prioritized]
-    environment: staging
-    steps:
-      - name: Check out repo
-        uses: actions/checkout@v4
-      - name: Deploy with helm
-        run: >
-          helm secrets upgrade ${{ vars.RELEASE_NAME }} ./.helm
-          --install
-          --atomic
-          --history-max 2
-          --namespace ${{ vars.K8_STAGING_NAMESPACE }}
-          --set image.repository=${{ env.IMAGE }}
-          --set image.tag=staging-${{ github.run_id }}
-          --set image.pullPolicy=Always
-          --set nodeSelector=null
-          -f ./.helm/secrets.staging.yaml
-          -f ./.helm/values.staging.yaml
+#   deploy:
+#     name: Deploy
+#     needs: [build]
+#     runs-on: [self-hosted, backend-prioritized]
+#     environment: staging
+#     steps:
+#       - name: Check out repo
+#         uses: actions/checkout@v4
+#       - name: Deploy with helm
+#         run: >
+#           helm secrets upgrade ${{ vars.RELEASE_NAME }} ./.helm
+#           --install
+#           --atomic
+#           --history-max 2
+#           --namespace ${{ vars.K8_STAGING_NAMESPACE }}
+#           --set image.repository=${{ env.IMAGE }}
+#           --set image.tag=staging-${{ github.run_id }}
+#           --set image.pullPolicy=Always
+#           --set nodeSelector=null
+#           -f ./.helm/secrets.staging.yaml
+#           -f ./.helm/values.staging.yaml

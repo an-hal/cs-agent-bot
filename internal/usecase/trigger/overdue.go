@@ -2,7 +2,6 @@ package trigger
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 )
@@ -13,7 +12,7 @@ import (
 func (t *TriggerService) EvalOverdue(ctx context.Context, c entity.Client, f entity.ClientFlags, inv *entity.Invoice, convState *entity.ConversationState) (bool, error) {
 	// Check conversation state first (anti-spam)
 	if !convState.ShouldSend() {
-		fmt.Println("Client bot is not active, reason: ", convState.GetReasonBotPaused())
+		t.Logger.Info().Str("reason", convState.GetReasonBotPaused()).Msg("Client bot is not active")
 		return false, nil
 	}
 
@@ -31,7 +30,9 @@ func (t *TriggerService) EvalOverdue(ctx context.Context, c entity.Client, f ent
 		if err := t.ClientRepo.UpdateInvoiceReminderFlags(ctx, c.CompanyID, map[string]bool{"post1_sent": true}); err != nil {
 			return true, err
 		}
-		_ = t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "OVERDUE_REMINDER", "TPL-PAY-POST1")
+		if err := t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "OVERDUE_REMINDER", "TPL-PAY-POST1"); err != nil {
+			t.Logger.Error().Err(err).Msg("Failed to record OVERDUE_REMINDER message")
+		}
 		return true, nil
 	}
 
@@ -42,7 +43,9 @@ func (t *TriggerService) EvalOverdue(ctx context.Context, c entity.Client, f ent
 		if err := t.ClientRepo.UpdateInvoiceReminderFlags(ctx, c.CompanyID, map[string]bool{"post4_sent": true}); err != nil {
 			return true, err
 		}
-		_ = t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "OVERDUE_REMINDER", "TPL-PAY-POST4")
+		if err := t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "OVERDUE_REMINDER", "TPL-PAY-POST4"); err != nil {
+			t.Logger.Error().Err(err).Msg("Failed to record OVERDUE_REMINDER message")
+		}
 		return true, nil
 	}
 
@@ -53,7 +56,9 @@ func (t *TriggerService) EvalOverdue(ctx context.Context, c entity.Client, f ent
 		if err := t.ClientRepo.UpdateInvoiceReminderFlags(ctx, c.CompanyID, map[string]bool{"post8_sent": true}); err != nil {
 			return true, err
 		}
-		_ = t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "OVERDUE_REMINDER", "TPL-PAY-POST8")
+		if err := t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "OVERDUE_REMINDER", "TPL-PAY-POST8"); err != nil {
+			t.Logger.Error().Err(err).Msg("Failed to record OVERDUE_REMINDER message")
+		}
 		return true, nil
 	}
 
@@ -64,14 +69,18 @@ func (t *TriggerService) EvalOverdue(ctx context.Context, c entity.Client, f ent
 		if err := t.ClientRepo.UpdateInvoiceReminderFlags(ctx, c.CompanyID, map[string]bool{"post15_sent": true}); err != nil {
 			return true, err
 		}
-		_ = t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "OVERDUE_REMINDER", "TPL-PAY-POST15")
+		if err := t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "OVERDUE_REMINDER", "TPL-PAY-POST15"); err != nil {
+			t.Logger.Error().Err(err).Msg("Failed to record OVERDUE_REMINDER message")
+		}
 		return true, nil
 	}
 
 	// D+15: ESC-001 — AE takes over
 	if daysPast >= 15 {
-		_ = t.Escalation.TriggerEscalation(ctx, entity.EscInvoiceOverdue15, c,
-			"Invoice overdue D+15+", entity.EscPriorityP1Critical)
+		if err := t.Escalation.TriggerEscalation(ctx, entity.EscInvoiceOverdue15, c,
+			"Invoice overdue D+15+", entity.EscPriorityP1Critical); err != nil {
+			t.Logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to trigger D+15 escalation")
+		}
 		return true, nil
 	}
 

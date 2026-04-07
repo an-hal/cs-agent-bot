@@ -24,7 +24,9 @@ func (t *TriggerService) EvalInvoice(ctx context.Context, c entity.Client, f ent
 		// Check quotation_link must exist (Rule 10)
 		if c.QuotationLink == "" {
 			alertMsg := fmt.Sprintf("quotation_link is empty for %s (%s). Invoice creation delayed.", c.CompanyName, c.CompanyID)
-			_ = t.Telegram.SendMessage(ctx, c.OwnerTelegramID, alertMsg)
+			if err := t.Telegram.SendMessage(ctx, c.OwnerTelegramID, alertMsg); err != nil {
+				t.Logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to send Telegram alert about empty quotation link")
+			}
 			return false, nil
 		}
 
@@ -53,7 +55,9 @@ func (t *TriggerService) EvalInvoice(ctx context.Context, c entity.Client, f ent
 		if err := t.ClientRepo.UpdateInvoiceReminderFlags(ctx, c.CompanyID, map[string]bool{"pre14_sent": true}); err != nil {
 			return true, err
 		}
-		_ = t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "INVOICE_REMINDER", "TPL-PAY-PRE14")
+		if err := t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "INVOICE_REMINDER", "TPL-PAY-PRE14"); err != nil {
+			t.Logger.Error().Err(err).Msg("Failed to record INVOICE_REMINDER message")
+		}
 		return true, nil
 	}
 
@@ -64,7 +68,9 @@ func (t *TriggerService) EvalInvoice(ctx context.Context, c entity.Client, f ent
 		if err := t.ClientRepo.UpdateInvoiceReminderFlags(ctx, c.CompanyID, map[string]bool{"pre7_sent": true}); err != nil {
 			return true, err
 		}
-		_ = t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "INVOICE_REMINDER", "TPL-PAY-PRE7")
+		if err := t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "INVOICE_REMINDER", "TPL-PAY-PRE7"); err != nil {
+			t.Logger.Error().Err(err).Msg("Failed to record INVOICE_REMINDER message")
+		}
 		return true, nil
 	}
 
@@ -75,7 +81,9 @@ func (t *TriggerService) EvalInvoice(ctx context.Context, c entity.Client, f ent
 		if err := t.ClientRepo.UpdateInvoiceReminderFlags(ctx, c.CompanyID, map[string]bool{"pre3_sent": true}); err != nil {
 			return true, err
 		}
-		_ = t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "INVOICE_REMINDER", "TPL-PAY-PRE3")
+		if err := t.ConvStateRepo.RecordMessage(ctx, c.CompanyID, "INVOICE_REMINDER", "TPL-PAY-PRE3"); err != nil {
+			t.Logger.Error().Err(err).Msg("Failed to record INVOICE_REMINDER message")
+		}
 		return true, nil
 	}
 

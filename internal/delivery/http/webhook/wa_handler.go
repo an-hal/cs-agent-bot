@@ -1,7 +1,6 @@
 package webhook
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 
@@ -49,10 +48,9 @@ func (h *WAWebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	// Respond BEFORE any processing (must return 200 within 5 seconds)
 	w.WriteHeader(http.StatusOK)
 
-	// Process in background goroutine
+	// Process in background goroutine with request context
 	go func() {
-		ctx := context.Background()
-		if err := h.replyHandler.HandleIncomingReply(ctx, ucPayload); err != nil {
+		if err := h.replyHandler.HandleIncomingReply(r.Context(), ucPayload); err != nil {
 			h.logger.Error().Err(err).
 				Str("message_id", payload.Trigger.MessageID).
 				Msg("Failed to handle incoming reply")

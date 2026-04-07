@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	sq "github.com/Masterminds/squirrel"
@@ -105,6 +106,9 @@ func (r *templateRepo) GetTemplatesByCategory(ctx context.Context, category stri
 			return nil, err
 		}
 		templates = append(templates, t)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate template rows: %w", err)
 	}
 
 	return templates, nil
