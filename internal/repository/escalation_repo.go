@@ -158,8 +158,8 @@ func (r *escalationRepo) GetByCompanyIDPaginated(ctx context.Context, companyID 
 		return nil, 0, fmt.Errorf("build count query: %w", err)
 	}
 	var total int64
-	if err := r.db.QueryRowContext(ctx, countQ, countArgs...).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count escalations: %w", err)
+	if scanErr := r.db.QueryRowContext(ctx, countQ, countArgs...).Scan(&total); scanErr != nil {
+		return nil, 0, fmt.Errorf("count escalations: %w", scanErr)
 	}
 
 	dataQ, dataArgs, err := database.PSQL.

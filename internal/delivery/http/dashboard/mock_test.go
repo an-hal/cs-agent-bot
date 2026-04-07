@@ -9,9 +9,33 @@ import (
 
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/middleware"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/router"
+	"github.com/Sejutacita/cs-agent-bot/internal/delivery/response"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
+	appTracer "github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	ucDashboard "github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
+	"github.com/rs/zerolog"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
+)
+
+// ─── test helpers: noop tracer + logger ───────────────────────────────────────
+
+type testTracer struct{ t trace.Tracer }
+
+func newTestTracer() appTracer.Tracer {
+	return testTracer{t: noop.NewTracerProvider().Tracer("test")}
+}
+
+func (n testTracer) Start(ctx context.Context, name string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
+	return n.t.Start(ctx, name, opts...)
+}
+
+func (n testTracer) Shutdown(_ context.Context) error { return nil }
+
+var (
+	testLogger = zerolog.Nop()
+	testTr     = newTestTracer()
 )
 
 // ─── Compile-time interface check ─────────────────────────────────────────────
@@ -107,9 +131,15 @@ func (m *mockUsecase) GetActivityLogs(_ context.Context, _ entity.ActivityFilter
 
 // ─── Test helpers ─────────────────────────────────────────────────────────────
 
+// callHandler invokes the handler and applies error handling like the middleware does.
+// If the handler returns an apperror, it writes the appropriate HTTP response.
 func callHandler(h func(http.ResponseWriter, *http.Request) error, r *http.Request) *httptest.ResponseRecorder {
 	w := httptest.NewRecorder()
-	_ = h(w, r)
+	err := h(w, r)
+	if err != nil {
+		handler := response.NewHTTPExceptionHandler(zerolog.Nop(), false)
+		handler.HandleError(w, r, err)
+	}
 	return w
 }
 

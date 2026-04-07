@@ -21,7 +21,7 @@ func TestClientList_ReturnsWithMeta(t *testing.T) {
 		getClientsResult: []entity.Client{{CompanyID: "C01", CompanyName: "PT A"}},
 		getClientsTotal:  1,
 	}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/clients?workspace=dealls", nil)
 	w := callHandler(h.List, r)
@@ -41,7 +41,7 @@ func TestClientList_ReturnsWithMeta(t *testing.T) {
 
 func TestClientList_RepoError(t *testing.T) {
 	mock := &mockUsecase{getClientsErr: errors.New("db error")}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/clients", nil)
 	err := h.List(httptest.NewRecorder(), r)
@@ -56,7 +56,7 @@ func TestClientGet_Found(t *testing.T) {
 	mock := &mockUsecase{
 		getClientResult: &entity.Client{CompanyID: "C01", CompanyName: "PT A"},
 	}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/clients/C01", nil)
 	r = withPathParam(r, "company_id", "C01")
@@ -69,7 +69,7 @@ func TestClientGet_Found(t *testing.T) {
 
 func TestClientGet_NotFound(t *testing.T) {
 	mock := &mockUsecase{getClientResult: nil}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/clients/C99", nil)
 	r = withPathParam(r, "company_id", "C99")
@@ -79,8 +79,8 @@ func TestClientGet_NotFound(t *testing.T) {
 		t.Errorf("expected 404, got %d", w.Code)
 	}
 	body := decodeBody(t, w)
-	if body["errorCode"] != "CLIENT_NOT_FOUND" {
-		t.Errorf("expected CLIENT_NOT_FOUND, got %v", body["errorCode"])
+	if body["errorCode"] != "NOT_FOUND" {
+		t.Errorf("expected NOT_FOUND, got %v", body["errorCode"])
 	}
 }
 
@@ -90,7 +90,7 @@ func TestClientCreate_Success(t *testing.T) {
 	mock := &mockUsecase{
 		getWSBySlugResult: &entity.Workspace{ID: "ws-1", Slug: "dealls"},
 	}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	payload := map[string]string{"company_id": "C01", "company_name": "PT New"}
 	body, _ := json.Marshal(payload)
@@ -109,7 +109,7 @@ func TestClientCreate_Success(t *testing.T) {
 
 func TestClientCreate_MissingFields(t *testing.T) {
 	mock := &mockUsecase{}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	payload := map[string]string{"company_id": "C01"} // missing company_name
 	body, _ := json.Marshal(payload)
@@ -124,19 +124,19 @@ func TestClientCreate_MissingFields(t *testing.T) {
 
 func TestClientCreate_InvalidBody(t *testing.T) {
 	mock := &mockUsecase{}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodPost, "/dashboard/clients", bytes.NewReader([]byte(`{bad`)))
 	w := callHandler(h.Create, r)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("expected 400, got %d", w.Code)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("expected 422, got %d", w.Code)
 	}
 }
 
 func TestClientCreate_InvalidWorkspace(t *testing.T) {
 	mock := &mockUsecase{getWSBySlugResult: nil}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	payload := map[string]string{"company_id": "C01", "company_name": "PT X"}
 	body, _ := json.Marshal(payload)
@@ -153,7 +153,7 @@ func TestClientCreate_InvalidWorkspace(t *testing.T) {
 
 func TestClientUpdate_Success(t *testing.T) {
 	mock := &mockUsecase{}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	payload := map[string]interface{}{"notes": "updated"}
 	body, _ := json.Marshal(payload)
@@ -173,14 +173,14 @@ func TestClientUpdate_Success(t *testing.T) {
 
 func TestClientUpdate_InvalidBody(t *testing.T) {
 	mock := &mockUsecase{}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodPut, "/dashboard/clients/C01", bytes.NewReader([]byte(`{bad`)))
 	r = withPathParam(r, "company_id", "C01")
 	w := callHandler(h.Update, r)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("expected 400, got %d", w.Code)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("expected 422, got %d", w.Code)
 	}
 }
 
@@ -188,7 +188,7 @@ func TestClientUpdate_InvalidBody(t *testing.T) {
 
 func TestClientDelete_Success(t *testing.T) {
 	mock := &mockUsecase{}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodDelete, "/dashboard/clients/C01", nil)
 	r = withPathParam(r, "company_id", "C01")
@@ -210,7 +210,7 @@ func TestClientGetInvoices_ReturnsWithMeta(t *testing.T) {
 		getInvoicesResult: []entity.Invoice{{InvoiceID: "INV-001"}},
 		getInvoicesTotal:  1,
 	}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/clients/C01/invoices", nil)
 	r = withPathParam(r, "company_id", "C01")
@@ -231,7 +231,7 @@ func TestClientGetInvoices_ReturnsWithMeta(t *testing.T) {
 
 func TestClientGetInvoices_RepoError(t *testing.T) {
 	mock := &mockUsecase{getInvoicesErr: errors.New("db error")}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/clients/C01/invoices", nil)
 	r = withPathParam(r, "company_id", "C01")
@@ -248,7 +248,7 @@ func TestClientGetEscalations_ReturnsWithMeta(t *testing.T) {
 		getEscalationsResult: []entity.Escalation{{EscalationID: "ESC-1"}},
 		getEscalationsTotal:  1,
 	}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/clients/C01/escalations", nil)
 	r = withPathParam(r, "company_id", "C01")
@@ -269,7 +269,7 @@ func TestClientGetEscalations_ReturnsWithMeta(t *testing.T) {
 
 func TestClientGetEscalations_RepoError(t *testing.T) {
 	mock := &mockUsecase{getEscalationsErr: errors.New("db error")}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/clients/C01/escalations", nil)
 	r = withPathParam(r, "company_id", "C01")
@@ -288,7 +288,7 @@ func TestClientListByWorkspaceID_ReturnsWithMeta(t *testing.T) {
 			Meta:    pagination.Meta{Offset: 0, Limit: 10, Total: 1},
 		},
 	}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/workspaces/ws-1/clients", nil)
 	r = withPathParam(r, "workspace_id", "ws-1")
@@ -314,7 +314,7 @@ func TestClientListByWorkspaceID_EmptyResult(t *testing.T) {
 			Meta:    pagination.Meta{Offset: 0, Limit: 10, Total: 0},
 		},
 	}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/workspaces/ws-1/clients", nil)
 	r = withPathParam(r, "workspace_id", "ws-1")
@@ -335,7 +335,7 @@ func TestClientListByWorkspaceID_EmptyResult(t *testing.T) {
 
 func TestClientListByWorkspaceID_RepoError(t *testing.T) {
 	mock := &mockUsecase{getClientsByWSIDErr: errors.New("db error")}
-	h := handler.NewClientHandler(mock)
+	h := handler.NewClientHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/workspaces/ws-1/clients", nil)
 	r = withPathParam(r, "workspace_id", "ws-1")

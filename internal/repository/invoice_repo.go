@@ -118,7 +118,7 @@ func (r *invoiceRepo) CreateInvoice(ctx context.Context, inv entity.Invoice) err
 }
 
 func (r *invoiceRepo) UpdateFlags(ctx context.Context, invoiceID string, flags map[string]bool) error {
-	ctx, span := r.tracer.Start(ctx, "invoice.repository.UpdateFlags")
+	_, span := r.tracer.Start(ctx, "invoice.repository.UpdateFlags")
 	defer span.End()
 
 	r.logger.Warn().Str("invoice_id", invoiceID).Msg(
@@ -145,8 +145,8 @@ func (r *invoiceRepo) GetAllByCompanyIDPaginated(ctx context.Context, companyID 
 		return nil, 0, fmt.Errorf("build count query: %w", err)
 	}
 	var total int64
-	if err := r.DB.QueryRowContext(ctx, countQ, countArgs...).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count invoices: %w", err)
+	if scanErr := r.DB.QueryRowContext(ctx, countQ, countArgs...).Scan(&total); scanErr != nil {
+		return nil, 0, fmt.Errorf("count invoices: %w", scanErr)
 	}
 
 	// Data

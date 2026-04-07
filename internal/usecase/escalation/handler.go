@@ -61,8 +61,8 @@ func (h *escalationHandler) TriggerEscalation(ctx context.Context, escID string,
 	}
 
 	// Step 1: Set BotActive = FALSE
-	if err := h.flagsRepo.SetBotActive(ctx, client.CompanyID, false); err != nil {
-		return fmt.Errorf("escalation step 1 (set bot_active=false) failed: %w", err)
+	if flagErr := h.flagsRepo.SetBotActive(ctx, client.CompanyID, false); flagErr != nil {
+		return fmt.Errorf("escalation step 1 (set bot_active=false) failed: %w", flagErr)
 	}
 
 	// Step 2: Append to Action Log
@@ -76,22 +76,22 @@ func (h *escalationHandler) TriggerEscalation(ctx context.Context, escID string,
 		NextActionTriggered:    "ESCALATION",
 		LogNotes:               reason,
 	}
-	if err := h.logRepo.AppendLog(ctx, logEntry); err != nil {
-		return fmt.Errorf("escalation step 2 (append log) failed: %w", err)
+	if logErr := h.logRepo.AppendLog(ctx, logEntry); logErr != nil {
+		return fmt.Errorf("escalation step 2 (append log) failed: %w", logErr)
 	}
 
 	// Step 3: Send Telegram to AE
-	formatted, err := h.telegram.FormatEscalation(ctx, esc, client, nil)
-	if err != nil {
-		return fmt.Errorf("escalation step 3 (telegram format) failed: %w", err)
+	formatted, fmtErr := h.telegram.FormatEscalation(ctx, esc, client, nil)
+	if fmtErr != nil {
+		return fmt.Errorf("escalation step 3 (telegram format) failed: %w", fmtErr)
 	}
-	if err := h.telegram.SendMessage(ctx, client.OwnerTelegramID, formatted); err != nil {
-		return fmt.Errorf("escalation step 3 (telegram send) failed: %w", err)
+	if sendErr := h.telegram.SendMessage(ctx, client.OwnerTelegramID, formatted); sendErr != nil {
+		return fmt.Errorf("escalation step 3 (telegram send) failed: %w", sendErr)
 	}
 
 	// Step 4: Write escalation row
-	if err := h.escalationRepo.OpenEscalation(ctx, esc); err != nil {
-		return fmt.Errorf("escalation step 4 (open escalation) failed: %w", err)
+	if openErr := h.escalationRepo.OpenEscalation(ctx, esc); openErr != nil {
+		return fmt.Errorf("escalation step 4 (open escalation) failed: %w", openErr)
 	}
 
 	h.logger.Info().

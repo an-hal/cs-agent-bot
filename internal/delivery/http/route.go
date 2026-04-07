@@ -23,9 +23,9 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	checkinH := webhookHandler.NewCheckinFormHTTPHandler(deps.CheckinHandler, deps.Logger)
 	handoffH := webhookHandler.NewHandoffHTTPHandler(deps.HandoffHandler, deps.Logger)
 	paymentVerifyH := paymentHandler.NewVerifyPaymentHTTPHandler(deps.PaymentVerifier, deps.Logger)
-	dashboardH := dashboard.NewClientHandler(deps.DashboardUsecase)
-	workspaceH := dashboard.NewWorkspaceHandler(deps.DashboardUsecase)
-	activityH := dashboard.NewActivityHandler(deps.DashboardUsecase)
+	dashboardH := dashboard.NewClientHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
+	workspaceH := dashboard.NewWorkspaceHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
+	activityH := dashboard.NewActivityHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 
 	// Per-route auth wrappers
 	oidcAuth := middleware.OIDCAuthMiddleware(deps.Cfg.AppURL, deps.Cfg.SchedulerSAEmail, deps.Cfg.Env, deps.Logger)

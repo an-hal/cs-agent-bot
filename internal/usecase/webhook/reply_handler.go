@@ -200,8 +200,8 @@ func (h *replyHandler) handleNPS(ctx context.Context, client entity.Client, text
 		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to get conversation state in handleNPS")
 	}
 	convState.ResponseClassification = entity.StringPtr(entity.RespNPS)
-	if err := h.convStateRepo.CreateOrUpdate(ctx, *convState); err != nil {
-		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to update conversation state in handleNPS")
+	if updateErr := h.convStateRepo.CreateOrUpdate(ctx, *convState); updateErr != nil {
+		h.logger.Error().Err(updateErr).Str("company_id", client.CompanyID).Msg("Failed to update conversation state in handleNPS")
 	}
 
 	flags, err := h.flagsRepo.GetByCompanyID(ctx, client.CompanyID)

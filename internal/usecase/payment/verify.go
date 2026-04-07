@@ -68,8 +68,8 @@ func (v *paymentVerifier) VerifyPayment(ctx context.Context, req VerifyPaymentRe
 
 	// 2. Update PaymentStatus to "Paid"
 	client.UpdatePaymentStatus(entity.PaymentStatusPaid)
-	if err := v.clientRepo.UpdatePaymentStatus(ctx, req.CompanyID, entity.PaymentStatusPaid); err != nil {
-		return fmt.Errorf("failed to update payment status: %w", err)
+	if updateErr := v.clientRepo.UpdatePaymentStatus(ctx, req.CompanyID, entity.PaymentStatusPaid); updateErr != nil {
+		return fmt.Errorf("failed to update payment status: %w", updateErr)
 	}
 
 	// 3. Get invoice for template
@@ -92,8 +92,8 @@ func (v *paymentVerifier) VerifyPayment(ctx context.Context, req VerifyPaymentRe
 		return fmt.Errorf("failed to resolve payment verification template: %w", err)
 	}
 
-	if _, err := v.haloaiClient.SendWA(ctx, client.PICWA, message); err != nil {
-		return fmt.Errorf("failed to send WhatsApp message: %w", err)
+	if _, sendErr := v.haloaiClient.SendWA(ctx, client.PICWA, message); sendErr != nil {
+		return fmt.Errorf("failed to send WhatsApp message: %w", sendErr)
 	}
 
 	// 5. Create ESC-007 escalation record (for tracking)
@@ -105,8 +105,8 @@ func (v *paymentVerifier) VerifyPayment(ctx context.Context, req VerifyPaymentRe
 		Reason:    fmt.Sprintf("Payment verified by %s. Invoice: %s", req.VerifiedBy, invoiceID),
 	}
 
-	if err := v.escalationRepo.OpenEscalation(ctx, esc); err != nil {
-		return fmt.Errorf("failed to create escalation record: %w", err)
+	if escErr := v.escalationRepo.OpenEscalation(ctx, esc); escErr != nil {
+		return fmt.Errorf("failed to create escalation record: %w", escErr)
 	}
 
 	// 6. Log action to Action Log
@@ -122,8 +122,8 @@ func (v *paymentVerifier) VerifyPayment(ctx context.Context, req VerifyPaymentRe
 		LogNotes:               fmt.Sprintf("Verified by: %s. Notes: %s", req.VerifiedBy, req.Notes),
 	}
 
-	if err := v.logRepo.AppendLog(ctx, logEntry); err != nil {
-		return fmt.Errorf("failed to log payment verification: %w", err)
+	if logErr := v.logRepo.AppendLog(ctx, logEntry); logErr != nil {
+		return fmt.Errorf("failed to log payment verification: %w", logErr)
 	}
 
 	// 7. Send Telegram confirmation to AE using ESC-007 template

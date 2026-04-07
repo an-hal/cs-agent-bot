@@ -22,8 +22,8 @@ func (t *TriggerService) sendMessage(ctx context.Context, templateID string, tri
 	if err != nil {
 		// Alert AE if template resolution fails
 		alertMsg := fmt.Sprintf("Template resolution failed for %s (%s): %v", client.CompanyName, client.CompanyID, err)
-		if err := t.Telegram.SendMessage(ctx, t.Cfg.TelegramAELeadID, alertMsg); err != nil {
-			t.Logger.Error().Err(err).Msg("Failed to send template failure alert to AE Lead")
+		if alertErr := t.Telegram.SendMessage(ctx, t.Cfg.TelegramAELeadID, alertMsg); alertErr != nil {
+			t.Logger.Error().Err(alertErr).Msg("Failed to send template failure alert to AE Lead")
 		}
 		return err
 	}

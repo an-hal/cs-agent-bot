@@ -15,15 +15,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// safeString returns the string representation of row[idx] or "" if out of bounds or nil.
-// Shared helper used by other repository files that still read from Google Sheets.
-func safeString(row []interface{}, idx int) string {
-	if idx >= len(row) || row[idx] == nil {
-		return ""
-	}
-	return fmt.Sprintf("%v", row[idx])
-}
-
 // ClientRepository defines the interface for client data operations.
 type ClientRepository interface {
 	GetAll(ctx context.Context) ([]entity.Client, error)

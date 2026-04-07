@@ -22,7 +22,7 @@ func TestActivityList_ReturnsLogs(t *testing.T) {
 		},
 		getLogsTotal: 1,
 	}
-	h := handler.NewActivityHandler(mock)
+	h := handler.NewActivityHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/activity-logs?workspace_id=dealls&limit=10", nil)
 	w := callHandler(h.List, r)
@@ -38,7 +38,7 @@ func TestActivityList_ReturnsLogs(t *testing.T) {
 
 func TestActivityList_LimitCappedAt100(t *testing.T) {
 	mock := &mockUsecase{}
-	h := handler.NewActivityHandler(mock)
+	h := handler.NewActivityHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/activity-logs?limit=999", nil)
 	w := callHandler(h.List, r)
@@ -50,7 +50,7 @@ func TestActivityList_LimitCappedAt100(t *testing.T) {
 
 func TestActivityList_EmptyResultReturnsEmptySlice(t *testing.T) {
 	mock := &mockUsecase{getLogsResult: nil, getLogsTotal: 0}
-	h := handler.NewActivityHandler(mock)
+	h := handler.NewActivityHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/activity-logs", nil)
 	w := callHandler(h.List, r)
@@ -62,7 +62,7 @@ func TestActivityList_EmptyResultReturnsEmptySlice(t *testing.T) {
 
 func TestActivityList_RepoErrorReturnsError(t *testing.T) {
 	mock := &mockUsecase{getLogsErr: errors.New("db down")}
-	h := handler.NewActivityHandler(mock)
+	h := handler.NewActivityHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/activity-logs", nil)
 	w := httptest.NewRecorder()
@@ -76,7 +76,7 @@ func TestActivityList_RepoErrorReturnsError(t *testing.T) {
 
 func TestRecord_ValidTeamActivity(t *testing.T) {
 	mock := &mockUsecase{}
-	h := handler.NewActivityHandler(mock)
+	h := handler.NewActivityHandler(mock, testLogger, testTr)
 
 	payload := map[string]string{
 		"workspace_id": "dealls",
@@ -104,7 +104,7 @@ func TestRecord_ValidTeamActivity(t *testing.T) {
 
 func TestRecord_ValidDataActivity(t *testing.T) {
 	mock := &mockUsecase{}
-	h := handler.NewActivityHandler(mock)
+	h := handler.NewActivityHandler(mock, testLogger, testTr)
 
 	payload := map[string]string{
 		"category": "data",
@@ -124,7 +124,7 @@ func TestRecord_ValidDataActivity(t *testing.T) {
 
 func TestRecord_RejectsBotCategory(t *testing.T) {
 	mock := &mockUsecase{}
-	h := handler.NewActivityHandler(mock)
+	h := handler.NewActivityHandler(mock, testLogger, testTr)
 
 	payload := map[string]string{"category": "bot", "action": "RENEWAL"}
 	body, _ := json.Marshal(payload)
@@ -137,14 +137,14 @@ func TestRecord_RejectsBotCategory(t *testing.T) {
 		t.Errorf("expected 400, got %d", w.Code)
 	}
 	resp := decodeBody(t, w)
-	if resp["errorCode"] != "VALIDATION_ERROR" {
-		t.Errorf("expected VALIDATION_ERROR, got %v", resp["errorCode"])
+	if resp["errorCode"] != "BAD_REQUEST" {
+		t.Errorf("expected BAD_REQUEST, got %v", resp["errorCode"])
 	}
 }
 
 func TestRecord_RejectsInvalidCategory(t *testing.T) {
 	mock := &mockUsecase{}
-	h := handler.NewActivityHandler(mock)
+	h := handler.NewActivityHandler(mock, testLogger, testTr)
 
 	payload := map[string]string{"category": "unknown", "action": "something"}
 	body, _ := json.Marshal(payload)
@@ -160,7 +160,7 @@ func TestRecord_RejectsInvalidCategory(t *testing.T) {
 
 func TestRecord_RejectsMissingAction(t *testing.T) {
 	mock := &mockUsecase{}
-	h := handler.NewActivityHandler(mock)
+	h := handler.NewActivityHandler(mock, testLogger, testTr)
 
 	payload := map[string]string{"category": "team"}
 	body, _ := json.Marshal(payload)
@@ -176,20 +176,20 @@ func TestRecord_RejectsMissingAction(t *testing.T) {
 
 func TestRecord_InvalidJSON(t *testing.T) {
 	mock := &mockUsecase{}
-	h := handler.NewActivityHandler(mock)
+	h := handler.NewActivityHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodPost, "/dashboard/activity-logs", bytes.NewReader([]byte(`not-json`)))
 	r = withJWTUser(r, "admin@dealls.com")
 	w := callHandler(h.Record, r)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("expected 400, got %d", w.Code)
+	if w.Code != http.StatusUnprocessableEntity {
+		t.Errorf("expected 422, got %d", w.Code)
 	}
 }
 
 func TestRecord_ActorAlwaysFromJWT(t *testing.T) {
 	mock := &mockUsecase{}
-	h := handler.NewActivityHandler(mock)
+	h := handler.NewActivityHandler(mock, testLogger, testTr)
 
 	payload := map[string]string{
 		"category": "data",
@@ -212,7 +212,7 @@ func TestRecord_ActorAlwaysFromJWT(t *testing.T) {
 
 func TestRecord_RepoErrorPropagated(t *testing.T) {
 	mock := &mockUsecase{recordActivityErr: errors.New("insert failed")}
-	h := handler.NewActivityHandler(mock)
+	h := handler.NewActivityHandler(mock, testLogger, testTr)
 
 	payload := map[string]string{"category": "team", "action": "remove_member"}
 	body, _ := json.Marshal(payload)

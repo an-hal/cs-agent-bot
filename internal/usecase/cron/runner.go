@@ -101,9 +101,9 @@ func (cr *cronRunner) processClient(ctx context.Context, c entity.Client) error 
 
 	// Check if renewed — triggers resetCycleFlags before evaluation
 	if c.Renewed {
-		if err := cr.flagsRepo.ResetCycleFlags(ctx, c.CompanyID); err != nil {
-			cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to reset cycle flags")
-			return err
+		if resetErr := cr.flagsRepo.ResetCycleFlags(ctx, c.CompanyID); resetErr != nil {
+			cr.logger.Error().Err(resetErr).Str("company_id", c.CompanyID).Msg("Failed to reset cycle flags")
+			return resetErr
 		}
 		// Re-fetch flags after reset
 		f, err = cr.flagsRepo.GetByCompanyID(ctx, c.CompanyID)

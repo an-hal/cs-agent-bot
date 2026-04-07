@@ -17,7 +17,7 @@ func TestWorkspaceList_ReturnsWithMeta(t *testing.T) {
 			{Slug: "kantorku", Name: "KantorKu"},
 		},
 	}
-	h := handler.NewWorkspaceHandler(mock)
+	h := handler.NewWorkspaceHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/workspaces", nil)
 	w := callHandler(h.List, r)
@@ -40,7 +40,7 @@ func TestWorkspaceList_ReturnsWithMeta(t *testing.T) {
 
 func TestWorkspaceList_EmptySlice(t *testing.T) {
 	mock := &mockUsecase{getWorkspacesResult: nil}
-	h := handler.NewWorkspaceHandler(mock)
+	h := handler.NewWorkspaceHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/workspaces", nil)
 	w := callHandler(h.List, r)
@@ -60,7 +60,7 @@ func TestWorkspaceList_EmptySlice(t *testing.T) {
 
 func TestWorkspaceList_RepoError(t *testing.T) {
 	mock := &mockUsecase{getWorkspacesErr: errors.New("db error")}
-	h := handler.NewWorkspaceHandler(mock)
+	h := handler.NewWorkspaceHandler(mock, testLogger, testTr)
 
 	r := httptest.NewRequest(http.MethodGet, "/dashboard/workspaces", nil)
 	w := httptest.NewRecorder()
