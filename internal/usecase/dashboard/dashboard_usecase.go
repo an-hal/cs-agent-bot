@@ -20,15 +20,18 @@ type DashboardUsecase interface {
 	DeleteClient(ctx context.Context, companyID string) error
 	GetClientInvoices(ctx context.Context, companyID string) ([]entity.Invoice, error)
 	GetClientEscalations(ctx context.Context, companyID string) ([]entity.Escalation, error)
+	RecordActivity(ctx context.Context, entry entity.ActivityLog) error
+	GetActivityLogs(ctx context.Context, filter entity.ActivityFilter) ([]entity.ActivityLog, int, error)
 }
 
 type dashboardUsecase struct {
-	workspaceRepo repository.WorkspaceRepository
-	clientRepo    repository.ClientRepository
-	invoiceRepo   repository.InvoiceRepository
+	workspaceRepo  repository.WorkspaceRepository
+	clientRepo     repository.ClientRepository
+	invoiceRepo    repository.InvoiceRepository
 	escalationRepo repository.EscalationRepository
-	tracer        tracer.Tracer
-	logger        zerolog.Logger
+	logRepo        repository.LogRepository
+	tracer         tracer.Tracer
+	logger         zerolog.Logger
 }
 
 func NewDashboardUsecase(
@@ -36,6 +39,7 @@ func NewDashboardUsecase(
 	clientRepo repository.ClientRepository,
 	invoiceRepo repository.InvoiceRepository,
 	escalationRepo repository.EscalationRepository,
+	logRepo repository.LogRepository,
 	tr tracer.Tracer,
 	logger zerolog.Logger,
 ) DashboardUsecase {
@@ -44,6 +48,7 @@ func NewDashboardUsecase(
 		clientRepo:     clientRepo,
 		invoiceRepo:    invoiceRepo,
 		escalationRepo: escalationRepo,
+		logRepo:        logRepo,
 		tracer:         tr,
 		logger:         logger,
 	}
@@ -122,4 +127,16 @@ func (u *dashboardUsecase) GetClientEscalations(ctx context.Context, companyID s
 	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetClientEscalations")
 	defer span.End()
 	return u.escalationRepo.GetByCompanyID(ctx, companyID)
+}
+
+func (u *dashboardUsecase) RecordActivity(ctx context.Context, entry entity.ActivityLog) error {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.RecordActivity")
+	defer span.End()
+	return u.logRepo.AppendActivity(ctx, entry)
+}
+
+func (u *dashboardUsecase) GetActivityLogs(ctx context.Context, filter entity.ActivityFilter) ([]entity.ActivityLog, int, error) {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetActivityLogs")
+	defer span.End()
+	return u.logRepo.GetActivities(ctx, filter)
 }

@@ -51,5 +51,21 @@ func (t *TriggerService) sendMessage(ctx context.Context, templateID string, tri
 		t.Logger.Error().Err(err).Str("trigger", triggerType).Msg("Failed to append action log")
 	}
 
+	// Append to unified audit trail
+	if err := t.LogRepo.AppendActivity(ctx, entity.ActivityLog{
+		WorkspaceID: client.WorkspaceID,
+		Category:    entity.ActivityCategoryBot,
+		ActorType:   entity.ActivityActorBot,
+		Actor:       "bot",
+		Action:      triggerType,
+		Target:      client.CompanyName,
+		Detail:      fmt.Sprintf("Template: %s · Channel: WA", templateID),
+		RefID:       client.CompanyID,
+		Status:      "delivered",
+	}); err != nil {
+		t.Logger.Error().Err(err).Str("trigger", triggerType).Msg("failed to append activity log")
+		// do not return — WA message was already sent successfully
+	}
+
 	return nil
 }

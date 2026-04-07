@@ -25,6 +25,7 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	paymentVerifyH := paymentHandler.NewVerifyPaymentHTTPHandler(deps.PaymentVerifier, deps.Logger)
 	dashboardH := dashboard.NewClientHandler(deps.DashboardUsecase)
 	workspaceH := dashboard.NewWorkspaceHandler(deps.DashboardUsecase)
+	activityH := dashboard.NewActivityHandler(deps.DashboardUsecase)
 
 	// Per-route auth wrappers
 	oidcAuth := middleware.OIDCAuthMiddleware(deps.Cfg.AppURL, deps.Cfg.SchedulerSAEmail, deps.Cfg.Env, deps.Logger)
@@ -58,6 +59,8 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	api.Handle(http.MethodDelete, "/dashboard/clients/{company_id}", jwtAuth(dashboardH.Delete))
 	api.Handle(http.MethodGet, "/dashboard/clients/{company_id}/invoices", jwtAuth(dashboardH.GetInvoices))
 	api.Handle(http.MethodGet, "/dashboard/clients/{company_id}/escalations", jwtAuth(dashboardH.GetEscalations))
+	api.Handle(http.MethodGet, "/dashboard/activity-logs", jwtAuth(activityH.List))
+	api.Handle(http.MethodPost, "/dashboard/activity-logs", jwtAuth(activityH.Record))
 
 	// Swagger
 	api.HandlePrefix(http.MethodGet, "/swagger/", httpSwagger.WrapHandler)

@@ -4,11 +4,20 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/middleware"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/router"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/response"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 )
+
+// actorFromCtx extracts the authenticated user's email from the JWT context.
+func actorFromCtx(r *http.Request) string {
+	if u, ok := middleware.GetJWTUser(r.Context()); ok {
+		return u.Email
+	}
+	return "unknown"
+}
 
 type ClientHandler struct {
 	uc dashboard.DashboardUsecase
@@ -117,6 +126,19 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) error {
 	if err := h.uc.CreateClient(r.Context(), client); err != nil {
 		return err
 	}
+
+	if err := h.uc.RecordActivity(r.Context(), entity.ActivityLog{
+		WorkspaceID: ws.Slug,
+		Category:    entity.ActivityCategoryData,
+		ActorType:   entity.ActivityActorHuman,
+		Actor:       actorFromCtx(r),
+		Action:      "add_client",
+		Target:      client.CompanyName,
+		RefID:       client.CompanyID,
+	}); err != nil {
+		return err
+	}
+
 	response.StandardSuccess(w, r, http.StatusCreated, "Client created", client)
 	return nil
 }
@@ -143,6 +165,18 @@ func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) error {
 	if err := h.uc.UpdateClient(r.Context(), companyID, patch); err != nil {
 		return err
 	}
+
+	if err := h.uc.RecordActivity(r.Context(), entity.ActivityLog{
+		Category:  entity.ActivityCategoryData,
+		ActorType: entity.ActivityActorHuman,
+		Actor:     actorFromCtx(r),
+		Action:    "edit_client",
+		Target:    companyID,
+		RefID:     companyID,
+	}); err != nil {
+		return err
+	}
+
 	response.StandardSuccess(w, r, http.StatusOK, "Client updated", nil)
 	return nil
 }
@@ -161,6 +195,18 @@ func (h *ClientHandler) Delete(w http.ResponseWriter, r *http.Request) error {
 	if err := h.uc.DeleteClient(r.Context(), companyID); err != nil {
 		return err
 	}
+
+	if err := h.uc.RecordActivity(r.Context(), entity.ActivityLog{
+		Category:  entity.ActivityCategoryData,
+		ActorType: entity.ActivityActorHuman,
+		Actor:     actorFromCtx(r),
+		Action:    "delete_client",
+		Target:    companyID,
+		RefID:     companyID,
+	}); err != nil {
+		return err
+	}
+
 	response.StandardSuccess(w, r, http.StatusOK, "Client deleted", nil)
 	return nil
 }

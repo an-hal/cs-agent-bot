@@ -187,6 +187,7 @@ func main() {
 		clientRepo,
 		invoiceRepo,
 		escalationRepo,
+		logRepo,
 		tracerInstance,
 		logger,
 	)
