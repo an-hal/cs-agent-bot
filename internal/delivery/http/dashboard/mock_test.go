@@ -78,6 +78,22 @@ type mockUsecase struct {
 	getLogsResult     []entity.ActivityLog
 	getLogsTotal      int
 	getLogsErr        error
+
+	// Invoices (standalone)
+	getStandaloneInvoicesResult []entity.Invoice
+	getStandaloneInvoicesTotal  int64
+	getStandaloneInvoicesErr    error
+	getInvoiceResult            *entity.Invoice
+	getInvoiceErr               error
+	updateInvoiceErr            error
+
+	// Templates
+	getTemplatesResult []entity.Template
+	getTemplatesTotal  int64
+	getTemplatesErr    error
+	getTemplateResult  *entity.Template
+	getTemplateErr     error
+	updateTemplateErr  error
 }
 
 func (m *mockUsecase) GetWorkspaces(context.Context) ([]entity.Workspace, error) {
@@ -127,6 +143,30 @@ func (m *mockUsecase) RecordActivity(_ context.Context, entry entity.ActivityLog
 
 func (m *mockUsecase) GetActivityLogs(_ context.Context, _ entity.ActivityFilter) ([]entity.ActivityLog, int, error) {
 	return m.getLogsResult, m.getLogsTotal, m.getLogsErr
+}
+
+func (m *mockUsecase) GetInvoices(_ context.Context, _ entity.InvoiceFilter, _ pagination.Params) ([]entity.Invoice, int64, error) {
+	return m.getStandaloneInvoicesResult, m.getStandaloneInvoicesTotal, m.getStandaloneInvoicesErr
+}
+
+func (m *mockUsecase) GetInvoice(_ context.Context, _ string) (*entity.Invoice, error) {
+	return m.getInvoiceResult, m.getInvoiceErr
+}
+
+func (m *mockUsecase) UpdateInvoice(_ context.Context, _ string, _ map[string]interface{}) error {
+	return m.updateInvoiceErr
+}
+
+func (m *mockUsecase) GetTemplates(_ context.Context, _ entity.TemplateFilter, _ pagination.Params) ([]entity.Template, int64, error) {
+	return m.getTemplatesResult, m.getTemplatesTotal, m.getTemplatesErr
+}
+
+func (m *mockUsecase) GetTemplate(_ context.Context, _ string) (*entity.Template, error) {
+	return m.getTemplateResult, m.getTemplateErr
+}
+
+func (m *mockUsecase) UpdateTemplate(_ context.Context, _ string, _ map[string]interface{}) error {
+	return m.updateTemplateErr
 }
 
 // ─── Test helpers ─────────────────────────────────────────────────────────────

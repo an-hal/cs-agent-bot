@@ -101,6 +101,7 @@ func main() {
 	escalationRepo := repository.NewEscalationRepo(db, queryTimeout, tracerInstance, logger)
 	configRepo := repository.NewConfigRepo(db, queryTimeout, tracerInstance, logger)
 	workspaceRepo := repository.NewWorkspaceRepo(db, queryTimeout, tracerInstance, logger)
+	templateRepo := repository.NewTemplateRepo(db, queryTimeout, tracerInstance)
 
 	templateResolver := template.NewTemplateResolver(configRepo, logger)
 
@@ -188,6 +189,7 @@ func main() {
 		invoiceRepo,
 		escalationRepo,
 		logRepo,
+		templateRepo,
 		tracerInstance,
 		logger,
 	)

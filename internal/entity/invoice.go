@@ -22,6 +22,13 @@ type Invoice struct {
 	WorkspaceID      string     `json:"workspace_id"`
 }
 
+// InvoiceFilter holds optional filters for listing invoices.
+type InvoiceFilter struct {
+	WorkspaceID string
+	CompanyID   string
+	Status      string // payment_status filter
+}
+
 // DaysPastDue returns how many days past the due date. Negative means not yet due.
 func (inv *Invoice) DaysPastDue() int {
 	return int(time.Since(inv.DueDate).Hours() / 24)

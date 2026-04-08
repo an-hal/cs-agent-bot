@@ -31,6 +31,16 @@ type DashboardUsecase interface {
 	GetClientEscalations(ctx context.Context, companyID string, p pagination.Params) ([]entity.Escalation, int64, error)
 	RecordActivity(ctx context.Context, entry entity.ActivityLog) error
 	GetActivityLogs(ctx context.Context, filter entity.ActivityFilter) ([]entity.ActivityLog, int, error)
+
+	// Invoices (standalone)
+	GetInvoices(ctx context.Context, filter entity.InvoiceFilter, p pagination.Params) ([]entity.Invoice, int64, error)
+	GetInvoice(ctx context.Context, invoiceID string) (*entity.Invoice, error)
+	UpdateInvoice(ctx context.Context, invoiceID string, fields map[string]interface{}) error
+
+	// Templates
+	GetTemplates(ctx context.Context, filter entity.TemplateFilter, p pagination.Params) ([]entity.Template, int64, error)
+	GetTemplate(ctx context.Context, templateID string) (*entity.Template, error)
+	UpdateTemplate(ctx context.Context, templateID string, fields map[string]interface{}) error
 }
 
 type dashboardUsecase struct {
@@ -39,6 +49,7 @@ type dashboardUsecase struct {
 	invoiceRepo    repository.InvoiceRepository
 	escalationRepo repository.EscalationRepository
 	logRepo        repository.LogRepository
+	templateRepo   repository.TemplateRepository
 	tracer         tracer.Tracer
 	logger         zerolog.Logger
 }
@@ -49,6 +60,7 @@ func NewDashboardUsecase(
 	invoiceRepo repository.InvoiceRepository,
 	escalationRepo repository.EscalationRepository,
 	logRepo repository.LogRepository,
+	templateRepo repository.TemplateRepository,
 	tr tracer.Tracer,
 	logger zerolog.Logger,
 ) DashboardUsecase {
@@ -58,6 +70,7 @@ func NewDashboardUsecase(
 		invoiceRepo:    invoiceRepo,
 		escalationRepo: escalationRepo,
 		logRepo:        logRepo,
+		templateRepo:   templateRepo,
 		tracer:         tr,
 		logger:         logger,
 	}
@@ -253,4 +266,113 @@ func (u *dashboardUsecase) GetActivityLogs(ctx context.Context, filter entity.Ac
 		return nil, 0, apperror.WrapInternal(logger, err, "Failed to fetch activity logs")
 	}
 	return logs, total, nil
+}
+
+// ─── Invoices (standalone) ───────────────────────────────────────────────────
+
+var invoiceEditableFields = map[string]bool{
+	"notes":          true,
+	"link_invoice":   true,
+	"payment_status": true,
+	"amount_paid":    true,
+	"paid_at":        true,
+	"amount":         true,
+	"issue_date":     true,
+}
+
+func (u *dashboardUsecase) GetInvoices(ctx context.Context, filter entity.InvoiceFilter, p pagination.Params) ([]entity.Invoice, int64, error) {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetInvoices")
+	defer span.End()
+
+	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
+
+	invoices, total, err := u.invoiceRepo.GetAllPaginated(ctx, filter, p)
+	if err != nil {
+		return nil, 0, apperror.WrapInternal(logger, err, "Failed to fetch invoices")
+	}
+	return invoices, total, nil
+}
+
+func (u *dashboardUsecase) GetInvoice(ctx context.Context, invoiceID string) (*entity.Invoice, error) {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetInvoice")
+	defer span.End()
+
+	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
+
+	inv, err := u.invoiceRepo.GetByID(ctx, invoiceID)
+	if err != nil {
+		return nil, apperror.WrapInternal(logger, err, "Failed to get invoice")
+	}
+	return inv, nil
+}
+
+func (u *dashboardUsecase) UpdateInvoice(ctx context.Context, invoiceID string, fields map[string]interface{}) error {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.UpdateInvoice")
+	defer span.End()
+
+	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
+
+	for key := range fields {
+		if !invoiceEditableFields[key] {
+			return apperror.BadRequest("Field '" + key + "' is not editable")
+		}
+	}
+
+	if err := u.invoiceRepo.UpdateFields(ctx, invoiceID, fields); err != nil {
+		return apperror.WrapInternal(logger, err, "Failed to update invoice")
+	}
+	return nil
+}
+
+// ─── Templates ───────────────────────────────────────────────────────────────
+
+var templateEditableFields = map[string]bool{
+	"template_name":    true,
+	"template_content": true,
+	"language":         true,
+	"active":           true,
+}
+
+func (u *dashboardUsecase) GetTemplates(ctx context.Context, filter entity.TemplateFilter, p pagination.Params) ([]entity.Template, int64, error) {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetTemplates")
+	defer span.End()
+
+	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
+
+	templates, total, err := u.templateRepo.GetAllPaginated(ctx, filter, p)
+	if err != nil {
+		return nil, 0, apperror.WrapInternal(logger, err, "Failed to fetch templates")
+	}
+	return templates, total, nil
+}
+
+func (u *dashboardUsecase) GetTemplate(ctx context.Context, templateID string) (*entity.Template, error) {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetTemplate")
+	defer span.End()
+
+	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
+
+	tmpl, err := u.templateRepo.GetTemplate(ctx, templateID)
+	if err != nil {
+		return nil, apperror.WrapInternal(logger, err, "Failed to get template")
+	}
+	return tmpl, nil
+}
+
+func (u *dashboardUsecase) UpdateTemplate(ctx context.Context, templateID string, fields map[string]interface{}) error {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.UpdateTemplate")
+	defer span.End()
+
+	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
+
+	for key := range fields {
+		if !templateEditableFields[key] {
+			return apperror.BadRequest("Field '" + key + "' is not editable")
+		}
+	}
+
+	if err := u.templateRepo.UpdateFields(ctx, templateID, fields); err != nil {
+		return apperror.WrapInternal(logger, err, "Failed to update template")
+	}
+	return nil
 }

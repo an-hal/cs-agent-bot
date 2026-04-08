@@ -26,6 +26,8 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	dashboardH := dashboard.NewClientHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 	workspaceH := dashboard.NewWorkspaceHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 	activityH := dashboard.NewActivityHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
+	invoiceH := dashboard.NewInvoiceHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
+	templateH := dashboard.NewTemplateHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 
 	// Per-route auth wrappers
 	oidcAuth := middleware.OIDCAuthMiddleware(deps.Cfg.AppURL, deps.Cfg.SchedulerSAEmail, deps.Cfg.Env, deps.Logger)
@@ -62,6 +64,12 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	api.Handle(http.MethodGet, "/dashboard/workspaces/{workspace_id}/clients", jwtAuth(dashboardH.ListByWorkspaceID))
 	api.Handle(http.MethodGet, "/dashboard/activity-logs", jwtAuth(activityH.List))
 	api.Handle(http.MethodPost, "/dashboard/activity-logs", jwtAuth(activityH.Record))
+	api.Handle(http.MethodGet, "/dashboard/invoices", jwtAuth(invoiceH.List))
+	api.Handle(http.MethodGet, "/dashboard/invoices/{invoice_id}", jwtAuth(invoiceH.Get))
+	api.Handle(http.MethodPut, "/dashboard/invoices/{invoice_id}", jwtAuth(invoiceH.Update))
+	api.Handle(http.MethodGet, "/dashboard/message-templates", jwtAuth(templateH.List))
+	api.Handle(http.MethodGet, "/dashboard/message-templates/{template_id}", jwtAuth(templateH.Get))
+	api.Handle(http.MethodPut, "/dashboard/message-templates/{template_id}", jwtAuth(templateH.Update))
 
 	// Swagger
 	api.HandlePrefix(http.MethodGet, "/swagger/", httpSwagger.WrapHandler)

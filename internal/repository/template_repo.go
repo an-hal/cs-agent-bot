@@ -9,6 +9,7 @@ import (
 	sq "github.com/Masterminds/squirrel"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
 )
 
@@ -17,6 +18,8 @@ type TemplateRepository interface {
 	GetTemplate(ctx context.Context, templateID string) (*entity.Template, error)
 	GetTemplatesByCategory(ctx context.Context, category string) ([]entity.Template, error)
 	GetActiveTemplate(ctx context.Context, templateID string) (*entity.Template, error)
+	GetAllPaginated(ctx context.Context, filter entity.TemplateFilter, p pagination.Params) ([]entity.Template, int64, error)
+	UpdateFields(ctx context.Context, templateID string, fields map[string]interface{}) error
 }
 
 type templateRepo struct {
@@ -143,4 +146,96 @@ func (r *templateRepo) GetActiveTemplate(ctx context.Context, templateID string)
 	}
 
 	return &t, nil
+}
+
+// GetAllPaginated returns paginated templates with optional filters.
+func (r *templateRepo) GetAllPaginated(ctx context.Context, filter entity.TemplateFilter, p pagination.Params) ([]entity.Template, int64, error) {
+	ctx, span := r.tracer.Start(ctx, "template.repository.GetAllPaginated")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	where := sq.And{}
+	if filter.Category != "" {
+		where = append(where, sq.Eq{"template_category": filter.Category})
+	}
+	if filter.Language != "" {
+		where = append(where, sq.Eq{"language": filter.Language})
+	}
+	if filter.Active != nil {
+		where = append(where, sq.Eq{"active": *filter.Active})
+	}
+
+	// Count
+	countBuilder := database.PSQL.Select("COUNT(*)").From("templates")
+	if len(where) > 0 {
+		countBuilder = countBuilder.Where(where)
+	}
+	countQ, countArgs, err := countBuilder.ToSql()
+	if err != nil {
+		return nil, 0, fmt.Errorf("build count query: %w", err)
+	}
+	var total int64
+	if scanErr := r.DB.QueryRowContext(ctx, countQ, countArgs...).Scan(&total); scanErr != nil {
+		return nil, 0, fmt.Errorf("count templates: %w", scanErr)
+	}
+
+	// Data
+	dataBuilder := database.PSQL.
+		Select("template_id", "template_name", "template_content", "template_category", "language", "active", "created_at", "updated_at").
+		From("templates").
+		OrderBy("template_category, template_id").
+		Limit(uint64(p.Limit)).
+		Offset(uint64(p.Offset))
+	if len(where) > 0 {
+		dataBuilder = dataBuilder.Where(where)
+	}
+	dataQ, dataArgs, err := dataBuilder.ToSql()
+	if err != nil {
+		return nil, 0, fmt.Errorf("build data query: %w", err)
+	}
+
+	rows, err := r.DB.QueryContext(ctx, dataQ, dataArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("query templates: %w", err)
+	}
+	defer rows.Close()
+
+	var templates []entity.Template
+	for rows.Next() {
+		var t entity.Template
+		if err := rows.Scan(
+			&t.TemplateID, &t.TemplateName, &t.TemplateContent, &t.TemplateCategory, &t.Language, &t.Active, &t.CreatedAt, &t.UpdatedAt,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan template: %w", err)
+		}
+		templates = append(templates, t)
+	}
+	return templates, total, rows.Err()
+}
+
+// UpdateFields updates specific fields on a template.
+func (r *templateRepo) UpdateFields(ctx context.Context, templateID string, fields map[string]interface{}) error {
+	ctx, span := r.tracer.Start(ctx, "template.repository.UpdateFields")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	fields["updated_at"] = time.Now()
+
+	query, args, err := database.PSQL.
+		Update("templates").
+		SetMap(fields).
+		Where(sq.Eq{"template_id": templateID}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("build query: %w", err)
+	}
+
+	if _, err = r.DB.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("update template: %w", err)
+	}
+	return nil
 }

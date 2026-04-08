@@ -14,6 +14,13 @@ type Template struct {
 	UpdatedAt        time.Time `json:"updated_at" db:"updated_at"`
 }
 
+// TemplateFilter holds optional filters for listing templates.
+type TemplateFilter struct {
+	Category string
+	Language string
+	Active   *bool // nil = all, true/false = filter
+}
+
 // Template Category constants
 const (
 	TemplateCategoryRenewal    = "renewal"

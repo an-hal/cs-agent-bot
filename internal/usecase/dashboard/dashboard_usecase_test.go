@@ -92,13 +92,28 @@ func (m *mockClientRepo) GetAllByWorkspaceIDsPaginated(_ context.Context, _ []st
 type mockInvoiceRepo struct {
 	repository.InvoiceRepository
 
-	paginatedResult []entity.Invoice
-	paginatedTotal  int64
-	paginatedErr    error
+	paginatedResult     []entity.Invoice
+	paginatedTotal      int64
+	paginatedErr        error
+	getAllPaginated      []entity.Invoice
+	getAllPaginatedTotal int64
+	getAllPaginatedErr   error
+	getByIDResult       *entity.Invoice
+	getByIDErr          error
+	updateFieldsErr     error
 }
 
 func (m *mockInvoiceRepo) GetAllByCompanyIDPaginated(_ context.Context, _ string, _ pagination.Params) ([]entity.Invoice, int64, error) {
 	return m.paginatedResult, m.paginatedTotal, m.paginatedErr
+}
+func (m *mockInvoiceRepo) GetAllPaginated(_ context.Context, _ entity.InvoiceFilter, _ pagination.Params) ([]entity.Invoice, int64, error) {
+	return m.getAllPaginated, m.getAllPaginatedTotal, m.getAllPaginatedErr
+}
+func (m *mockInvoiceRepo) GetByID(_ context.Context, _ string) (*entity.Invoice, error) {
+	return m.getByIDResult, m.getByIDErr
+}
+func (m *mockInvoiceRepo) UpdateFields(_ context.Context, _ string, _ map[string]interface{}) error {
+	return m.updateFieldsErr
 }
 
 // mockEscalationRepo
@@ -136,14 +151,37 @@ func (m *mockLogRepo) GetActivities(_ context.Context, _ entity.ActivityFilter) 
 	return m.getActivitiesResult, m.getActivitiesTotal, m.getActivitiesErr
 }
 
+// mockTemplateRepo
+type mockTemplateRepo struct {
+	repository.TemplateRepository
+
+	getTemplateResult  *entity.Template
+	getTemplateErr     error
+	getAllPaginated     []entity.Template
+	getAllPaginatedTotal int64
+	getAllPaginatedErr  error
+	updateFieldsErr    error
+}
+
+func (m *mockTemplateRepo) GetTemplate(_ context.Context, _ string) (*entity.Template, error) {
+	return m.getTemplateResult, m.getTemplateErr
+}
+func (m *mockTemplateRepo) GetAllPaginated(_ context.Context, _ entity.TemplateFilter, _ pagination.Params) ([]entity.Template, int64, error) {
+	return m.getAllPaginated, m.getAllPaginatedTotal, m.getAllPaginatedErr
+}
+func (m *mockTemplateRepo) UpdateFields(_ context.Context, _ string, _ map[string]interface{}) error {
+	return m.updateFieldsErr
+}
+
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 type ucDeps struct {
-	wsRepo  *mockWorkspaceRepo
-	cRepo   *mockClientRepo
-	iRepo   *mockInvoiceRepo
-	eRepo   *mockEscalationRepo
-	logRepo *mockLogRepo
+	wsRepo   *mockWorkspaceRepo
+	cRepo    *mockClientRepo
+	iRepo    *mockInvoiceRepo
+	eRepo    *mockEscalationRepo
+	logRepo  *mockLogRepo
+	tRepo    *mockTemplateRepo
 }
 
 func newTestUC(deps ucDeps) dashboard.DashboardUsecase {
@@ -167,7 +205,11 @@ func newTestUC(deps ucDeps) dashboard.DashboardUsecase {
 	if l == nil {
 		l = &mockLogRepo{}
 	}
-	return dashboard.NewDashboardUsecase(ws, c, i, e, l, newNoopTracer(), zerolog.Nop())
+	tmpl := deps.tRepo
+	if tmpl == nil {
+		tmpl = &mockTemplateRepo{}
+	}
+	return dashboard.NewDashboardUsecase(ws, c, i, e, l, tmpl, newNoopTracer(), zerolog.Nop())
 }
 
 var defaultParams = pagination.Params{Offset: 0, Limit: 10}
