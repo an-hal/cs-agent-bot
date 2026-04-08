@@ -94,6 +94,16 @@ func RequireExactlyOne(params map[string]bool) error {
 	return nil
 }
 
+// GetStringLike gets a string value from key_like query parameter for ILIKE search.
+func GetStringLike(r *http.Request, key string) string {
+	return r.URL.Query().Get(key + "_like")
+}
+
+// GetString gets a raw string value from the query parameter (no suffix).
+func GetString(r *http.Request, key string) string {
+	return r.URL.Query().Get(key)
+}
+
 // RequireAtLeastOne validates that at least one of the provided params is true
 // Returns error if none are provided
 func RequireAtLeastOne(params map[string]bool) error {

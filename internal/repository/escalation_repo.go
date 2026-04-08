@@ -19,6 +19,7 @@ type EscalationRepository interface {
 	GetOpenByCompanyAndEscID(ctx context.Context, companyID, escID string) (*entity.Escalation, error)
 	GetByCompanyID(ctx context.Context, companyID string) ([]entity.Escalation, error)
 	GetByCompanyIDPaginated(ctx context.Context, companyID string, p pagination.Params) ([]entity.Escalation, int64, error)
+	GetAllPaginated(ctx context.Context, filter entity.EscalationFilter, p pagination.Params) ([]entity.Escalation, int64, error)
 	OpenEscalation(ctx context.Context, esc entity.Escalation) error
 }
 
@@ -232,4 +233,85 @@ func (r *escalationRepo) GetByCompanyID(ctx context.Context, companyID string) (
 		escalations = append(escalations, esc)
 	}
 	return escalations, rows.Err()
+}
+
+// GetAllPaginated returns paginated escalations with optional filters.
+func (r *escalationRepo) GetAllPaginated(ctx context.Context, filter entity.EscalationFilter, p pagination.Params) ([]entity.Escalation, int64, error) {
+	ctx, span := r.tracer.Start(ctx, "escalation.repository.GetAllPaginated")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	where := sq.And{}
+	if filter.WorkspaceID != "" {
+		where = append(where, sq.Eq{"workspace_id": filter.WorkspaceID})
+	}
+	if filter.CompanyID != "" {
+		where = append(where, sq.Eq{"company_id": filter.CompanyID})
+	}
+	if filter.Status != "" {
+		where = append(where, sq.Eq{"status": filter.Status})
+	}
+	if filter.Priority != "" {
+		where = append(where, sq.Eq{"priority": filter.Priority})
+	}
+	if filter.Search != "" {
+		pattern := "%" + filter.Search + "%"
+		where = append(where, sq.Or{
+			sq.ILike{"company_id": pattern},
+			sq.ILike{"trigger_condition": pattern},
+			sq.ILike{"esc_id": pattern},
+			sq.ILike{"notes": pattern},
+		})
+	}
+
+	// Count
+	countBuilder := database.PSQL.Select("COUNT(*)").From("escalations")
+	if len(where) > 0 {
+		countBuilder = countBuilder.Where(where)
+	}
+	countQ, countArgs, err := countBuilder.ToSql()
+	if err != nil {
+		return nil, 0, fmt.Errorf("build count query: %w", err)
+	}
+	var total int64
+	if scanErr := r.db.QueryRowContext(ctx, countQ, countArgs...).Scan(&total); scanErr != nil {
+		return nil, 0, fmt.Errorf("count escalations: %w", scanErr)
+	}
+
+	// Data
+	dataBuilder := database.PSQL.
+		Select(escalationColumns).
+		From("escalations").
+		OrderBy("triggered_at DESC").
+		Limit(uint64(p.Limit)).
+		Offset(uint64(p.Offset))
+	if len(where) > 0 {
+		dataBuilder = dataBuilder.Where(where)
+	}
+	dataQ, dataArgs, err := dataBuilder.ToSql()
+	if err != nil {
+		return nil, 0, fmt.Errorf("build data query: %w", err)
+	}
+
+	rows, err := r.db.QueryContext(ctx, dataQ, dataArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("query escalations: %w", err)
+	}
+	defer rows.Close()
+
+	var escalations []entity.Escalation
+	for rows.Next() {
+		var esc entity.Escalation
+		if err := rows.Scan(
+			&esc.EscalationID, &esc.EscID, &esc.CompanyID, &esc.Status, &esc.CreatedAt,
+			&esc.Priority, &esc.Reason, &esc.NotifiedParty, &esc.TelegramMessageSent,
+			&esc.ResolvedAt, &esc.ResolvedBy, &esc.EscNotes, &esc.WorkspaceID,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan escalation: %w", err)
+		}
+		escalations = append(escalations, esc)
+	}
+	return escalations, total, rows.Err()
 }

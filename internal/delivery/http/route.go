@@ -28,6 +28,7 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	activityH := dashboard.NewActivityHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 	invoiceH := dashboard.NewInvoiceHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 	templateH := dashboard.NewTemplateHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
+	escalationH := dashboard.NewEscalationHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 
 	// Per-route auth wrappers
 	oidcAuth := middleware.OIDCAuthMiddleware(deps.Cfg.AppURL, deps.Cfg.SchedulerSAEmail, deps.Cfg.Env, deps.Logger)
@@ -63,14 +64,15 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	api.Handle(http.MethodGet, "/clients/{company_id}/invoices", jwtAuth(dashboardH.GetInvoices))
 	api.Handle(http.MethodGet, "/clients/{company_id}/escalations", jwtAuth(dashboardH.GetEscalations))
 	api.Handle(http.MethodGet, "/data-master/clients", wsRequired(jwtAuth(dashboardH.ListByWorkspaceID)))
-	api.Handle(http.MethodGet, "/data-master/activity-logs", wsRequired(jwtAuth(activityH.List)))
-	api.Handle(http.MethodPost, "/data-master/activity-logs", wsRequired(jwtAuth(activityH.Record)))
 	api.Handle(http.MethodGet, "/data-master/invoices", wsRequired(jwtAuth(invoiceH.List)))
 	api.Handle(http.MethodGet, "/data-master/invoices/{invoice_id}", wsRequired(jwtAuth(invoiceH.Get)))
 	api.Handle(http.MethodPut, "/data-master/invoices/{invoice_id}", wsRequired(jwtAuth(invoiceH.Update)))
+	api.Handle(http.MethodGet, "/data-master/escalations", wsRequired(jwtAuth(escalationH.List)))
 	api.Handle(http.MethodGet, "/data-master/message-templates", wsRequired(jwtAuth(templateH.List)))
 	api.Handle(http.MethodGet, "/data-master/message-templates/{template_id}", wsRequired(jwtAuth(templateH.Get)))
 	api.Handle(http.MethodPut, "/data-master/message-templates/{template_id}", wsRequired(jwtAuth(templateH.Update)))
+	api.Handle(http.MethodGet, "/activity-logs", wsRequired(jwtAuth(activityH.List)))
+	api.Handle(http.MethodPost, "/activity-logs", wsRequired(jwtAuth(activityH.Record)))
 
 	// Swagger
 	r.HandlePrefix(http.MethodGet, "/swagger", httpSwagger.WrapHandler)

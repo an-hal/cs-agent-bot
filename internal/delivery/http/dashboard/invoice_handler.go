@@ -46,9 +46,11 @@ func (h *InvoiceHandler) List(w http.ResponseWriter, r *http.Request) error {
 	q := r.URL.Query()
 
 	filter := entity.InvoiceFilter{
-		WorkspaceID: ctxutil.GetWorkspaceID(ctx),
-		CompanyID:   q.Get("company_id"),
-		Status:      q.Get("status"),
+		WorkspaceID:     ctxutil.GetWorkspaceID(ctx),
+		CompanyID:       q.Get("company_id"),
+		Status:          q.Get("status"),
+		Search:          q.Get("search"),
+		CollectionStage: q.Get("collection_stage"),
 	}
 
 	logger.Info().Str("workspace_id", filter.WorkspaceID).Str("status", filter.Status).Msg("Incoming list invoices request")

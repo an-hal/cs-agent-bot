@@ -108,7 +108,7 @@ func (m *mockUsecase) GetClients(_ context.Context, _ string, _ pagination.Param
 	return m.getClientsResult, m.getClientsTotal, m.getClientsErr
 }
 
-func (m *mockUsecase) GetClientsByWorkspaceID(_ context.Context, _ string, _ pagination.Params) (*ucDashboard.ClientListResult, error) {
+func (m *mockUsecase) GetClientsByWorkspaceID(_ context.Context, _ string, _ entity.ClientFilter, _ pagination.Params) (*ucDashboard.ClientListResult, error) {
 	return m.getClientsByWSIDResult, m.getClientsByWSIDErr
 }
 
@@ -143,6 +143,10 @@ func (m *mockUsecase) RecordActivity(_ context.Context, entry entity.ActivityLog
 
 func (m *mockUsecase) GetActivityLogs(_ context.Context, _ entity.ActivityFilter) ([]entity.ActivityLog, int, error) {
 	return m.getLogsResult, m.getLogsTotal, m.getLogsErr
+}
+
+func (m *mockUsecase) GetEscalations(_ context.Context, _ entity.EscalationFilter, _ pagination.Params) ([]entity.Escalation, int64, error) {
+	return m.getEscalationsResult, m.getEscalationsTotal, m.getEscalationsErr
 }
 
 func (m *mockUsecase) GetInvoices(_ context.Context, _ entity.InvoiceFilter, _ pagination.Params) ([]entity.Invoice, int64, error) {

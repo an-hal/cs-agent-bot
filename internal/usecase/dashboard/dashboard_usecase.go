@@ -22,7 +22,7 @@ type DashboardUsecase interface {
 	GetWorkspaces(ctx context.Context) ([]entity.Workspace, error)
 	GetWorkspaceBySlug(ctx context.Context, slug string) (*entity.Workspace, error)
 	GetClients(ctx context.Context, workspaceSlug string, p pagination.Params) ([]entity.Client, int64, error)
-	GetClientsByWorkspaceID(ctx context.Context, workspaceID string, p pagination.Params) (*ClientListResult, error)
+	GetClientsByWorkspaceID(ctx context.Context, workspaceID string, filter entity.ClientFilter, p pagination.Params) (*ClientListResult, error)
 	GetClient(ctx context.Context, companyID string) (*entity.Client, error)
 	CreateClient(ctx context.Context, client entity.Client) error
 	UpdateClient(ctx context.Context, companyID string, fields map[string]interface{}) error
@@ -31,6 +31,9 @@ type DashboardUsecase interface {
 	GetClientEscalations(ctx context.Context, companyID string, p pagination.Params) ([]entity.Escalation, int64, error)
 	RecordActivity(ctx context.Context, entry entity.ActivityLog) error
 	GetActivityLogs(ctx context.Context, filter entity.ActivityFilter) ([]entity.ActivityLog, int, error)
+
+	// Escalations (standalone)
+	GetEscalations(ctx context.Context, filter entity.EscalationFilter, p pagination.Params) ([]entity.Escalation, int64, error)
 
 	// Invoices (standalone)
 	GetInvoices(ctx context.Context, filter entity.InvoiceFilter, p pagination.Params) ([]entity.Invoice, int64, error)
@@ -133,19 +136,19 @@ func (u *dashboardUsecase) GetClients(ctx context.Context, workspaceSlug string,
 	return clients, total, nil
 }
 
-func (u *dashboardUsecase) GetClientsByWorkspaceID(ctx context.Context, workspaceID string, p pagination.Params) (*ClientListResult, error) {
+func (u *dashboardUsecase) GetClientsByWorkspaceID(ctx context.Context, workspaceID string, filter entity.ClientFilter, p pagination.Params) (*ClientListResult, error) {
 	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetClientsByWorkspaceID")
 	defer span.End()
 
 	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
 	logger.Info().Str("workspace_id", workspaceID).Int("offset", p.Offset).Int("limit", p.Limit).Msg("Fetching clients by workspace ID")
 
-	total, err := u.clientRepo.CountByWorkspaceID(ctx, workspaceID)
+	total, err := u.clientRepo.CountByWorkspaceID(ctx, workspaceID, filter)
 	if err != nil {
 		return nil, apperror.WrapInternal(logger, err, "Failed to count clients")
 	}
 
-	clients, err := u.clientRepo.FetchByWorkspaceID(ctx, workspaceID, p)
+	clients, err := u.clientRepo.FetchByWorkspaceID(ctx, workspaceID, filter, p)
 	if err != nil {
 		return nil, apperror.WrapInternal(logger, err, "Failed to fetch clients")
 	}
@@ -266,6 +269,21 @@ func (u *dashboardUsecase) GetActivityLogs(ctx context.Context, filter entity.Ac
 		return nil, 0, apperror.WrapInternal(logger, err, "Failed to fetch activity logs")
 	}
 	return logs, total, nil
+}
+
+// ─── Escalations (standalone) ────────────────────────────────────────────────
+
+func (u *dashboardUsecase) GetEscalations(ctx context.Context, filter entity.EscalationFilter, p pagination.Params) ([]entity.Escalation, int64, error) {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetEscalations")
+	defer span.End()
+
+	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
+
+	escalations, total, err := u.escalationRepo.GetAllPaginated(ctx, filter, p)
+	if err != nil {
+		return nil, 0, apperror.WrapInternal(logger, err, "Failed to fetch escalations")
+	}
+	return escalations, total, nil
 }
 
 // ─── Invoices (standalone) ───────────────────────────────────────────────────

@@ -3,6 +3,7 @@ package dashboard
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/middleware"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/router"
@@ -87,10 +88,26 @@ func (h *ClientHandler) ListByWorkspaceID(w http.ResponseWriter, r *http.Request
 	workspaceID := ctxutil.GetWorkspaceID(ctx)
 
 	params := pagination.FromRequest(r)
+	q := r.URL.Query()
 
-	logger.Info().Str("workspace_id", workspaceID).Int("offset", params.Offset).Int("limit", params.Limit).Msg("Incoming list clients by workspace ID request")
+	filter := entity.ClientFilter{
+		WorkspaceID:   workspaceID,
+		Search:        q.Get("search"),
+		Segment:       q.Get("segment"),
+		PaymentStatus: q.Get("payment_status"),
+		SequenceCS:    q.Get("sequence_cs"),
+		PlanType:      q.Get("plan_type"),
+	}
+	if activeStr := q.Get("bot_active"); activeStr != "" {
+		v, err := strconv.ParseBool(activeStr)
+		if err == nil {
+			filter.BotActive = &v
+		}
+	}
 
-	result, err := h.uc.GetClientsByWorkspaceID(ctx, workspaceID, params)
+	logger.Info().Str("workspace_id", workspaceID).Str("search", filter.Search).Int("offset", params.Offset).Int("limit", params.Limit).Msg("Incoming list clients by workspace ID request")
+
+	result, err := h.uc.GetClientsByWorkspaceID(ctx, workspaceID, filter, params)
 	if err != nil {
 		return err
 	}

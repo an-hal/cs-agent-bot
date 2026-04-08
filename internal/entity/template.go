@@ -18,7 +18,8 @@ type Template struct {
 type TemplateFilter struct {
 	Category string
 	Language string
-	Active   *bool // nil = all, true/false = filter
+	Active   *bool  // nil = all, true/false = filter
+	Search   string // ILIKE across template_name, template_content, template_id
 }
 
 // Template Category constants

@@ -30,8 +30,8 @@ type ClientRepository interface {
 	GetAllByWorkspaceIDs(ctx context.Context, workspaceIDs []string) ([]entity.Client, error)
 	GetAllByWorkspacePaginated(ctx context.Context, workspaceSlug string, p pagination.Params) ([]entity.Client, int64, error)
 	GetAllByWorkspaceIDsPaginated(ctx context.Context, workspaceIDs []string, p pagination.Params) ([]entity.Client, int64, error)
-	CountByWorkspaceID(ctx context.Context, workspaceID string) (int64, error)
-	FetchByWorkspaceID(ctx context.Context, workspaceID string, p pagination.Params) ([]entity.Client, error)
+	CountByWorkspaceID(ctx context.Context, workspaceID string, filter entity.ClientFilter) (int64, error)
+	FetchByWorkspaceID(ctx context.Context, workspaceID string, filter entity.ClientFilter, p pagination.Params) ([]entity.Client, error)
 	UpdateClientFields(ctx context.Context, companyID string, fields map[string]interface{}) error
 }
 
@@ -673,20 +673,19 @@ func (r *clientRepo) GetAllByWorkspaceIDsPaginated(ctx context.Context, workspac
 }
 
 // CountByWorkspaceID returns the total number of non-blacklisted clients for a workspace ID.
-func (r *clientRepo) CountByWorkspaceID(ctx context.Context, workspaceID string) (int64, error) {
+func (r *clientRepo) CountByWorkspaceID(ctx context.Context, workspaceID string, filter entity.ClientFilter) (int64, error) {
 	ctx, span := r.tracer.Start(ctx, "client.repository.CountByWorkspaceID")
 	defer span.End()
 
 	ctx, cancel := r.withTimeout(ctx)
 	defer cancel()
 
+	where := buildClientFilter(workspaceID, filter)
+
 	query, args, err := database.PSQL.
 		Select("COUNT(*)").
 		From("clients").
-		Where(sq.And{
-			sq.Eq{"blacklisted": false},
-			sq.Eq{"workspace_id": workspaceID},
-		}).
+		Where(where).
 		ToSql()
 	if err != nil {
 		return 0, fmt.Errorf("build count query CountByWorkspaceID: %w", err)
@@ -699,20 +698,29 @@ func (r *clientRepo) CountByWorkspaceID(ctx context.Context, workspaceID string)
 	return count, nil
 }
 
-// FetchByWorkspaceID returns paginated non-blacklisted clients for a workspace ID.
-func (r *clientRepo) FetchByWorkspaceID(ctx context.Context, workspaceID string, p pagination.Params) ([]entity.Client, error) {
+// FetchByWorkspaceID returns paginated non-blacklisted clients for a workspace ID with filters.
+func (r *clientRepo) FetchByWorkspaceID(ctx context.Context, workspaceID string, filter entity.ClientFilter, p pagination.Params) ([]entity.Client, error) {
 	ctx, span := r.tracer.Start(ctx, "client.repository.FetchByWorkspaceID")
 	defer span.End()
 
 	ctx, cancel := r.withTimeout(ctx)
 	defer cancel()
 
-	query := fmt.Sprintf(
-		"SELECT %s FROM clients c WHERE c.blacklisted = false AND c.workspace_id = $1 ORDER BY c.company_id LIMIT $2 OFFSET $3",
-		clientColumns,
-	)
+	where := buildClientFilter(workspaceID, filter)
 
-	rows, err := r.db.QueryContext(ctx, query, workspaceID, p.Limit, p.Offset)
+	query, args, err := database.PSQL.
+		Select(clientColumns).
+		From("clients").
+		Where(where).
+		OrderBy("company_id").
+		Limit(uint64(p.Limit)).
+		Offset(uint64(p.Offset)).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build query FetchByWorkspaceID: %w", err)
+	}
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query FetchByWorkspaceID: %w", err)
 	}
@@ -730,6 +738,41 @@ func (r *clientRepo) FetchByWorkspaceID(ctx context.Context, workspaceID string,
 		return nil, fmt.Errorf("iterate client rows: %w", err)
 	}
 	return clients, nil
+}
+
+// buildClientFilter constructs a sq.And condition for client queries with workspace and optional filters.
+func buildClientFilter(workspaceID string, filter entity.ClientFilter) sq.And {
+	where := sq.And{
+		sq.Eq{"blacklisted": false},
+		sq.Eq{"workspace_id": workspaceID},
+	}
+	if filter.Search != "" {
+		pattern := "%" + filter.Search + "%"
+		where = append(where, sq.Or{
+			sq.ILike{"company_name": pattern},
+			sq.ILike{"pic_name": pattern},
+			sq.ILike{"pic_wa": pattern},
+			sq.ILike{"pic_email": pattern},
+			sq.ILike{"owner_name": pattern},
+			sq.ILike{"company_id": pattern},
+		})
+	}
+	if filter.Segment != "" {
+		where = append(where, sq.Eq{"segment": filter.Segment})
+	}
+	if filter.PaymentStatus != "" {
+		where = append(where, sq.Eq{"payment_status": filter.PaymentStatus})
+	}
+	if filter.SequenceCS != "" {
+		where = append(where, sq.Eq{"sequence_cs": filter.SequenceCS})
+	}
+	if filter.PlanType != "" {
+		where = append(where, sq.Eq{"plan_type": filter.PlanType})
+	}
+	if filter.BotActive != nil {
+		where = append(where, sq.Eq{"bot_active": *filter.BotActive})
+	}
+	return where
 }
 
 // validUpdateColumns lists columns that are safe to update via the dashboard API.

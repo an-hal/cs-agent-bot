@@ -204,6 +204,18 @@ func (r *invoiceRepo) GetAllPaginated(ctx context.Context, filter entity.Invoice
 	if filter.Status != "" {
 		where = append(where, sq.Eq{"payment_status": filter.Status})
 	}
+	if filter.CollectionStage != "" {
+		where = append(where, sq.Eq{"collection_stage": filter.CollectionStage})
+	}
+	if filter.Search != "" {
+		pattern := "%" + filter.Search + "%"
+		where = append(where, sq.Or{
+			sq.ILike{"invoice_id": pattern},
+			sq.ILike{"company_id": pattern},
+			sq.ILike{"notes": pattern},
+			sq.ILike{"collection_stage": pattern},
+		})
+	}
 
 	// Count
 	countBuilder := database.PSQL.Select("COUNT(*)").From("invoices")

@@ -72,10 +72,10 @@ func (m *mockClientRepo) GetByID(_ context.Context, _ string) (*entity.Client, e
 func (m *mockClientRepo) CreateClient(_ context.Context, _ entity.Client) error {
 	return m.createErr
 }
-func (m *mockClientRepo) CountByWorkspaceID(_ context.Context, _ string) (int64, error) {
+func (m *mockClientRepo) CountByWorkspaceID(_ context.Context, _ string, _ entity.ClientFilter) (int64, error) {
 	return m.countByWSIDResult, m.countByWSIDErr
 }
-func (m *mockClientRepo) FetchByWorkspaceID(_ context.Context, _ string, _ pagination.Params) ([]entity.Client, error) {
+func (m *mockClientRepo) FetchByWorkspaceID(_ context.Context, _ string, _ entity.ClientFilter, _ pagination.Params) ([]entity.Client, error) {
 	return m.fetchByWSIDResult, m.fetchByWSIDErr
 }
 func (m *mockClientRepo) UpdateClientFields(_ context.Context, _ string, _ map[string]interface{}) error {
@@ -126,6 +126,9 @@ type mockEscalationRepo struct {
 }
 
 func (m *mockEscalationRepo) GetByCompanyIDPaginated(_ context.Context, _ string, _ pagination.Params) ([]entity.Escalation, int64, error) {
+	return m.paginatedResult, m.paginatedTotal, m.paginatedErr
+}
+func (m *mockEscalationRepo) GetAllPaginated(_ context.Context, _ entity.EscalationFilter, _ pagination.Params) ([]entity.Escalation, int64, error) {
 	return m.paginatedResult, m.paginatedTotal, m.paginatedErr
 }
 
@@ -288,7 +291,7 @@ func TestGetClientsByWorkspaceID_Success(t *testing.T) {
 	}
 	uc := newTestUC(ucDeps{cRepo: c})
 
-	result, err := uc.GetClientsByWorkspaceID(context.Background(), "ws-1", defaultParams)
+	result, err := uc.GetClientsByWorkspaceID(context.Background(), "ws-1", entity.ClientFilter{}, defaultParams)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -304,7 +307,7 @@ func TestGetClientsByWorkspaceID_CountError(t *testing.T) {
 	c := &mockClientRepo{countByWSIDErr: errors.New("count fail")}
 	uc := newTestUC(ucDeps{cRepo: c})
 
-	_, err := uc.GetClientsByWorkspaceID(context.Background(), "ws-1", defaultParams)
+	_, err := uc.GetClientsByWorkspaceID(context.Background(), "ws-1", entity.ClientFilter{}, defaultParams)
 	if err == nil {
 		t.Error("expected error")
 	}
@@ -314,7 +317,7 @@ func TestGetClientsByWorkspaceID_FetchError(t *testing.T) {
 	c := &mockClientRepo{countByWSIDResult: 5, fetchByWSIDErr: errors.New("fetch fail")}
 	uc := newTestUC(ucDeps{cRepo: c})
 
-	_, err := uc.GetClientsByWorkspaceID(context.Background(), "ws-1", defaultParams)
+	_, err := uc.GetClientsByWorkspaceID(context.Background(), "ws-1", entity.ClientFilter{}, defaultParams)
 	if err == nil {
 		t.Error("expected error")
 	}

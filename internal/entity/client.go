@@ -69,6 +69,17 @@ type Client struct {
 	WorkspaceID           string     `json:"workspace_id"`
 }
 
+// ClientFilter holds optional filters for listing clients.
+type ClientFilter struct {
+	WorkspaceID   string
+	Search        string // ILIKE across company_name, pic_name, pic_wa, pic_email, owner_name
+	Segment       string // exact match
+	PaymentStatus string // exact match
+	SequenceCS    string // exact match
+	PlanType      string // exact match
+	BotActive     *bool  // nil = all, true/false = filter
+}
+
 const (
 	SegmentHigh = "High"
 	SegmentMid  = "Mid"

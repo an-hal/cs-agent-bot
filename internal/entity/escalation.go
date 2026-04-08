@@ -18,6 +18,15 @@ type Escalation struct {
 	WorkspaceID         string     `json:"workspace_id"`
 }
 
+// EscalationFilter holds optional filters for listing escalations.
+type EscalationFilter struct {
+	WorkspaceID string
+	CompanyID   string
+	Search      string // ILIKE across company_id, reason, esc_id, notes
+	Status      string // exact match
+	Priority    string // exact match
+}
+
 const (
 	EscalationStatusOpen     = "Open"
 	EscalationStatusResolved = "Resolved"

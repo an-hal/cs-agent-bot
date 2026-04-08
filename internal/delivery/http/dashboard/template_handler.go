@@ -49,6 +49,7 @@ func (h *TemplateHandler) List(w http.ResponseWriter, r *http.Request) error {
 	filter := entity.TemplateFilter{
 		Category: q.Get("category"),
 		Language: q.Get("language"),
+		Search:   q.Get("search"),
 	}
 	if activeStr := q.Get("active"); activeStr != "" {
 		v, err := strconv.ParseBool(activeStr)

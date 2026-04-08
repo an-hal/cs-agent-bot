@@ -166,6 +166,14 @@ func (r *templateRepo) GetAllPaginated(ctx context.Context, filter entity.Templa
 	if filter.Active != nil {
 		where = append(where, sq.Eq{"active": *filter.Active})
 	}
+	if filter.Search != "" {
+		pattern := "%" + filter.Search + "%"
+		where = append(where, sq.Or{
+			sq.ILike{"template_id": pattern},
+			sq.ILike{"template_name": pattern},
+			sq.ILike{"template_content": pattern},
+		})
+	}
 
 	// Count
 	countBuilder := database.PSQL.Select("COUNT(*)").From("templates")

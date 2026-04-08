@@ -24,9 +24,11 @@ type Invoice struct {
 
 // InvoiceFilter holds optional filters for listing invoices.
 type InvoiceFilter struct {
-	WorkspaceID string
-	CompanyID   string
-	Status      string // payment_status filter
+	WorkspaceID     string
+	CompanyID       string
+	Status          string // payment_status exact match
+	Search          string // ILIKE across invoice_id, company_id, notes, collection_stage
+	CollectionStage string // exact match
 }
 
 // DaysPastDue returns how many days past the due date. Negative means not yet due.
