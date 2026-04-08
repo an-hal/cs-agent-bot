@@ -11,6 +11,7 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/apperror"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/ctxutil"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
+
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 	"github.com/rs/zerolog"
@@ -69,24 +70,21 @@ func (h *ClientHandler) List(w http.ResponseWriter, r *http.Request) error {
 
 // ListByWorkspaceID godoc
 // @Summary      List clients by workspace ID
-// @Description  Returns paginated clients for a given workspace ID.
+// @Description  Returns paginated clients for the workspace specified in the X-Workspace-ID header.
 // @Tags         Dashboard
-// @Param        workspace_id  path      string  true   "Workspace ID"
-// @Param        offset        query     int     false  "Pagination offset (default 0)"
-// @Param        limit         query     int     false  "Limit per page (default 10, max 100)"
+// @Param        X-Workspace-ID  header    string  true   "Workspace ID"
+// @Param        offset          query     int     false  "Pagination offset (default 0)"
+// @Param        limit           query     int     false  "Limit per page (default 10, max 100)"
 // @Success      200  {object}  response.StandardResponseWithMeta{data=[]entity.Client}
 // @Failure      400  {object}  response.StandardResponse
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/workspaces/{workspace_id}/clients [get]
+// @Router       /api/dashboard/data-master/clients [get]
 func (h *ClientHandler) ListByWorkspaceID(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ClientListByWorkspaceID")
 	defer span.End()
 
 	logger := ctxutil.LoggerWithRequestID(ctx, h.logger)
-	workspaceID := router.GetParam(r, "workspace_id")
-	if workspaceID == "" {
-		return apperror.BadRequest("workspace_id is required")
-	}
+	workspaceID := ctxutil.GetWorkspaceID(ctx)
 
 	params := pagination.FromRequest(r)
 

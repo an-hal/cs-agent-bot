@@ -27,16 +27,16 @@ func NewInvoiceHandler(uc dashboard.DashboardUsecase, logger zerolog.Logger, tr 
 
 // List godoc
 // @Summary      List invoices
-// @Description  Returns paginated invoices with optional filters.
+// @Description  Returns paginated invoices for the workspace specified in the X-Workspace-ID header.
 // @Tags         Dashboard
-// @Param        workspace_id  query     string  false  "Filter by workspace ID"
-// @Param        company_id    query     string  false  "Filter by company ID"
-// @Param        status        query     string  false  "Filter by payment status"
-// @Param        offset        query     int     false  "Pagination offset (default 0)"
-// @Param        limit         query     int     false  "Limit per page (default 10, max 100)"
+// @Param        X-Workspace-ID  header    string  true   "Workspace ID"
+// @Param        company_id      query     string  false  "Filter by company ID"
+// @Param        status          query     string  false  "Filter by payment status"
+// @Param        offset          query     int     false  "Pagination offset (default 0)"
+// @Param        limit           query     int     false  "Limit per page (default 10, max 100)"
 // @Success      200  {object}  response.StandardResponseWithMeta{data=[]entity.Invoice}
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/invoices [get]
+// @Router       /api/dashboard/data-master/invoices [get]
 func (h *InvoiceHandler) List(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.InvoiceList")
 	defer span.End()
@@ -46,7 +46,7 @@ func (h *InvoiceHandler) List(w http.ResponseWriter, r *http.Request) error {
 	q := r.URL.Query()
 
 	filter := entity.InvoiceFilter{
-		WorkspaceID: q.Get("workspace_id"),
+		WorkspaceID: ctxutil.GetWorkspaceID(ctx),
 		CompanyID:   q.Get("company_id"),
 		Status:      q.Get("status"),
 	}

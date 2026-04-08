@@ -14,10 +14,15 @@ const (
 	RequestIDKey contextKey = "request_id"
 	// TraceIDKey is the context key for trace ID
 	TraceIDKey contextKey = "trace_id"
+	// WorkspaceIDKey is the context key for workspace ID
+	WorkspaceIDKey contextKey = "workspace_id"
 )
 
 // RequestIDHeader is the HTTP header name for request ID
 const RequestIDHeader = "X-Request-ID"
+
+// WorkspaceIDHeader is the HTTP header name for workspace ID
+const WorkspaceIDHeader = "X-Workspace-ID"
 
 // GetRequestID extracts the request ID from context.
 // Returns empty string if not found.
@@ -51,6 +56,23 @@ func GetTraceID(ctx context.Context) string {
 // SetTraceID stores the trace ID in context.
 func SetTraceID(ctx context.Context, traceID string) context.Context {
 	return context.WithValue(ctx, TraceIDKey, traceID)
+}
+
+// GetWorkspaceID extracts the workspace ID from context.
+// Returns empty string if not found.
+func GetWorkspaceID(ctx context.Context) string {
+	if ctx == nil {
+		return ""
+	}
+	if wsID, ok := ctx.Value(WorkspaceIDKey).(string); ok {
+		return wsID
+	}
+	return ""
+}
+
+// SetWorkspaceID stores the workspace ID in context.
+func SetWorkspaceID(ctx context.Context, workspaceID string) context.Context {
+	return context.WithValue(ctx, WorkspaceIDKey, workspaceID)
 }
 
 // LoggerWithRequestID returns a new logger with the request ID field added.

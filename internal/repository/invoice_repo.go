@@ -56,7 +56,7 @@ func (r *invoiceRepo) GetActiveByCompanyID(ctx context.Context, companyID string
 	defer cancel()
 
 	query, args, err := database.PSQL.
-		Select("invoice_id", "company_id", "issue_date", "due_date", "amount", "payment_status", "paid_at", "amount_paid", "reminder_count", "collection_stage", "created_at", "COALESCE(notes, '') as notes", "COALESCE(link_invoice, '') as link_invoice", "last_reminder_date", "COALESCE(workspace_id::text, '') as workspace_id").
+		Select("invoice_id", "company_id", "issue_date", "due_date", "amount", "payment_status", "paid_at", "COALESCE(amount_paid, 0)", "reminder_count", "collection_stage", "created_at", "COALESCE(notes, '') as notes", "COALESCE(link_invoice, '') as link_invoice", "last_reminder_date", "COALESCE(workspace_id::text, '') as workspace_id").
 		From("invoices").
 		Where(sq.And{
 			sq.Eq{"company_id": companyID},
@@ -154,7 +154,7 @@ func (r *invoiceRepo) GetAllByCompanyIDPaginated(ctx context.Context, companyID 
 
 	// Data
 	dataQ, dataArgs, err := database.PSQL.
-		Select("invoice_id", "company_id", "issue_date", "due_date", "amount", "payment_status", "paid_at", "amount_paid", "reminder_count", "collection_stage", "created_at", "COALESCE(notes, '') as notes", "COALESCE(link_invoice, '') as link_invoice", "last_reminder_date", "COALESCE(workspace_id::text, '') as workspace_id").
+		Select("invoice_id", "company_id", "issue_date", "due_date", "amount", "payment_status", "paid_at", "COALESCE(amount_paid, 0)", "reminder_count", "collection_stage", "created_at", "COALESCE(notes, '') as notes", "COALESCE(link_invoice, '') as link_invoice", "last_reminder_date", "COALESCE(workspace_id::text, '') as workspace_id").
 		From("invoices").
 		Where(sq.Eq{"company_id": companyID}).
 		OrderBy("created_at DESC").
@@ -221,7 +221,7 @@ func (r *invoiceRepo) GetAllPaginated(ctx context.Context, filter entity.Invoice
 
 	// Data
 	dataBuilder := database.PSQL.
-		Select("invoice_id", "company_id", "issue_date", "due_date", "amount", "payment_status", "paid_at", "amount_paid", "reminder_count", "collection_stage", "created_at", "COALESCE(notes, '') as notes", "COALESCE(link_invoice, '') as link_invoice", "last_reminder_date", "COALESCE(workspace_id::text, '') as workspace_id").
+		Select("invoice_id", "company_id", "issue_date", "due_date", "amount", "payment_status", "paid_at", "COALESCE(amount_paid, 0)", "reminder_count", "collection_stage", "created_at", "COALESCE(notes, '') as notes", "COALESCE(link_invoice, '') as link_invoice", "last_reminder_date", "COALESCE(workspace_id::text, '') as workspace_id").
 		From("invoices").
 		OrderBy("created_at DESC").
 		Limit(uint64(p.Limit)).
@@ -264,7 +264,7 @@ func (r *invoiceRepo) GetByID(ctx context.Context, invoiceID string) (*entity.In
 	defer cancel()
 
 	query, args, err := database.PSQL.
-		Select("invoice_id", "company_id", "issue_date", "due_date", "amount", "payment_status", "paid_at", "amount_paid", "reminder_count", "collection_stage", "created_at", "COALESCE(notes, '') as notes", "COALESCE(link_invoice, '') as link_invoice", "last_reminder_date", "COALESCE(workspace_id::text, '') as workspace_id").
+		Select("invoice_id", "company_id", "issue_date", "due_date", "amount", "payment_status", "paid_at", "COALESCE(amount_paid, 0)", "reminder_count", "collection_stage", "created_at", "COALESCE(notes, '') as notes", "COALESCE(link_invoice, '') as link_invoice", "last_reminder_date", "COALESCE(workspace_id::text, '') as workspace_id").
 		From("invoices").
 		Where(sq.Eq{"invoice_id": invoiceID}).
 		ToSql()
@@ -319,7 +319,7 @@ func (r *invoiceRepo) GetAllByCompanyID(ctx context.Context, companyID string) (
 	defer cancel()
 
 	query, args, err := database.PSQL.
-		Select("invoice_id", "company_id", "issue_date", "due_date", "amount", "payment_status", "paid_at", "amount_paid", "reminder_count", "collection_stage", "created_at", "COALESCE(notes, '') as notes", "COALESCE(link_invoice, '') as link_invoice", "last_reminder_date", "COALESCE(workspace_id::text, '') as workspace_id").
+		Select("invoice_id", "company_id", "issue_date", "due_date", "amount", "payment_status", "paid_at", "COALESCE(amount_paid, 0)", "reminder_count", "collection_stage", "created_at", "COALESCE(notes, '') as notes", "COALESCE(link_invoice, '') as link_invoice", "last_reminder_date", "COALESCE(workspace_id::text, '') as workspace_id").
 		From("invoices").
 		Where(sq.Eq{"company_id": companyID}).
 		OrderBy("created_at DESC").
