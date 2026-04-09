@@ -22,20 +22,23 @@ func NewCronHandler(cronRunner usecaseCron.CronRunner, logger zerolog.Logger) *C
 
 // Run godoc
 // @Summary      Trigger Cron Job
-// @Description  Manually triggers the bot's cron job to process all clients and send scheduled WhatsApp messages. Requires GCP Cloud Scheduler OIDC token authentication.
+// @Description  Triggers the bot's cron job. Creates one background job per workspace and returns immediately. Requires GCP Cloud Scheduler OIDC token authentication.
 // @Tags         cron
 // @Security     BearerAuth
-// @Success      200  {object}  response.StandardResponse  "Cron run completed successfully"
+// @Produce      json
+// @Success      202  {object}  response.StandardResponse  "Cron jobs accepted - processing in background"
 // @Failure      401  {object}  response.StandardResponse  "Unauthorized - invalid or missing OIDC token"
-// @Failure      500  {object}  response.StandardResponse  "Internal server error - cron run failed"
+// @Failure      500  {object}  response.StandardResponse  "Internal server error - failed to start cron run"
 // @Router       /cron/run [get]
 func (h *CronHandler) Run(w http.ResponseWriter, r *http.Request) error {
 	h.logger.Info().Msg("Cron run triggered")
 
-	if err := h.cronRunner.RunAll(r.Context()); err != nil {
-		h.logger.Error().Err(err).Msg("Cron run failed")
-		return response.StandardError(w, r, http.StatusInternalServerError, "Cron run failed", "INTERNAL_ERROR", nil, "")
+	jobs, err := h.cronRunner.StartRunAll(r.Context())
+	if err != nil {
+		h.logger.Error().Err(err).Msg("Failed to start cron run")
+		return response.StandardError(w, r, http.StatusInternalServerError, "Failed to start cron run", "INTERNAL_ERROR", nil, "")
 	}
 
-	return response.StandardSuccess(w, r, http.StatusOK, "Cron run completed", nil)
+	h.logger.Info().Int("total_jobs", len(jobs)).Msg("Cron jobs dispatched")
+	return response.StandardSuccess(w, r, http.StatusAccepted, "Cron run accepted", jobs)
 }

@@ -5,7 +5,7 @@ import "time"
 // BackgroundJob represents an async task (import, export, etc.) tracked in the background_jobs table.
 type BackgroundJob struct {
 	ID          string         `json:"job_id"`
-	WorkspaceID string         `json:"workspace_id,omitempty"`
+	WorkspaceID string         `json:"workspace_id"`
 	JobType     string         `json:"job_type"`
 	Status      string         `json:"status"`
 	EntityType  string         `json:"entity_type"`
@@ -33,11 +33,13 @@ type JobRowError struct {
 const (
 	JobTypeImport = "import"
 	JobTypeExport = "export"
+	JobTypeCron   = "cron"
 
 	JobStatusPending    = "pending"
 	JobStatusProcessing = "processing"
 	JobStatusDone       = "done"
 	JobStatusFailed     = "failed"
 
-	JobEntityClient = "client"
+	JobEntityClient  = "client"
+	JobEntityCronRun = "cron_run"
 )

@@ -163,6 +163,8 @@ func main() {
 		convStateRepo,
 		invoiceRepo,
 		logRepo,
+		bgJobRepo,
+		workspaceRepo,
 		triggerService,
 		logger,
 	)
