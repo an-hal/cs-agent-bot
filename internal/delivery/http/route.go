@@ -66,6 +66,8 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 
 	dataMaster := api.Group("/data-master")
 	dataMaster.Handle(http.MethodGet, "/clients", wsRequired(jwtAuth(dashboardH.List)))
+	dataMaster.Handle(http.MethodPost, "/clients/import", wsRequired(jwtAuth(bgJobH.ImportClients)))
+	dataMaster.Handle(http.MethodPost, "/clients/export", wsRequired(jwtAuth(bgJobH.ExportClients)))
 	dataMaster.Handle(http.MethodGet, "/clients/{company_id}", wsRequired(jwtAuth(dashboardH.Get)))
 	dataMaster.Handle(http.MethodPost, "/clients", wsRequired(jwtAuth(dashboardH.Create)))
 	dataMaster.Handle(http.MethodPut, "/clients/{company_id}", wsRequired(jwtAuth(dashboardH.Update)))
@@ -77,8 +79,6 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	dataMaster.Handle(http.MethodGet, "/message-templates", wsRequired(jwtAuth(templateH.List)))
 	dataMaster.Handle(http.MethodGet, "/message-templates/{template_id}", wsRequired(jwtAuth(templateH.Get)))
 	dataMaster.Handle(http.MethodPut, "/message-templates/{template_id}", wsRequired(jwtAuth(templateH.Update)))
-	dataMaster.Handle(http.MethodPost, "/clients/import", wsRequired(jwtAuth(bgJobH.ImportClients)))
-	dataMaster.Handle(http.MethodPost, "/clients/export", wsRequired(jwtAuth(bgJobH.ExportClients)))
 	dataMaster.Handle(http.MethodGet, "/trigger-rules", jwtAuth(triggerRuleH.List))
 	dataMaster.Handle(http.MethodGet, "/trigger-rules/{rule_id}", jwtAuth(triggerRuleH.Get))
 	dataMaster.Handle(http.MethodPost, "/trigger-rules", jwtAuth(triggerRuleH.Create))
