@@ -45,15 +45,16 @@ func (h *InvoiceHandler) List(w http.ResponseWriter, r *http.Request) error {
 	params := pagination.FromRequest(r)
 	q := r.URL.Query()
 
+	wsID := ctxutil.GetWorkspaceID(ctx)
 	filter := entity.InvoiceFilter{
-		WorkspaceID:     ctxutil.GetWorkspaceID(ctx),
+		WorkspaceIDs:    []string{wsID},
 		CompanyID:       q.Get("company_id"),
 		Status:          q.Get("status"),
 		Search:          q.Get("search"),
 		CollectionStage: q.Get("collection_stage"),
 	}
 
-	logger.Info().Str("workspace_id", filter.WorkspaceID).Str("status", filter.Status).Msg("Incoming list invoices request")
+	logger.Info().Str("workspace_id", wsID).Str("status", filter.Status).Msg("Incoming list invoices request")
 
 	invoices, total, err := h.uc.GetInvoices(ctx, filter, params)
 	if err != nil {

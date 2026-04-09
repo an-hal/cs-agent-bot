@@ -20,11 +20,11 @@ type Escalation struct {
 
 // EscalationFilter holds optional filters for listing escalations.
 type EscalationFilter struct {
-	WorkspaceID string
-	CompanyID   string
-	Search      string // ILIKE across company_id, reason, esc_id, notes
-	Status      string // exact match
-	Priority    string // exact match
+	WorkspaceIDs []string // one or more workspace UUIDs (holding workspaces expand to member IDs)
+	CompanyID    string
+	Search       string // ILIKE across company_id, reason, esc_id, notes
+	Status       string // exact match
+	Priority     string // exact match
 }
 
 const (

@@ -71,13 +71,13 @@ type Client struct {
 
 // ClientFilter holds optional filters for listing clients.
 type ClientFilter struct {
-	WorkspaceID   string
-	Search        string // ILIKE across company_name, pic_name, pic_wa, pic_email, owner_name
-	Segment       string // exact match
-	PaymentStatus string // exact match
-	SequenceCS    string // exact match
-	PlanType      string // exact match
-	BotActive     *bool  // nil = all, true/false = filter
+	WorkspaceIDs  []string // one or more workspace UUIDs (holding workspaces expand to member IDs)
+	Search        string   // ILIKE across company_name, pic_name, pic_wa, pic_email, owner_name
+	Segment       string   // exact match
+	PaymentStatus string   // exact match
+	SequenceCS    string   // exact match
+	PlanType      string   // exact match
+	BotActive     *bool    // nil = all, true/false = filter
 }
 
 const (

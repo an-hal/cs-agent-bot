@@ -108,7 +108,7 @@ func (m *mockUsecase) GetClients(_ context.Context, _ string, _ pagination.Param
 	return m.getClientsResult, m.getClientsTotal, m.getClientsErr
 }
 
-func (m *mockUsecase) GetClientsByWorkspaceID(_ context.Context, _ string, _ entity.ClientFilter, _ pagination.Params) (*ucDashboard.ClientListResult, error) {
+func (m *mockUsecase) GetClientsByWorkspaceID(_ context.Context, _ entity.ClientFilter, _ pagination.Params) (*ucDashboard.ClientListResult, error) {
 	return m.getClientsByWSIDResult, m.getClientsByWSIDErr
 }
 

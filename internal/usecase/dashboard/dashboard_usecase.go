@@ -22,7 +22,7 @@ type DashboardUsecase interface {
 	GetWorkspaces(ctx context.Context) ([]entity.Workspace, error)
 	GetWorkspaceBySlug(ctx context.Context, slug string) (*entity.Workspace, error)
 	GetClients(ctx context.Context, workspaceSlug string, p pagination.Params) ([]entity.Client, int64, error)
-	GetClientsByWorkspaceID(ctx context.Context, workspaceID string, filter entity.ClientFilter, p pagination.Params) (*ClientListResult, error)
+	GetClientsByWorkspaceID(ctx context.Context, filter entity.ClientFilter, p pagination.Params) (*ClientListResult, error)
 	GetClient(ctx context.Context, companyID string) (*entity.Client, error)
 	CreateClient(ctx context.Context, client entity.Client) error
 	UpdateClient(ctx context.Context, companyID string, fields map[string]interface{}) error
@@ -77,6 +77,20 @@ func NewDashboardUsecase(
 		tracer:         tr,
 		logger:         logger,
 	}
+}
+
+// resolveWorkspaceIDs returns the list of workspace IDs to query.
+// If the given workspaceID belongs to a holding workspace, it returns MemberIDs.
+// Otherwise it returns a slice containing just the original workspaceID.
+func (u *dashboardUsecase) resolveWorkspaceIDs(ctx context.Context, workspaceID string) ([]string, error) {
+	ws, err := u.workspaceRepo.GetByID(ctx, workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	if ws != nil && ws.IsHolding && len(ws.MemberIDs) > 0 {
+		return ws.MemberIDs, nil
+	}
+	return []string{workspaceID}, nil
 }
 
 func (u *dashboardUsecase) GetWorkspaces(ctx context.Context) ([]entity.Workspace, error) {
@@ -136,19 +150,27 @@ func (u *dashboardUsecase) GetClients(ctx context.Context, workspaceSlug string,
 	return clients, total, nil
 }
 
-func (u *dashboardUsecase) GetClientsByWorkspaceID(ctx context.Context, workspaceID string, filter entity.ClientFilter, p pagination.Params) (*ClientListResult, error) {
+func (u *dashboardUsecase) GetClientsByWorkspaceID(ctx context.Context, filter entity.ClientFilter, p pagination.Params) (*ClientListResult, error) {
 	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetClientsByWorkspaceID")
 	defer span.End()
 
 	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
-	logger.Info().Str("workspace_id", workspaceID).Int("offset", p.Offset).Int("limit", p.Limit).Msg("Fetching clients by workspace ID")
+	logger.Info().Strs("workspace_ids", filter.WorkspaceIDs).Int("offset", p.Offset).Int("limit", p.Limit).Msg("Fetching clients by workspace ID")
 
-	total, err := u.clientRepo.CountByWorkspaceID(ctx, workspaceID, filter)
+	if len(filter.WorkspaceIDs) == 1 {
+		wsIDs, err := u.resolveWorkspaceIDs(ctx, filter.WorkspaceIDs[0])
+		if err != nil {
+			return nil, apperror.WrapInternal(logger, err, "Failed to resolve workspace IDs")
+		}
+		filter.WorkspaceIDs = wsIDs
+	}
+
+	total, err := u.clientRepo.CountByFilter(ctx, filter)
 	if err != nil {
 		return nil, apperror.WrapInternal(logger, err, "Failed to count clients")
 	}
 
-	clients, err := u.clientRepo.FetchByWorkspaceID(ctx, workspaceID, filter, p)
+	clients, err := u.clientRepo.FetchByFilter(ctx, filter, p)
 	if err != nil {
 		return nil, apperror.WrapInternal(logger, err, "Failed to fetch clients")
 	}
@@ -264,6 +286,14 @@ func (u *dashboardUsecase) GetActivityLogs(ctx context.Context, filter entity.Ac
 
 	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
 
+	if len(filter.WorkspaceIDs) == 1 {
+		wsIDs, err := u.resolveWorkspaceIDs(ctx, filter.WorkspaceIDs[0])
+		if err != nil {
+			return nil, 0, apperror.WrapInternal(logger, err, "Failed to resolve workspace IDs")
+		}
+		filter.WorkspaceIDs = wsIDs
+	}
+
 	logs, total, err := u.logRepo.GetActivities(ctx, filter)
 	if err != nil {
 		return nil, 0, apperror.WrapInternal(logger, err, "Failed to fetch activity logs")
@@ -278,6 +308,14 @@ func (u *dashboardUsecase) GetEscalations(ctx context.Context, filter entity.Esc
 	defer span.End()
 
 	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
+
+	if len(filter.WorkspaceIDs) == 1 {
+		wsIDs, err := u.resolveWorkspaceIDs(ctx, filter.WorkspaceIDs[0])
+		if err != nil {
+			return nil, 0, apperror.WrapInternal(logger, err, "Failed to resolve workspace IDs")
+		}
+		filter.WorkspaceIDs = wsIDs
+	}
 
 	escalations, total, err := u.escalationRepo.GetAllPaginated(ctx, filter, p)
 	if err != nil {
@@ -303,6 +341,14 @@ func (u *dashboardUsecase) GetInvoices(ctx context.Context, filter entity.Invoic
 	defer span.End()
 
 	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
+
+	if len(filter.WorkspaceIDs) == 1 {
+		wsIDs, err := u.resolveWorkspaceIDs(ctx, filter.WorkspaceIDs[0])
+		if err != nil {
+			return nil, 0, apperror.WrapInternal(logger, err, "Failed to resolve workspace IDs")
+		}
+		filter.WorkspaceIDs = wsIDs
+	}
 
 	invoices, total, err := u.invoiceRepo.GetAllPaginated(ctx, filter, p)
 	if err != nil {

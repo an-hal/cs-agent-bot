@@ -20,11 +20,11 @@ type ActivityLog struct {
 
 // ActivityFilter holds query parameters for filtering activity logs.
 type ActivityFilter struct {
-	WorkspaceID string
-	Category    string     // empty = all categories
-	Since       *time.Time // return entries after this timestamp
-	Limit       int
-	Offset      int
+	WorkspaceIDs []string   // one or more workspace IDs (holding workspaces expand to member IDs)
+	Category     string     // empty = all categories
+	Since        *time.Time // return entries after this timestamp
+	Limit        int
+	Offset       int
 }
 
 // Activity category constants

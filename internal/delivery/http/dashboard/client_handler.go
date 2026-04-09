@@ -91,7 +91,7 @@ func (h *ClientHandler) ListByWorkspaceID(w http.ResponseWriter, r *http.Request
 	q := r.URL.Query()
 
 	filter := entity.ClientFilter{
-		WorkspaceID:   workspaceID,
+		WorkspaceIDs:  []string{workspaceID},
 		Search:        q.Get("search"),
 		Segment:       q.Get("segment"),
 		PaymentStatus: q.Get("payment_status"),
@@ -107,7 +107,7 @@ func (h *ClientHandler) ListByWorkspaceID(w http.ResponseWriter, r *http.Request
 
 	logger.Info().Str("workspace_id", workspaceID).Str("search", filter.Search).Int("offset", params.Offset).Int("limit", params.Limit).Msg("Incoming list clients by workspace ID request")
 
-	result, err := h.uc.GetClientsByWorkspaceID(ctx, workspaceID, filter, params)
+	result, err := h.uc.GetClientsByWorkspaceID(ctx, filter, params)
 	if err != nil {
 		return err
 	}

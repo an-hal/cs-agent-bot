@@ -71,8 +71,8 @@ func (h *ActivityHandler) List(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	filter := entity.ActivityFilter{
-		WorkspaceID: workspaceID,
-		Category:    category,
+		WorkspaceIDs: []string{workspaceID},
+		Category:     category,
 		Since:       since,
 		Limit:       params.Limit,
 		Offset:      params.Offset,

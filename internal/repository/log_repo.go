@@ -10,6 +10,7 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
+	"github.com/lib/pq"
 	"github.com/rs/zerolog"
 )
 
@@ -198,8 +199,8 @@ func (r *logRepo) GetActivities(ctx context.Context, filter entity.ActivityFilte
 
 	// Build WHERE conditions
 	cond := sq.And{}
-	if filter.WorkspaceID != "" {
-		cond = append(cond, sq.Eq{"workspace_id": filter.WorkspaceID})
+	if len(filter.WorkspaceIDs) > 0 {
+		cond = append(cond, sq.Expr("workspace_id = ANY(?)", pq.Array(filter.WorkspaceIDs)))
 	}
 	if filter.Category != "" {
 		cond = append(cond, sq.Eq{"category": filter.Category})

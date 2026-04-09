@@ -11,6 +11,7 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
+	"github.com/lib/pq"
 	"github.com/rs/zerolog"
 )
 
@@ -195,8 +196,8 @@ func (r *invoiceRepo) GetAllPaginated(ctx context.Context, filter entity.Invoice
 	defer cancel()
 
 	where := sq.And{}
-	if filter.WorkspaceID != "" {
-		where = append(where, sq.Eq{"workspace_id": filter.WorkspaceID})
+	if len(filter.WorkspaceIDs) > 0 {
+		where = append(where, sq.Expr("workspace_id::text = ANY(?)", pq.Array(filter.WorkspaceIDs)))
 	}
 	if filter.CompanyID != "" {
 		where = append(where, sq.Eq{"company_id": filter.CompanyID})

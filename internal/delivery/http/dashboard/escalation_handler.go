@@ -44,15 +44,16 @@ func (h *EscalationHandler) List(w http.ResponseWriter, r *http.Request) error {
 	params := pagination.FromRequest(r)
 	q := r.URL.Query()
 
+	wsID := ctxutil.GetWorkspaceID(ctx)
 	filter := entity.EscalationFilter{
-		WorkspaceID: ctxutil.GetWorkspaceID(ctx),
-		CompanyID:   q.Get("company_id"),
-		Status:      q.Get("status"),
-		Priority:    q.Get("priority"),
-		Search:      q.Get("search"),
+		WorkspaceIDs: []string{wsID},
+		CompanyID:    q.Get("company_id"),
+		Status:       q.Get("status"),
+		Priority:     q.Get("priority"),
+		Search:       q.Get("search"),
 	}
 
-	logger.Info().Str("workspace_id", filter.WorkspaceID).Str("status", filter.Status).Msg("Incoming list escalations request")
+	logger.Info().Str("workspace_id", wsID).Str("status", filter.Status).Msg("Incoming list escalations request")
 
 	escalations, total, err := h.uc.GetEscalations(ctx, filter, params)
 	if err != nil {

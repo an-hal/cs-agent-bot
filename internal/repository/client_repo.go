@@ -30,8 +30,8 @@ type ClientRepository interface {
 	GetAllByWorkspaceIDs(ctx context.Context, workspaceIDs []string) ([]entity.Client, error)
 	GetAllByWorkspacePaginated(ctx context.Context, workspaceSlug string, p pagination.Params) ([]entity.Client, int64, error)
 	GetAllByWorkspaceIDsPaginated(ctx context.Context, workspaceIDs []string, p pagination.Params) ([]entity.Client, int64, error)
-	CountByWorkspaceID(ctx context.Context, workspaceID string, filter entity.ClientFilter) (int64, error)
-	FetchByWorkspaceID(ctx context.Context, workspaceID string, filter entity.ClientFilter, p pagination.Params) ([]entity.Client, error)
+	CountByFilter(ctx context.Context, filter entity.ClientFilter) (int64, error)
+	FetchByFilter(ctx context.Context, filter entity.ClientFilter, p pagination.Params) ([]entity.Client, error)
 	UpdateClientFields(ctx context.Context, companyID string, fields map[string]interface{}) error
 }
 
@@ -672,15 +672,15 @@ func (r *clientRepo) GetAllByWorkspaceIDsPaginated(ctx context.Context, workspac
 	return clients, total, nil
 }
 
-// CountByWorkspaceID returns the total number of non-blacklisted clients for a workspace ID.
-func (r *clientRepo) CountByWorkspaceID(ctx context.Context, workspaceID string, filter entity.ClientFilter) (int64, error) {
-	ctx, span := r.tracer.Start(ctx, "client.repository.CountByWorkspaceID")
+// CountByFilter returns the total number of non-blacklisted clients matching the filter.
+func (r *clientRepo) CountByFilter(ctx context.Context, filter entity.ClientFilter) (int64, error) {
+	ctx, span := r.tracer.Start(ctx, "client.repository.CountByFilter")
 	defer span.End()
 
 	ctx, cancel := r.withTimeout(ctx)
 	defer cancel()
 
-	where := buildClientFilter(workspaceID, filter)
+	where := buildClientFilter(filter)
 
 	query, args, err := database.PSQL.
 		Select("COUNT(*)").
@@ -688,25 +688,25 @@ func (r *clientRepo) CountByWorkspaceID(ctx context.Context, workspaceID string,
 		Where(where).
 		ToSql()
 	if err != nil {
-		return 0, fmt.Errorf("build count query CountByWorkspaceID: %w", err)
+		return 0, fmt.Errorf("build count query CountByFilter: %w", err)
 	}
 
 	var count int64
 	if err := r.db.QueryRowContext(ctx, query, args...).Scan(&count); err != nil {
-		return 0, fmt.Errorf("count CountByWorkspaceID: %w", err)
+		return 0, fmt.Errorf("count CountByFilter: %w", err)
 	}
 	return count, nil
 }
 
-// FetchByWorkspaceID returns paginated non-blacklisted clients for a workspace ID with filters.
-func (r *clientRepo) FetchByWorkspaceID(ctx context.Context, workspaceID string, filter entity.ClientFilter, p pagination.Params) ([]entity.Client, error) {
-	ctx, span := r.tracer.Start(ctx, "client.repository.FetchByWorkspaceID")
+// FetchByFilter returns paginated non-blacklisted clients matching the filter.
+func (r *clientRepo) FetchByFilter(ctx context.Context, filter entity.ClientFilter, p pagination.Params) ([]entity.Client, error) {
+	ctx, span := r.tracer.Start(ctx, "client.repository.FetchByFilter")
 	defer span.End()
 
 	ctx, cancel := r.withTimeout(ctx)
 	defer cancel()
 
-	where := buildClientFilter(workspaceID, filter)
+	where := buildClientFilter(filter)
 
 	query, args, err := database.PSQL.
 		Select(clientColumns).
@@ -741,10 +741,12 @@ func (r *clientRepo) FetchByWorkspaceID(ctx context.Context, workspaceID string,
 }
 
 // buildClientFilter constructs a sq.And condition for client queries with workspace and optional filters.
-func buildClientFilter(workspaceID string, filter entity.ClientFilter) sq.And {
+func buildClientFilter(filter entity.ClientFilter) sq.And {
 	where := sq.And{
 		sq.Eq{"blacklisted": false},
-		sq.Eq{"workspace_id": workspaceID},
+	}
+	if len(filter.WorkspaceIDs) > 0 {
+		where = append(where, sq.Expr("workspace_id::text = ANY(?)", pq.Array(filter.WorkspaceIDs)))
 	}
 	if filter.Search != "" {
 		pattern := "%" + filter.Search + "%"
