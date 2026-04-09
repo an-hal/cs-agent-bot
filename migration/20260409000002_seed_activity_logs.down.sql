@@ -1,0 +1,1 @@
+DELETE FROM activity_log WHERE ref_id IN ('COMPANY-101', 'COMPANY-102', 'JOB-001', 'INV-2026-001', 'TCK-8844');

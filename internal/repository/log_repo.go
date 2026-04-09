@@ -255,13 +255,29 @@ func (r *logRepo) GetActivities(ctx context.Context, filter entity.ActivityFilte
 	var logs []entity.ActivityLog
 	for rows.Next() {
 		var a entity.ActivityLog
+		var (
+			nsWorkspaceID sql.NullString
+			nsActor       sql.NullString
+			nsTarget      sql.NullString
+			nsDetail      sql.NullString
+			nsRefID       sql.NullString
+			nsStatus      sql.NullString
+		)
 		if err := rows.Scan(
-			&a.ID, &a.WorkspaceID, &a.Category, &a.ActorType,
-			&a.Actor, &a.Action, &a.Target, &a.Detail,
-			&a.RefID, &a.Status, &a.OccurredAt,
+			&a.ID, &nsWorkspaceID, &a.Category, &a.ActorType,
+			&nsActor, &a.Action, &nsTarget, &nsDetail,
+			&nsRefID, &nsStatus, &a.OccurredAt,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan activity row: %w", err)
 		}
+
+		a.WorkspaceID = nsWorkspaceID.String
+		a.Actor = nsActor.String
+		a.Target = nsTarget.String
+		a.Detail = nsDetail.String
+		a.RefID = nsRefID.String
+		a.Status = nsStatus.String
+
 		logs = append(logs, a)
 	}
 	if err := rows.Err(); err != nil {
