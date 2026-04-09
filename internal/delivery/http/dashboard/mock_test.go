@@ -3,6 +3,7 @@ package dashboard_test
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -47,13 +48,8 @@ type mockUsecase struct {
 	// Workspace
 	getWorkspacesResult []entity.Workspace
 	getWorkspacesErr    error
-	getWSBySlugResult   *entity.Workspace
-	getWSBySlugErr      error
 
 	// Clients
-	getClientsResult       []entity.Client
-	getClientsTotal        int64
-	getClientsErr          error
 	getClientsByWSIDResult *ucDashboard.ClientListResult
 	getClientsByWSIDErr    error
 	getClientResult        *entity.Client
@@ -61,11 +57,6 @@ type mockUsecase struct {
 	createClientErr        error
 	updateClientErr        error
 	deleteClientErr        error
-
-	// Invoices
-	getInvoicesResult []entity.Invoice
-	getInvoicesTotal  int64
-	getInvoicesErr    error
 
 	// Escalations
 	getEscalationsResult []entity.Escalation
@@ -100,14 +91,6 @@ func (m *mockUsecase) GetWorkspaces(context.Context) ([]entity.Workspace, error)
 	return m.getWorkspacesResult, m.getWorkspacesErr
 }
 
-func (m *mockUsecase) GetWorkspaceBySlug(_ context.Context, _ string) (*entity.Workspace, error) {
-	return m.getWSBySlugResult, m.getWSBySlugErr
-}
-
-func (m *mockUsecase) GetClients(_ context.Context, _ string, _ pagination.Params) ([]entity.Client, int64, error) {
-	return m.getClientsResult, m.getClientsTotal, m.getClientsErr
-}
-
 func (m *mockUsecase) GetClientsByWorkspaceID(_ context.Context, _ entity.ClientFilter, _ pagination.Params) (*ucDashboard.ClientListResult, error) {
 	return m.getClientsByWSIDResult, m.getClientsByWSIDErr
 }
@@ -126,14 +109,6 @@ func (m *mockUsecase) UpdateClient(_ context.Context, _ string, _ map[string]int
 
 func (m *mockUsecase) DeleteClient(_ context.Context, _ string) error {
 	return m.deleteClientErr
-}
-
-func (m *mockUsecase) GetClientInvoices(_ context.Context, _ string, _ pagination.Params) ([]entity.Invoice, int64, error) {
-	return m.getInvoicesResult, m.getInvoicesTotal, m.getInvoicesErr
-}
-
-func (m *mockUsecase) GetClientEscalations(_ context.Context, _ string, _ pagination.Params) ([]entity.Escalation, int64, error) {
-	return m.getEscalationsResult, m.getEscalationsTotal, m.getEscalationsErr
 }
 
 func (m *mockUsecase) RecordActivity(_ context.Context, entry entity.ActivityLog) error {
@@ -171,6 +146,26 @@ func (m *mockUsecase) GetTemplate(_ context.Context, _ string) (*entity.Template
 
 func (m *mockUsecase) UpdateTemplate(_ context.Context, _ string, _ map[string]interface{}) error {
 	return m.updateTemplateErr
+}
+
+func (m *mockUsecase) StartImportClients(_ context.Context, _, _, _ string, _ io.Reader, _ bool) (*entity.BackgroundJob, error) {
+	return nil, nil
+}
+
+func (m *mockUsecase) StartExportClients(_ context.Context, _, _ string, _ entity.ClientFilter) (*entity.BackgroundJob, error) {
+	return nil, nil
+}
+
+func (m *mockUsecase) GetBackgroundJob(_ context.Context, _ string) (*entity.BackgroundJob, error) {
+	return nil, nil
+}
+
+func (m *mockUsecase) ListBackgroundJobs(_ context.Context, _, _, _ string, _ pagination.Params) ([]entity.BackgroundJob, int64, error) {
+	return nil, 0, nil
+}
+
+func (m *mockUsecase) DownloadJobFile(_ context.Context, _, _ string) (string, io.ReadCloser, error) {
+	return "", nil, nil
 }
 
 // ─── Test helpers ─────────────────────────────────────────────────────────────

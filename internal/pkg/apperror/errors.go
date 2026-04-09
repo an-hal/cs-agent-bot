@@ -162,6 +162,15 @@ func InternalErrorWithMessage(message string, err error) *AppError {
 	}
 }
 
+// Conflict creates a 409 Conflict error.
+func Conflict(message string) *AppError {
+	return &AppError{
+		Code:       CodeConflict,
+		Message:    message,
+		HTTPStatus: http.StatusConflict,
+	}
+}
+
 // GetAppError extracts *AppError from an error if possible
 // Returns nil if the error is not an *AppError
 func GetAppError(err error) *AppError {

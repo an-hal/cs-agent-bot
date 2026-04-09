@@ -8,4 +8,5 @@ const (
 	CodeUnauthorized = "UNAUTHORIZED"
 	CodeForbidden    = "FORBIDDEN"
 	CodeInternal     = "INTERNAL_ERROR"
+	CodeConflict     = "CONFLICT"
 )

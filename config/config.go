@@ -76,6 +76,9 @@ type AppConfig struct {
 	AngryKeywordsExtra   string
 	SilenceThresholdDays int
 
+	// Background Jobs
+	ExportStoragePath string
+
 	// OpenTelemetry Tracing
 	TracerExporter            string
 	TracerZipkinCreateSpanURL string
@@ -161,6 +164,9 @@ func LoadConfig() *AppConfig {
 		AETeamTelegramIDs:    getEnv("AE_TEAM_TELEGRAM_IDS", ""),
 		AngryKeywordsExtra:   getEnv("ANGRY_KEYWORDS_EXTRA", ""),
 		SilenceThresholdDays: getEnvInt("SILENCE_THRESHOLD_DAYS", 30),
+
+		// Background Jobs
+		ExportStoragePath: getEnv("EXPORT_STORAGE_PATH", "/tmp/exports"),
 
 		// OpenTelemetry Tracing
 		TracerExporter:            getEnv("TRACER_EXPORTER", "zipkin"),

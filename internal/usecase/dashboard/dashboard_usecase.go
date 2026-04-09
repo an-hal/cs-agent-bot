@@ -2,10 +2,12 @@ package dashboard
 
 import (
 	"context"
+	"io"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/apperror"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/ctxutil"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/jobstore"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
@@ -20,15 +22,11 @@ type ClientListResult struct {
 
 type DashboardUsecase interface {
 	GetWorkspaces(ctx context.Context) ([]entity.Workspace, error)
-	GetWorkspaceBySlug(ctx context.Context, slug string) (*entity.Workspace, error)
-	GetClients(ctx context.Context, workspaceSlug string, p pagination.Params) ([]entity.Client, int64, error)
 	GetClientsByWorkspaceID(ctx context.Context, filter entity.ClientFilter, p pagination.Params) (*ClientListResult, error)
 	GetClient(ctx context.Context, companyID string) (*entity.Client, error)
 	CreateClient(ctx context.Context, client entity.Client) error
 	UpdateClient(ctx context.Context, companyID string, fields map[string]interface{}) error
 	DeleteClient(ctx context.Context, companyID string) error
-	GetClientInvoices(ctx context.Context, companyID string, p pagination.Params) ([]entity.Invoice, int64, error)
-	GetClientEscalations(ctx context.Context, companyID string, p pagination.Params) ([]entity.Escalation, int64, error)
 	RecordActivity(ctx context.Context, entry entity.ActivityLog) error
 	GetActivityLogs(ctx context.Context, filter entity.ActivityFilter) ([]entity.ActivityLog, int, error)
 
@@ -44,6 +42,13 @@ type DashboardUsecase interface {
 	GetTemplates(ctx context.Context, filter entity.TemplateFilter, p pagination.Params) ([]entity.Template, int64, error)
 	GetTemplate(ctx context.Context, templateID string) (*entity.Template, error)
 	UpdateTemplate(ctx context.Context, templateID string, fields map[string]interface{}) error
+
+	// Background Jobs
+	StartImportClients(ctx context.Context, workspaceID, actor, filename string, file io.Reader, updateExisting bool) (*entity.BackgroundJob, error)
+	StartExportClients(ctx context.Context, workspaceID, actor string, filter entity.ClientFilter) (*entity.BackgroundJob, error)
+	GetBackgroundJob(ctx context.Context, jobID string) (*entity.BackgroundJob, error)
+	ListBackgroundJobs(ctx context.Context, workspaceID, jobType, entityType string, p pagination.Params) ([]entity.BackgroundJob, int64, error)
+	DownloadJobFile(ctx context.Context, jobID, workspaceID string) (filename string, r io.ReadCloser, err error)
 }
 
 type dashboardUsecase struct {
@@ -53,6 +58,8 @@ type dashboardUsecase struct {
 	escalationRepo repository.EscalationRepository
 	logRepo        repository.LogRepository
 	templateRepo   repository.TemplateRepository
+	bgJobRepo      repository.BackgroundJobRepository
+	fileStore      jobstore.FileStore
 	tracer         tracer.Tracer
 	logger         zerolog.Logger
 }
@@ -64,6 +71,8 @@ func NewDashboardUsecase(
 	escalationRepo repository.EscalationRepository,
 	logRepo repository.LogRepository,
 	templateRepo repository.TemplateRepository,
+	bgJobRepo repository.BackgroundJobRepository,
+	fileStore jobstore.FileStore,
 	tr tracer.Tracer,
 	logger zerolog.Logger,
 ) DashboardUsecase {
@@ -74,6 +83,8 @@ func NewDashboardUsecase(
 		escalationRepo: escalationRepo,
 		logRepo:        logRepo,
 		templateRepo:   templateRepo,
+		bgJobRepo:      bgJobRepo,
+		fileStore:      fileStore,
 		tracer:         tr,
 		logger:         logger,
 	}
@@ -105,49 +116,6 @@ func (u *dashboardUsecase) GetWorkspaces(ctx context.Context) ([]entity.Workspac
 		return nil, apperror.WrapInternal(logger, err, "Failed to fetch workspaces")
 	}
 	return workspaces, nil
-}
-
-func (u *dashboardUsecase) GetWorkspaceBySlug(ctx context.Context, slug string) (*entity.Workspace, error) {
-	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetWorkspaceBySlug")
-	defer span.End()
-
-	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
-
-	ws, err := u.workspaceRepo.GetBySlug(ctx, slug)
-	if err != nil {
-		return nil, apperror.WrapInternal(logger, err, "Failed to get workspace by slug")
-	}
-	return ws, nil
-}
-
-func (u *dashboardUsecase) GetClients(ctx context.Context, workspaceSlug string, p pagination.Params) ([]entity.Client, int64, error) {
-	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetClients")
-	defer span.End()
-
-	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
-	logger.Info().Str("workspace", workspaceSlug).Int("offset", p.Offset).Int("limit", p.Limit).Msg("Fetching clients")
-
-	ws, err := u.workspaceRepo.GetBySlug(ctx, workspaceSlug)
-	if err != nil {
-		return nil, 0, apperror.WrapInternal(logger, err, "Failed to get workspace")
-	}
-	if ws == nil {
-		return nil, 0, apperror.WrapNotFound(logger, nil, "workspace", "Workspace not found: "+workspaceSlug)
-	}
-
-	if ws.IsHolding && len(ws.MemberIDs) > 0 {
-		clients, total, fetchErr := u.clientRepo.GetAllByWorkspaceIDsPaginated(ctx, ws.MemberIDs, p)
-		if fetchErr != nil {
-			return nil, 0, apperror.WrapInternal(logger, fetchErr, "Failed to fetch clients by workspace IDs")
-		}
-		return clients, total, nil
-	}
-
-	clients, total, fetchErr := u.clientRepo.GetAllByWorkspacePaginated(ctx, workspaceSlug, p)
-	if fetchErr != nil {
-		return nil, 0, apperror.WrapInternal(logger, fetchErr, "Failed to fetch clients by workspace")
-	}
-	return clients, total, nil
 }
 
 func (u *dashboardUsecase) GetClientsByWorkspaceID(ctx context.Context, filter entity.ClientFilter, p pagination.Params) (*ClientListResult, error) {
@@ -240,32 +208,6 @@ func (u *dashboardUsecase) DeleteClient(ctx context.Context, companyID string) e
 		return apperror.WrapInternal(logger, err, "Failed to delete client")
 	}
 	return nil
-}
-
-func (u *dashboardUsecase) GetClientInvoices(ctx context.Context, companyID string, p pagination.Params) ([]entity.Invoice, int64, error) {
-	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetClientInvoices")
-	defer span.End()
-
-	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
-
-	invoices, total, err := u.invoiceRepo.GetAllByCompanyIDPaginated(ctx, companyID, p)
-	if err != nil {
-		return nil, 0, apperror.WrapInternal(logger, err, "Failed to fetch invoices")
-	}
-	return invoices, total, nil
-}
-
-func (u *dashboardUsecase) GetClientEscalations(ctx context.Context, companyID string, p pagination.Params) ([]entity.Escalation, int64, error) {
-	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetClientEscalations")
-	defer span.End()
-
-	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
-
-	escalations, total, err := u.escalationRepo.GetByCompanyIDPaginated(ctx, companyID, p)
-	if err != nil {
-		return nil, 0, apperror.WrapInternal(logger, err, "Failed to fetch escalations")
-	}
-	return escalations, total, nil
 }
 
 func (u *dashboardUsecase) RecordActivity(ctx context.Context, entry entity.ActivityLog) error {

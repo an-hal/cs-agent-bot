@@ -26,6 +26,7 @@ import (
 	deliveryHttpDeps "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/deps"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/response"
 	pkgDatabase "github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/jobstore"
 	pkgLogger "github.com/Sejutacita/cs-agent-bot/internal/pkg/logger"
 	pkgValidator "github.com/Sejutacita/cs-agent-bot/internal/pkg/validator"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
@@ -102,6 +103,17 @@ func main() {
 	configRepo := repository.NewConfigRepo(db, queryTimeout, tracerInstance, logger)
 	workspaceRepo := repository.NewWorkspaceRepo(db, queryTimeout, tracerInstance, logger)
 	templateRepo := repository.NewTemplateRepo(db, queryTimeout, tracerInstance)
+	bgJobRepo := repository.NewBackgroundJobRepo(db, queryTimeout, tracerInstance, logger)
+
+	fileStore, err := jobstore.NewLocalFileStore(cfg.ExportStoragePath)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to initialize file store")
+	}
+
+	// Mark any jobs that were left in 'processing' by a previous crash.
+	if markErr := bgJobRepo.MarkOrphansFailed(context.Background()); markErr != nil {
+		logger.Warn().Err(markErr).Msg("Failed to mark orphaned jobs as failed")
+	}
 
 	templateResolver := template.NewTemplateResolver(configRepo, logger)
 
@@ -190,6 +202,8 @@ func main() {
 		escalationRepo,
 		logRepo,
 		templateRepo,
+		bgJobRepo,
+		fileStore,
 		tracerInstance,
 		logger,
 	)

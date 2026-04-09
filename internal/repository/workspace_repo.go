@@ -17,7 +17,6 @@ import (
 type WorkspaceRepository interface {
 	GetAll(ctx context.Context) ([]entity.Workspace, error)
 	GetByID(ctx context.Context, id string) (*entity.Workspace, error)
-	GetBySlug(ctx context.Context, slug string) (*entity.Workspace, error)
 }
 
 type workspaceRepo struct {
@@ -110,28 +109,3 @@ func (r *workspaceRepo) GetByID(ctx context.Context, id string) (*entity.Workspa
 	return w, nil
 }
 
-func (r *workspaceRepo) GetBySlug(ctx context.Context, slug string) (*entity.Workspace, error) {
-	ctx, span := r.tracer.Start(ctx, "workspace.repository.GetBySlug")
-	defer span.End()
-
-	ctx, cancel := r.withTimeout(ctx)
-	defer cancel()
-
-	query, args, err := database.PSQL.
-		Select(workspaceColumns).
-		From("workspaces").
-		Where(sq.Eq{"slug": slug}).
-		ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("build query: %w", err)
-	}
-
-	w, err := scanWorkspace(r.db.QueryRowContext(ctx, query, args...))
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("query workspace: %w", err)
-	}
-	return w, nil
-}

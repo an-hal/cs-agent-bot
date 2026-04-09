@@ -3,6 +3,7 @@ package dashboard_test
 import (
 	"context"
 	"errors"
+	"io"
 	"testing"
 	"time"
 
@@ -33,12 +34,10 @@ func (n noopTracer) Shutdown(_ context.Context) error { return nil }
 
 // mockWorkspaceRepo
 type mockWorkspaceRepo struct {
-	getAllResult     []entity.Workspace
-	getAllErr        error
-	getByIDResult   *entity.Workspace
-	getByIDErr      error
-	getBySlugResult *entity.Workspace
-	getBySlugErr    error
+	getAllResult   []entity.Workspace
+	getAllErr      error
+	getByIDResult *entity.Workspace
+	getByIDErr    error
 }
 
 func (m *mockWorkspaceRepo) GetAll(context.Context) ([]entity.Workspace, error) {
@@ -46,9 +45,6 @@ func (m *mockWorkspaceRepo) GetAll(context.Context) ([]entity.Workspace, error) 
 }
 func (m *mockWorkspaceRepo) GetByID(_ context.Context, _ string) (*entity.Workspace, error) {
 	return m.getByIDResult, m.getByIDErr
-}
-func (m *mockWorkspaceRepo) GetBySlug(_ context.Context, _ string) (*entity.Workspace, error) {
-	return m.getBySlugResult, m.getBySlugErr
 }
 
 // mockClientRepo
@@ -59,12 +55,6 @@ type mockClientRepo struct {
 	getByIDErr         error
 	createErr          error
 	updateFieldsErr    error
-	paginatedResult    []entity.Client
-	paginatedTotal     int64
-	paginatedErr       error
-	paginatedIDsResult []entity.Client
-	paginatedIDsTotal  int64
-	paginatedIDsErr    error
 	countByWSIDResult  int64
 	countByWSIDErr     error
 	fetchByWSIDResult  []entity.Client
@@ -86,20 +76,10 @@ func (m *mockClientRepo) FetchByFilter(_ context.Context, _ entity.ClientFilter,
 func (m *mockClientRepo) UpdateClientFields(_ context.Context, _ string, _ map[string]interface{}) error {
 	return m.updateFieldsErr
 }
-func (m *mockClientRepo) GetAllByWorkspacePaginated(_ context.Context, _ string, _ pagination.Params) ([]entity.Client, int64, error) {
-	return m.paginatedResult, m.paginatedTotal, m.paginatedErr
-}
-func (m *mockClientRepo) GetAllByWorkspaceIDsPaginated(_ context.Context, _ []string, _ pagination.Params) ([]entity.Client, int64, error) {
-	return m.paginatedIDsResult, m.paginatedIDsTotal, m.paginatedIDsErr
-}
-
 // mockInvoiceRepo
 type mockInvoiceRepo struct {
 	repository.InvoiceRepository
 
-	paginatedResult     []entity.Invoice
-	paginatedTotal      int64
-	paginatedErr        error
 	getAllPaginated      []entity.Invoice
 	getAllPaginatedTotal int64
 	getAllPaginatedErr   error
@@ -108,9 +88,6 @@ type mockInvoiceRepo struct {
 	updateFieldsErr     error
 }
 
-func (m *mockInvoiceRepo) GetAllByCompanyIDPaginated(_ context.Context, _ string, _ pagination.Params) ([]entity.Invoice, int64, error) {
-	return m.paginatedResult, m.paginatedTotal, m.paginatedErr
-}
 func (m *mockInvoiceRepo) GetAllPaginated(_ context.Context, _ entity.InvoiceFilter, _ pagination.Params) ([]entity.Invoice, int64, error) {
 	return m.getAllPaginated, m.getAllPaginatedTotal, m.getAllPaginatedErr
 }
@@ -130,9 +107,6 @@ type mockEscalationRepo struct {
 	paginatedErr    error
 }
 
-func (m *mockEscalationRepo) GetByCompanyIDPaginated(_ context.Context, _ string, _ pagination.Params) ([]entity.Escalation, int64, error) {
-	return m.paginatedResult, m.paginatedTotal, m.paginatedErr
-}
 func (m *mockEscalationRepo) GetAllPaginated(_ context.Context, _ entity.EscalationFilter, _ pagination.Params) ([]entity.Escalation, int64, error) {
 	return m.paginatedResult, m.paginatedTotal, m.paginatedErr
 }
@@ -181,6 +155,15 @@ func (m *mockTemplateRepo) UpdateFields(_ context.Context, _ string, _ map[strin
 	return m.updateFieldsErr
 }
 
+// ─── mockBgJobRepo & mockFileStore ────────────────────────────────────────────
+
+type mockBgJobRepo struct{ repository.BackgroundJobRepository }
+
+type mockFileStore struct{}
+
+func (m *mockFileStore) Write(_, _ string, _ io.Reader) (string, error) { return "", nil }
+func (m *mockFileStore) Read(_ string) (io.ReadCloser, error)            { return nil, nil }
+
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 type ucDeps struct {
@@ -217,7 +200,7 @@ func newTestUC(deps ucDeps) dashboard.DashboardUsecase {
 	if tmpl == nil {
 		tmpl = &mockTemplateRepo{}
 	}
-	return dashboard.NewDashboardUsecase(ws, c, i, e, l, tmpl, newNoopTracer(), zerolog.Nop())
+	return dashboard.NewDashboardUsecase(ws, c, i, e, l, tmpl, &mockBgJobRepo{}, &mockFileStore{}, newNoopTracer(), zerolog.Nop())
 }
 
 var defaultParams = pagination.Params{Offset: 0, Limit: 10}
@@ -244,46 +227,6 @@ func TestGetWorkspaces_Error(t *testing.T) {
 	_, err := uc.GetWorkspaces(context.Background())
 	if err == nil {
 		t.Error("expected error")
-	}
-}
-
-// ─── GetClients ───────────────────────────────────────────────────────────────
-
-func TestGetClients_BySlug(t *testing.T) {
-	ws := &mockWorkspaceRepo{getBySlugResult: &entity.Workspace{ID: "1", Slug: "dealls"}}
-	c := &mockClientRepo{paginatedResult: []entity.Client{{CompanyID: "C01"}}, paginatedTotal: 1}
-	uc := newTestUC(ucDeps{wsRepo: ws, cRepo: c})
-
-	clients, total, err := uc.GetClients(context.Background(), "dealls", defaultParams)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if total != 1 || len(clients) != 1 {
-		t.Errorf("expected 1 client, got %d (total=%d)", len(clients), total)
-	}
-}
-
-func TestGetClients_ByHolding(t *testing.T) {
-	ws := &mockWorkspaceRepo{getBySlugResult: &entity.Workspace{ID: "h", Slug: "holding", IsHolding: true, MemberIDs: []string{"1", "2"}}}
-	c := &mockClientRepo{paginatedIDsResult: []entity.Client{{CompanyID: "C01"}, {CompanyID: "C02"}}, paginatedIDsTotal: 2}
-	uc := newTestUC(ucDeps{wsRepo: ws, cRepo: c})
-
-	clients, total, err := uc.GetClients(context.Background(), "holding", defaultParams)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if total != 2 || len(clients) != 2 {
-		t.Errorf("expected 2 clients, got %d (total=%d)", len(clients), total)
-	}
-}
-
-func TestGetClients_WorkspaceNotFound(t *testing.T) {
-	ws := &mockWorkspaceRepo{getBySlugResult: nil}
-	uc := newTestUC(ucDeps{wsRepo: ws})
-
-	_, _, err := uc.GetClients(context.Background(), "nope", defaultParams)
-	if err == nil {
-		t.Error("expected error for missing workspace")
 	}
 }
 
@@ -417,56 +360,6 @@ func TestDeleteClient_Error(t *testing.T) {
 	uc := newTestUC(ucDeps{cRepo: c})
 
 	err := uc.DeleteClient(context.Background(), "C01")
-	if err == nil {
-		t.Error("expected error")
-	}
-}
-
-// ─── GetClientInvoices ────────────────────────────────────────────────────────
-
-func TestGetClientInvoices_Success(t *testing.T) {
-	i := &mockInvoiceRepo{paginatedResult: []entity.Invoice{{InvoiceID: "INV-1"}}, paginatedTotal: 1}
-	uc := newTestUC(ucDeps{iRepo: i})
-
-	invoices, total, err := uc.GetClientInvoices(context.Background(), "C01", defaultParams)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if total != 1 || len(invoices) != 1 {
-		t.Errorf("expected 1 invoice, got %d (total=%d)", len(invoices), total)
-	}
-}
-
-func TestGetClientInvoices_Error(t *testing.T) {
-	i := &mockInvoiceRepo{paginatedErr: errors.New("fail")}
-	uc := newTestUC(ucDeps{iRepo: i})
-
-	_, _, err := uc.GetClientInvoices(context.Background(), "C01", defaultParams)
-	if err == nil {
-		t.Error("expected error")
-	}
-}
-
-// ─── GetClientEscalations ────────────────────────────────────────────────────
-
-func TestGetClientEscalations_Success(t *testing.T) {
-	e := &mockEscalationRepo{paginatedResult: []entity.Escalation{{EscalationID: "E1"}}, paginatedTotal: 1}
-	uc := newTestUC(ucDeps{eRepo: e})
-
-	escs, total, err := uc.GetClientEscalations(context.Background(), "C01", defaultParams)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if total != 1 || len(escs) != 1 {
-		t.Errorf("expected 1 escalation, got %d (total=%d)", len(escs), total)
-	}
-}
-
-func TestGetClientEscalations_Error(t *testing.T) {
-	e := &mockEscalationRepo{paginatedErr: errors.New("fail")}
-	uc := newTestUC(ucDeps{eRepo: e})
-
-	_, _, err := uc.GetClientEscalations(context.Background(), "C01", defaultParams)
 	if err == nil {
 		t.Error("expected error")
 	}

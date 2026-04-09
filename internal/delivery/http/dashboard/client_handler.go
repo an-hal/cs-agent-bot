@@ -38,60 +38,32 @@ func NewClientHandler(uc dashboard.DashboardUsecase, logger zerolog.Logger, tr t
 
 // List godoc
 // @Summary      List clients
-// @Description  Returns paginated clients for a given workspace slug.
-// @Tags         Dashboard
-// @Param        workspace  query     string  false  "Workspace slug"  default(dealls)
-// @Param        offset     query     int     false  "Pagination offset (default 0)"
-// @Param        limit      query     int     false  "Limit per page (default 10, max 100)"
-// @Success      200  {object}  response.StandardResponseWithMeta{data=[]entity.Client}
-// @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/clients [get]
-func (h *ClientHandler) List(w http.ResponseWriter, r *http.Request) error {
-	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ClientList")
-	defer span.End()
-
-	logger := ctxutil.LoggerWithRequestID(ctx, h.logger)
-	workspace := r.URL.Query().Get("workspace")
-	params := pagination.FromRequest(r)
-
-	logger.Info().Str("workspace", workspace).Int("offset", params.Offset).Int("limit", params.Limit).Msg("Incoming list clients request")
-
-	clients, total, err := h.uc.GetClients(ctx, workspace, params)
-	if err != nil {
-		return err
-	}
-	if clients == nil {
-		clients = []entity.Client{}
-	}
-
-	logger.Info().Int("count", len(clients)).Int64("total", total).Msg("Successfully fetched clients")
-
-	return response.StandardSuccessWithMeta(w, r, http.StatusOK, "Clients", pagination.NewMeta(params, total), clients)
-}
-
-// ListByWorkspaceID godoc
-// @Summary      List clients by workspace ID
 // @Description  Returns paginated clients for the workspace specified in the X-Workspace-ID header.
 // @Tags         Dashboard
 // @Param        X-Workspace-ID  header    string  true   "Workspace ID"
+// @Param        search          query     string  false  "Search across company_id, company_name, etc."
+// @Param        segment         query     string  false  "Filter by segment"
+// @Param        payment_status  query     string  false  "Filter by payment status"
+// @Param        sequence_cs     query     string  false  "Filter by CS sequence"
+// @Param        plan_type       query     string  false  "Filter by plan type"
+// @Param        bot_active      query     bool    false  "Filter by bot active status"
 // @Param        offset          query     int     false  "Pagination offset (default 0)"
 // @Param        limit           query     int     false  "Limit per page (default 10, max 100)"
 // @Success      200  {object}  response.StandardResponseWithMeta{data=[]entity.Client}
 // @Failure      400  {object}  response.StandardResponse
 // @Failure      500  {object}  response.StandardResponse
 // @Router       /api/dashboard/data-master/clients [get]
-func (h *ClientHandler) ListByWorkspaceID(w http.ResponseWriter, r *http.Request) error {
-	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ClientListByWorkspaceID")
+func (h *ClientHandler) List(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ClientList")
 	defer span.End()
 
 	logger := ctxutil.LoggerWithRequestID(ctx, h.logger)
-	workspaceID := ctxutil.GetWorkspaceID(ctx)
-
+	wsID := ctxutil.GetWorkspaceID(ctx)
 	params := pagination.FromRequest(r)
 	q := r.URL.Query()
 
 	filter := entity.ClientFilter{
-		WorkspaceIDs:  []string{workspaceID},
+		WorkspaceIDs:  []string{wsID},
 		Search:        q.Get("search"),
 		Segment:       q.Get("segment"),
 		PaymentStatus: q.Get("payment_status"),
@@ -105,7 +77,7 @@ func (h *ClientHandler) ListByWorkspaceID(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	logger.Info().Str("workspace_id", workspaceID).Str("search", filter.Search).Int("offset", params.Offset).Int("limit", params.Limit).Msg("Incoming list clients by workspace ID request")
+	logger.Info().Str("workspace_id", wsID).Str("search", filter.Search).Int("offset", params.Offset).Int("limit", params.Limit).Msg("Incoming list clients request")
 
 	result, err := h.uc.GetClientsByWorkspaceID(ctx, filter, params)
 	if err != nil {
@@ -117,7 +89,7 @@ func (h *ClientHandler) ListByWorkspaceID(w http.ResponseWriter, r *http.Request
 		clients = []entity.Client{}
 	}
 
-	logger.Info().Int("count", len(clients)).Int64("total", result.Meta.Total).Msg("Successfully fetched clients by workspace ID")
+	logger.Info().Int("count", len(clients)).Int64("total", result.Meta.Total).Msg("Successfully fetched clients")
 
 	return response.StandardSuccessWithMeta(w, r, http.StatusOK, "Clients", result.Meta, clients)
 }
@@ -155,10 +127,10 @@ func (h *ClientHandler) Get(w http.ResponseWriter, r *http.Request) error {
 
 // Create godoc
 // @Summary      Create client
-// @Description  Creates a new client in the specified workspace.
+// @Description  Creates a new client in the workspace specified in the X-Workspace-ID header.
 // @Tags         Dashboard
-// @Param        workspace  query     string                false  "Workspace slug"  default(dealls)
-// @Param        body       body      CreateClientRequest   true   "Client payload"
+// @Param        X-Workspace-ID  header    string                true   "Workspace ID"
+// @Param        body            body      CreateClientRequest   true   "Client payload"
 // @Success      201  {object}  response.StandardResponse{data=entity.Client}
 // @Failure      400  {object}  response.StandardResponse
 // @Failure      500  {object}  response.StandardResponse
@@ -170,10 +142,7 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) error {
 	logger := ctxutil.LoggerWithRequestID(ctx, h.logger)
 	logger.Info().Msg("Incoming create client request")
 
-	workspace := r.URL.Query().Get("workspace")
-	if workspace == "" {
-		workspace = "dealls"
-	}
+	wsID := ctxutil.GetWorkspaceID(ctx)
 
 	var client entity.Client
 	if err := json.NewDecoder(r.Body).Decode(&client); err != nil {
@@ -184,21 +153,14 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) error {
 		return apperror.BadRequest("company_id and company_name are required")
 	}
 
-	ws, err := h.uc.GetWorkspaceBySlug(ctx, workspace)
-	if err != nil {
-		return err
-	}
-	if ws == nil {
-		return apperror.BadRequest("Invalid workspace")
-	}
-	client.WorkspaceID = ws.ID
+	client.WorkspaceID = wsID
 
 	if err := h.uc.CreateClient(ctx, client); err != nil {
 		return err
 	}
 
 	if err := h.uc.RecordActivity(ctx, entity.ActivityLog{
-		WorkspaceID: ws.Slug,
+		WorkspaceID: wsID,
 		Category:    entity.ActivityCategoryData,
 		ActorType:   entity.ActivityActorHuman,
 		Actor:       actorFromCtx(r),
@@ -310,68 +272,3 @@ func (h *ClientHandler) Delete(w http.ResponseWriter, r *http.Request) error {
 	return response.StandardSuccess(w, r, http.StatusOK, "Client deleted", nil)
 }
 
-// GetInvoices godoc
-// @Summary      Get client invoices
-// @Description  Returns paginated invoices for a given client.
-// @Tags         Dashboard
-// @Param        company_id  path      string  true  "Company ID"
-// @Param        offset      query     int     false  "Pagination offset (default 0)"
-// @Param        limit       query     int     false  "Limit per page (default 10, max 100)"
-// @Success      200  {object}  response.StandardResponseWithMeta{data=[]entity.Invoice}
-// @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/clients/{company_id}/invoices [get]
-func (h *ClientHandler) GetInvoices(w http.ResponseWriter, r *http.Request) error {
-	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ClientGetInvoices")
-	defer span.End()
-
-	logger := ctxutil.LoggerWithRequestID(ctx, h.logger)
-	companyID := router.GetParam(r, "company_id")
-	params := pagination.FromRequest(r)
-
-	logger.Info().Str("company_id", companyID).Msg("Incoming get invoices request")
-
-	invoices, total, err := h.uc.GetClientInvoices(ctx, companyID, params)
-	if err != nil {
-		return err
-	}
-	if invoices == nil {
-		invoices = []entity.Invoice{}
-	}
-
-	logger.Info().Str("company_id", companyID).Int("count", len(invoices)).Msg("Successfully fetched invoices")
-
-	return response.StandardSuccessWithMeta(w, r, http.StatusOK, "Invoices", pagination.NewMeta(params, total), invoices)
-}
-
-// GetEscalations godoc
-// @Summary      Get client escalations
-// @Description  Returns paginated escalation records for a given client.
-// @Tags         Dashboard
-// @Param        company_id  path      string  true  "Company ID"
-// @Param        offset      query     int     false  "Pagination offset (default 0)"
-// @Param        limit       query     int     false  "Limit per page (default 10, max 100)"
-// @Success      200  {object}  response.StandardResponseWithMeta{data=[]entity.Escalation}
-// @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/clients/{company_id}/escalations [get]
-func (h *ClientHandler) GetEscalations(w http.ResponseWriter, r *http.Request) error {
-	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ClientGetEscalations")
-	defer span.End()
-
-	logger := ctxutil.LoggerWithRequestID(ctx, h.logger)
-	companyID := router.GetParam(r, "company_id")
-	params := pagination.FromRequest(r)
-
-	logger.Info().Str("company_id", companyID).Msg("Incoming get escalations request")
-
-	escalations, total, err := h.uc.GetClientEscalations(ctx, companyID, params)
-	if err != nil {
-		return err
-	}
-	if escalations == nil {
-		escalations = []entity.Escalation{}
-	}
-
-	logger.Info().Str("company_id", companyID).Int("count", len(escalations)).Msg("Successfully fetched escalations")
-
-	return response.StandardSuccessWithMeta(w, r, http.StatusOK, "Escalations", pagination.NewMeta(params, total), escalations)
-}

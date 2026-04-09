@@ -28,8 +28,6 @@ type ClientRepository interface {
 	UpdatePaymentStatus(ctx context.Context, companyID, status string) error
 	GetAllByWorkspace(ctx context.Context, workspaceSlug string) ([]entity.Client, error)
 	GetAllByWorkspaceIDs(ctx context.Context, workspaceIDs []string) ([]entity.Client, error)
-	GetAllByWorkspacePaginated(ctx context.Context, workspaceSlug string, p pagination.Params) ([]entity.Client, int64, error)
-	GetAllByWorkspaceIDsPaginated(ctx context.Context, workspaceIDs []string, p pagination.Params) ([]entity.Client, int64, error)
 	CountByFilter(ctx context.Context, filter entity.ClientFilter) (int64, error)
 	FetchByFilter(ctx context.Context, filter entity.ClientFilter, p pagination.Params) ([]entity.Client, error)
 	UpdateClientFields(ctx context.Context, companyID string, fields map[string]interface{}) error
@@ -590,86 +588,6 @@ func (r *clientRepo) GetAllByWorkspaceIDs(ctx context.Context, workspaceIDs []st
 		return nil, fmt.Errorf("iterate client rows: %w", err)
 	}
 	return clients, nil
-}
-
-// GetAllByWorkspacePaginated returns paginated non-blacklisted clients for a workspace slug.
-func (r *clientRepo) GetAllByWorkspacePaginated(ctx context.Context, workspaceSlug string, p pagination.Params) ([]entity.Client, int64, error) {
-	ctx, span := r.tracer.Start(ctx, "client.repository.GetAllByWorkspacePaginated")
-	defer span.End()
-
-	ctx, cancel := r.withTimeout(ctx)
-	defer cancel()
-
-	whereClause := "c.blacklisted = false AND c.workspace_id = (SELECT id FROM workspaces WHERE slug = $1)"
-
-	var total int64
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM clients c WHERE %s", whereClause)
-	if err := r.db.QueryRowContext(ctx, countQuery, workspaceSlug).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count GetAllByWorkspacePaginated: %w", err)
-	}
-
-	dataQuery := fmt.Sprintf(
-		"SELECT %s FROM clients c WHERE %s ORDER BY c.company_id LIMIT $2 OFFSET $3",
-		clientColumns, whereClause,
-	)
-
-	rows, err := r.db.QueryContext(ctx, dataQuery, workspaceSlug, p.Limit, p.Offset)
-	if err != nil {
-		return nil, 0, fmt.Errorf("query GetAllByWorkspacePaginated: %w", err)
-	}
-	defer rows.Close()
-
-	var clients []entity.Client
-	for rows.Next() {
-		c, err := scanClient(rows)
-		if err != nil {
-			return nil, 0, fmt.Errorf("scan client row: %w", err)
-		}
-		clients = append(clients, *c)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, 0, fmt.Errorf("iterate client rows: %w", err)
-	}
-	return clients, total, nil
-}
-
-// GetAllByWorkspaceIDsPaginated returns paginated non-blacklisted clients for multiple workspace IDs.
-func (r *clientRepo) GetAllByWorkspaceIDsPaginated(ctx context.Context, workspaceIDs []string, p pagination.Params) ([]entity.Client, int64, error) {
-	ctx, span := r.tracer.Start(ctx, "client.repository.GetAllByWorkspaceIDsPaginated")
-	defer span.End()
-
-	ctx, cancel := r.withTimeout(ctx)
-	defer cancel()
-
-	var total int64
-	countQuery := "SELECT COUNT(*) FROM clients c WHERE c.blacklisted = false AND c.workspace_id::text = ANY($1)"
-	if err := r.db.QueryRowContext(ctx, countQuery, pq.Array(workspaceIDs)).Scan(&total); err != nil {
-		return nil, 0, fmt.Errorf("count GetAllByWorkspaceIDsPaginated: %w", err)
-	}
-
-	dataQuery := fmt.Sprintf(
-		"SELECT %s FROM clients c WHERE c.blacklisted = false AND c.workspace_id::text = ANY($1) ORDER BY c.company_id LIMIT $2 OFFSET $3",
-		clientColumns,
-	)
-
-	rows, err := r.db.QueryContext(ctx, dataQuery, pq.Array(workspaceIDs), p.Limit, p.Offset)
-	if err != nil {
-		return nil, 0, fmt.Errorf("query GetAllByWorkspaceIDsPaginated: %w", err)
-	}
-	defer rows.Close()
-
-	var clients []entity.Client
-	for rows.Next() {
-		c, err := scanClient(rows)
-		if err != nil {
-			return nil, 0, fmt.Errorf("scan client row: %w", err)
-		}
-		clients = append(clients, *c)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, 0, fmt.Errorf("iterate client rows: %w", err)
-	}
-	return clients, total, nil
 }
 
 // CountByFilter returns the total number of non-blacklisted clients matching the filter.
