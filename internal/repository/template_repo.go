@@ -53,7 +53,7 @@ func (r *templateRepo) GetTemplate(ctx context.Context, templateID string) (*ent
 	defer cancel()
 
 	query, args, err := database.PSQL.
-		Select("template_id", "template_name", "template_content", "template_category", "language", "active", "created_at", "updated_at").
+		Select("template_id", "template_name", "wa_content", "template_category", "language", "channel", "email_subject", "email_body_html", "email_body_text", "active", "created_at", "updated_at").
 		From("templates").
 		Where(sq.Eq{"template_id": templateID}).
 		ToSql()
@@ -63,7 +63,7 @@ func (r *templateRepo) GetTemplate(ctx context.Context, templateID string) (*ent
 
 	var t entity.Template
 	err = r.DB.QueryRowContext(ctx, query, args...).Scan(
-		&t.TemplateID, &t.TemplateName, &t.TemplateContent, &t.TemplateCategory, &t.Language, &t.Active, &t.CreatedAt, &t.UpdatedAt,
+		&t.TemplateID, &t.TemplateName, &t.WAContent, &t.TemplateCategory, &t.Language, &t.Channel, &t.EmailSubject, &t.EmailBodyHTML, &t.EmailBodyText, &t.Active, &t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func (r *templateRepo) GetTemplatesByCategory(ctx context.Context, category stri
 	defer cancel()
 
 	query, args, err := database.PSQL.
-		Select("template_id", "template_name", "template_content", "template_category", "language", "active", "created_at", "updated_at").
+		Select("template_id", "template_name", "wa_content", "template_category", "language", "channel", "email_subject", "email_body_html", "email_body_text", "active", "created_at", "updated_at").
 		From("templates").
 		Where(sq.And{
 			sq.Eq{"template_category": category},
@@ -103,7 +103,7 @@ func (r *templateRepo) GetTemplatesByCategory(ctx context.Context, category stri
 	for rows.Next() {
 		var t entity.Template
 		err := rows.Scan(
-			&t.TemplateID, &t.TemplateName, &t.TemplateContent, &t.TemplateCategory, &t.Language, &t.Active, &t.CreatedAt, &t.UpdatedAt,
+			&t.TemplateID, &t.TemplateName, &t.WAContent, &t.TemplateCategory, &t.Language, &t.Channel, &t.EmailSubject, &t.EmailBodyHTML, &t.EmailBodyText, &t.Active, &t.CreatedAt, &t.UpdatedAt,
 		)
 		if err != nil {
 			return nil, err
@@ -126,7 +126,7 @@ func (r *templateRepo) GetActiveTemplate(ctx context.Context, templateID string)
 	defer cancel()
 
 	query, args, err := database.PSQL.
-		Select("template_id", "template_name", "template_content", "template_category", "language", "active", "created_at", "updated_at").
+		Select("template_id", "template_name", "wa_content", "template_category", "language", "channel", "email_subject", "email_body_html", "email_body_text", "active", "created_at", "updated_at").
 		From("templates").
 		Where(sq.And{
 			sq.Eq{"template_id": templateID},
@@ -139,7 +139,7 @@ func (r *templateRepo) GetActiveTemplate(ctx context.Context, templateID string)
 
 	var t entity.Template
 	err = r.DB.QueryRowContext(ctx, query, args...).Scan(
-		&t.TemplateID, &t.TemplateName, &t.TemplateContent, &t.TemplateCategory, &t.Language, &t.Active, &t.CreatedAt, &t.UpdatedAt,
+		&t.TemplateID, &t.TemplateName, &t.WAContent, &t.TemplateCategory, &t.Language, &t.Channel, &t.EmailSubject, &t.EmailBodyHTML, &t.EmailBodyText, &t.Active, &t.CreatedAt, &t.UpdatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -171,7 +171,7 @@ func (r *templateRepo) GetAllPaginated(ctx context.Context, filter entity.Templa
 		where = append(where, sq.Or{
 			sq.ILike{"template_id": pattern},
 			sq.ILike{"template_name": pattern},
-			sq.ILike{"template_content": pattern},
+			sq.ILike{"wa_content": pattern},
 		})
 	}
 
@@ -191,7 +191,7 @@ func (r *templateRepo) GetAllPaginated(ctx context.Context, filter entity.Templa
 
 	// Data
 	dataBuilder := database.PSQL.
-		Select("template_id", "template_name", "template_content", "template_category", "language", "active", "created_at", "updated_at").
+		Select("template_id", "template_name", "wa_content", "template_category", "language", "channel", "email_subject", "email_body_html", "email_body_text", "active", "created_at", "updated_at").
 		From("templates").
 		OrderBy("template_category, template_id").
 		Limit(uint64(p.Limit)).
@@ -214,7 +214,7 @@ func (r *templateRepo) GetAllPaginated(ctx context.Context, filter entity.Templa
 	for rows.Next() {
 		var t entity.Template
 		if err := rows.Scan(
-			&t.TemplateID, &t.TemplateName, &t.TemplateContent, &t.TemplateCategory, &t.Language, &t.Active, &t.CreatedAt, &t.UpdatedAt,
+			&t.TemplateID, &t.TemplateName, &t.WAContent, &t.TemplateCategory, &t.Language, &t.Channel, &t.EmailSubject, &t.EmailBodyHTML, &t.EmailBodyText, &t.Active, &t.CreatedAt, &t.UpdatedAt,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan template: %w", err)
 		}

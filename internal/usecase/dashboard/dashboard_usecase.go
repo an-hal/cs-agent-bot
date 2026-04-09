@@ -333,10 +333,14 @@ func (u *dashboardUsecase) UpdateInvoice(ctx context.Context, invoiceID string, 
 // ─── Templates ───────────────────────────────────────────────────────────────
 
 var templateEditableFields = map[string]bool{
-	"template_name":    true,
-	"template_content": true,
-	"language":         true,
-	"active":           true,
+	"template_name":   true,
+	"wa_content":      true,
+	"language":        true,
+	"channel":         true,
+	"email_subject":   true,
+	"email_body_html": true,
+	"email_body_text": true,
+	"active":          true,
 }
 
 func (u *dashboardUsecase) GetTemplates(ctx context.Context, filter entity.TemplateFilter, p pagination.Params) ([]entity.Template, int64, error) {

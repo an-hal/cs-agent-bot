@@ -157,6 +157,25 @@ func main() {
 		logger,
 	)
 
+	triggerRuleRepo := repository.NewTriggerRuleRepo(db, queryTimeout, tracerInstance, logger)
+
+	actionExecutor := trigger.NewActionExecutor(
+		clientRepo,
+		invoiceRepo,
+		flagsRepo,
+		convStateRepo,
+		logRepo,
+		configRepo,
+		templateResolver,
+		haloaiClient,
+		telegramNotifier,
+		escalationHandler,
+		cfg,
+		logger,
+	)
+
+	ruleEngine := trigger.NewRuleEngine(triggerRuleRepo, actionExecutor, logger)
+
 	cronRunner := cron.NewCronRunner(
 		clientRepo,
 		flagsRepo,
@@ -168,6 +187,9 @@ func main() {
 		triggerService,
 		logger,
 	)
+
+	// Enable dynamic rule engine if configured
+	cronRunner.(cron.CronRunnerWithRuleEngine).WithRuleEngine(ruleEngine, cfg.UseDynamicRules)
 
 	replyHandler := webhook.NewReplyHandler(
 		invoiceRepo,
@@ -226,6 +248,8 @@ func main() {
 		HandoffHandler:   handoffHandler,
 		PaymentVerifier:  paymentVerifier,
 		DashboardUsecase: dashboardUsecase,
+		TriggerRuleRepo:  triggerRuleRepo,
+		RuleEngine:       ruleEngine,
 	})
 
 	server := &http.Server{

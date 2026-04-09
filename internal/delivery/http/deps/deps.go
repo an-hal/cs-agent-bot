@@ -4,10 +4,12 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/config"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/response"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/validator"
+	"github.com/Sejutacita/cs-agent-bot/internal/repository"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/trigger"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/webhook"
 	"github.com/rs/zerolog"
 )
@@ -24,4 +26,6 @@ type Deps struct {
 	HandoffHandler   webhook.HandoffHandler
 	PaymentVerifier  usecasePayment.PaymentVerifier
 	DashboardUsecase dashboard.DashboardUsecase
+	TriggerRuleRepo  repository.TriggerRuleRepository
+	RuleEngine       *trigger.RuleEngine
 }

@@ -43,7 +43,7 @@ func (r *configRepo) withTimeout(ctx context.Context) (context.Context, context.
 }
 
 // templateColumns lists the columns read from the templates table.
-const templateColumns = "template_id, template_content, template_category"
+const templateColumns = "template_id, wa_content, template_category"
 
 // GetAllTemplates returns all active trigger templates ordered by template_id.
 func (r *configRepo) GetAllTemplates(ctx context.Context) ([]entity.TriggerTemplate, error) {

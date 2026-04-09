@@ -3,9 +3,7 @@ package template
 import (
 	"context"
 	"fmt"
-	"math"
 	"strings"
-	"time"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
@@ -43,40 +41,16 @@ func (r *templateResolver) ResolveTemplate(ctx context.Context, templateID strin
 
 	body := tmpl.Body
 
-	// Replace all [bracket] variables
-	body = strings.ReplaceAll(body, "[Company_Name]", client.CompanyName)
-	body = strings.ReplaceAll(body, "[PIC_Name]", client.PICName)
-	body = strings.ReplaceAll(body, "[Owner_Name]", client.OwnerName)
-	body = strings.ReplaceAll(body, "[Owner_WA]", client.GetOwnerWA())
-	body = strings.ReplaceAll(body, "[link_quotation]", client.QuotationLink)
-
-	// Survey link
-	if cfg.SurveyPlatformURL != "" {
-		body = strings.ReplaceAll(body, "[link_survey]", cfg.SurveyPlatformURL+"?cid="+client.CompanyID)
+	// Replace all {bracket} variables using the variable registry
+	for varKey, provider := range variableProviders {
+		placeholder := "{" + varKey + "}"
+		if strings.Contains(body, placeholder) {
+			body = strings.ReplaceAll(body, placeholder, provider(client, invoice, cfg))
+		}
 	}
 
-	// Checkin form link
-	if cfg.CheckinFormURL != "" {
-		body = strings.ReplaceAll(body, "[link_checkin_form]", cfg.CheckinFormURL+"?cid="+client.CompanyID)
-	}
-
-	// Months active
-	if !client.ContractStart.IsZero() {
-		monthsActive := int(math.Floor(time.Since(client.ContractStart).Hours() / (24 * 30)))
-		body = strings.ReplaceAll(body, "[months_active]", fmt.Sprintf("%d", monthsActive))
-	}
-
-	// Invoice-specific variables
-	if invoice != nil {
-		body = strings.ReplaceAll(body, "[Due_Date]", invoice.DueDate.Format("2 Jan 2006"))
-		body = strings.ReplaceAll(body, "[Invoice_ID]", invoice.InvoiceID)
-	}
-
-	// Referral benefit
-	body = strings.ReplaceAll(body, "[Benefit_Referral]", cfg.ReferralBenefit)
-
-	// Guard: reject send if any [variable] remains unresolved
-	if strings.Contains(body, "[") && strings.Contains(body, "]") {
+	// Guard: reject send if any {variable} remains unresolved
+	if strings.Contains(body, "{") && strings.Contains(body, "}") {
 		return "", fmt.Errorf("unresolved variable in template %s", templateID)
 	}
 
@@ -92,25 +66,25 @@ func (r *templateResolver) ResolveEscalationTemplate(ctx context.Context, escID 
 	body := tmpl.TelegramMsg
 
 	// Replace escalation-specific variables
-	body = strings.ReplaceAll(body, "[Esc_ID]", esc.EscID)
-	body = strings.ReplaceAll(body, "[Priority]", esc.Priority)
-	body = strings.ReplaceAll(body, "[Reason]", esc.Reason)
-	body = strings.ReplaceAll(body, "[Status]", esc.Status)
+	body = strings.ReplaceAll(body, "{esc_id}", esc.EscID)
+	body = strings.ReplaceAll(body, "{priority}", esc.Priority)
+	body = strings.ReplaceAll(body, "{reason}", esc.Reason)
+	body = strings.ReplaceAll(body, "{status}", esc.Status)
 
 	// Replace client variables
-	body = strings.ReplaceAll(body, "[Company_Name]", client.CompanyName)
-	body = strings.ReplaceAll(body, "[Company_ID]", client.CompanyID)
-	body = strings.ReplaceAll(body, "[PIC_Name]", client.PICName)
-	body = strings.ReplaceAll(body, "[Owner_Name]", client.OwnerName)
-	body = strings.ReplaceAll(body, "[Owner_WA]", client.GetOwnerWA())
+	body = strings.ReplaceAll(body, "{company_name}", client.CompanyName)
+	body = strings.ReplaceAll(body, "{company_id}", client.CompanyID)
+	body = strings.ReplaceAll(body, "{pic_name}", client.PICName)
+	body = strings.ReplaceAll(body, "{owner_name}", client.OwnerName)
+	body = strings.ReplaceAll(body, "{owner_wa}", client.GetOwnerWA())
 
-	// Replace extra variables (e.g., [Verified_By], [Invoice_ID])
+	// Replace extra variables (e.g., {Verified_By}, {Invoice_ID})
 	for key, value := range extraVars {
-		body = strings.ReplaceAll(body, "["+key+"]", value)
+		body = strings.ReplaceAll(body, "{"+key+"}", value)
 	}
 
-	// Guard: reject if any [variable] remains unresolved
-	if strings.Contains(body, "[") && strings.Contains(body, "]") {
+	// Guard: reject if any {variable} remains unresolved
+	if strings.Contains(body, "{") && strings.Contains(body, "}") {
 		return "", fmt.Errorf("unresolved variable in escalation template %s", escID)
 	}
 

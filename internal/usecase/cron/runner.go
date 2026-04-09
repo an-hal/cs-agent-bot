@@ -17,16 +17,23 @@ type CronRunner interface {
 	StartRunAll(ctx context.Context) ([]*entity.BackgroundJob, error)
 }
 
+// CronRunnerWithRuleEngine extends CronRunner with dynamic rule engine support.
+type CronRunnerWithRuleEngine interface {
+	WithRuleEngine(engine *trigger.RuleEngine, useDynamic bool)
+}
+
 type cronRunner struct {
-	clientRepo    repository.ClientRepository
-	flagsRepo     repository.FlagsRepository
-	convStateRepo repository.ConversationStateRepository
-	invoiceRepo   repository.InvoiceRepository
-	logRepo       repository.LogRepository
-	bgJobRepo     repository.BackgroundJobRepository
-	workspaceRepo repository.WorkspaceRepository
-	triggers      *trigger.TriggerService
-	logger        zerolog.Logger
+	clientRepo      repository.ClientRepository
+	flagsRepo       repository.FlagsRepository
+	convStateRepo   repository.ConversationStateRepository
+	invoiceRepo     repository.InvoiceRepository
+	logRepo         repository.LogRepository
+	bgJobRepo       repository.BackgroundJobRepository
+	workspaceRepo   repository.WorkspaceRepository
+	triggers        *trigger.TriggerService
+	ruleEngine      *trigger.RuleEngine
+	useDynamicRules bool
+	logger          zerolog.Logger
 }
 
 func NewCronRunner(
@@ -51,6 +58,13 @@ func NewCronRunner(
 		triggers:      triggers,
 		logger:        logger,
 	}
+}
+
+// WithRuleEngine sets the dynamic rule engine for the cron runner.
+// When useDynamic is true, processClient uses the rule engine instead of hardcoded triggers.
+func (cr *cronRunner) WithRuleEngine(engine *trigger.RuleEngine, useDynamic bool) {
+	cr.ruleEngine = engine
+	cr.useDynamicRules = useDynamic
 }
 
 // StartRunAll fetches all non-holding workspaces, creates one background job per workspace,
@@ -236,6 +250,22 @@ func (cr *cronRunner) processClient(ctx context.Context, c entity.Client) error 
 		convState = &entity.ConversationState{BotActive: true}
 	}
 
+	// ── Dynamic rule engine path (feature-flagged) ──
+	if cr.useDynamicRules && cr.ruleEngine != nil {
+		clientCtx := &trigger.ClientContext{
+			Client:    c,
+			Flags:     *f,
+			Invoice:   inv,
+			ConvState: convState,
+		}
+		if _, err := cr.ruleEngine.EvaluateAll(ctx, clientCtx); err != nil {
+			cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Dynamic rule engine error")
+			return err
+		}
+		return nil
+	}
+
+	// ── Legacy hardcoded path (default) ──
 	// Strict priority order. First match fires and returns — no further evaluation.
 	if sent, err := cr.triggers.EvalHealthRisk(ctx, c, *f); err != nil {
 		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Health risk trigger error")

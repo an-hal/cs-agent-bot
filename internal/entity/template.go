@@ -2,24 +2,35 @@ package entity
 
 import "time"
 
-// Template represents a WhatsApp message template with variable substitution.
+// Template represents a message template with variable substitution.
+// Supports multiple channels (wa, email) with different content fields per channel.
 type Template struct {
 	TemplateID       string    `json:"template_id" db:"template_id"`
 	TemplateName     string    `json:"template_name" db:"template_name"`
-	TemplateContent  string    `json:"template_content" db:"template_content"`
+	WAContent        string    `json:"wa_content" db:"wa_content"`
 	TemplateCategory string    `json:"template_category" db:"template_category"`
 	Language         string    `json:"language" db:"language"`
+	Channel          string    `json:"channel" db:"channel"`
+	EmailSubject     *string   `json:"email_subject,omitempty" db:"email_subject"`
+	EmailBodyHTML    *string   `json:"email_body_html,omitempty" db:"email_body_html"`
+	EmailBodyText    *string   `json:"email_body_text,omitempty" db:"email_body_text"`
 	Active           bool      `json:"active" db:"active"`
 	CreatedAt        time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt        time.Time `json:"updated_at" db:"updated_at"`
 }
+
+// Template channel constants
+const (
+	TemplateChannelWA    = "wa"
+	TemplateChannelEmail = "email"
+)
 
 // TemplateFilter holds optional filters for listing templates.
 type TemplateFilter struct {
 	Category string
 	Language string
 	Active   *bool  // nil = all, true/false = filter
-	Search   string // ILIKE across template_name, template_content, template_id
+	Search   string // ILIKE across template_name, wa_content, template_id
 }
 
 // Template Category constants
