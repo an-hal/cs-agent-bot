@@ -3,7 +3,9 @@ package dashboard
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/router"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/response"
@@ -132,13 +134,22 @@ func (h *TemplateHandler) Update(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	tplKeys := make([]string, 0, len(patch))
+	for k := range patch {
+		tplKeys = append(tplKeys, k)
+	}
+	sort.Strings(tplKeys)
+
 	if err := h.uc.RecordActivity(ctx, entity.ActivityLog{
-		Category:  entity.ActivityCategoryData,
-		ActorType: entity.ActivityActorHuman,
-		Actor:     actorFromCtx(r),
-		Action:    "edit_template",
-		Target:    templateID,
-		RefID:     templateID,
+		WorkspaceID:  ctxutil.GetWorkspaceID(ctx),
+		Category:     entity.ActivityCategoryData,
+		ActorType:    entity.ActivityActorHuman,
+		Actor:        actorFromCtx(r),
+		Action:       "edit_template",
+		Target:       templateID,
+		RefID:        templateID,
+		ResourceType: entity.ActivityResourceTemplate,
+		Detail:       "Ubah: " + strings.Join(tplKeys, ", "),
 	}); err != nil {
 		return err
 	}

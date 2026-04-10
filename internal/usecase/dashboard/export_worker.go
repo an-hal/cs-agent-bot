@@ -40,14 +40,15 @@ func (u *dashboardUsecase) StartExportClients(ctx context.Context, workspaceID, 
 	}
 
 	if err := u.logRepo.AppendActivity(ctx, entity.ActivityLog{
-		WorkspaceID: workspaceID,
-		Category:    entity.ActivityCategoryData,
-		ActorType:   entity.ActivityActorHuman,
-		Actor:       actor,
-		Action:      "start_export",
-		Target:      filename,
-		RefID:       job.ID,
-		Detail:      fmt.Sprintf("job_id=%s", job.ID),
+		WorkspaceID:  workspaceID,
+		Category:     entity.ActivityCategoryData,
+		ActorType:    entity.ActivityActorHuman,
+		Actor:        actor,
+		Action:       "start_export",
+		Target:       filename,
+		RefID:        job.ID,
+		ResourceType: entity.ActivityResourceClient,
+		Detail:       fmt.Sprintf("job_id=%s", job.ID),
 	}); err != nil {
 		logger.Warn().Err(err).Msg("Failed to record start_export activity")
 	}
@@ -126,14 +127,15 @@ func (u *dashboardUsecase) runExport(jobID, workspaceID, actor, filename string,
 
 
 	_ = u.logRepo.AppendActivity(ctx, entity.ActivityLog{
-		WorkspaceID: workspaceID,
-		Category:    entity.ActivityCategoryData,
-		ActorType:   entity.ActivityActorHuman,
-		Actor:       actor,
-		Action:      "complete_export",
-		Target:      filename,
-		RefID:       jobID,
-		Detail:      fmt.Sprintf("job_id=%s rows=%d", jobID, total),
+		WorkspaceID:  workspaceID,
+		Category:     entity.ActivityCategoryData,
+		ActorType:    entity.ActivityActorHuman,
+		Actor:        actor,
+		Action:       "complete_export",
+		Target:       filename,
+		RefID:        jobID,
+		ResourceType: entity.ActivityResourceClient,
+		Detail:       fmt.Sprintf("job_id=%s rows=%d", jobID, total),
 	})
 
 	logger.Info().Int64("total_rows", total).Str("file", storagePath).Msg("export: completed")

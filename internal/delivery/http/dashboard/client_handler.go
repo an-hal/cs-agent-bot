@@ -3,7 +3,9 @@ package dashboard
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/middleware"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/router"
@@ -160,13 +162,15 @@ func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if err := h.uc.RecordActivity(ctx, entity.ActivityLog{
-		WorkspaceID: wsID,
-		Category:    entity.ActivityCategoryData,
-		ActorType:   entity.ActivityActorHuman,
-		Actor:       actorFromCtx(r),
-		Action:      "add_client",
-		Target:      client.CompanyName,
-		RefID:       client.CompanyID,
+		WorkspaceID:  wsID,
+		Category:     entity.ActivityCategoryData,
+		ActorType:    entity.ActivityActorHuman,
+		Actor:        actorFromCtx(r),
+		Action:       "add_client",
+		Target:       client.CompanyName,
+		RefID:        client.CompanyID,
+		ResourceType: entity.ActivityResourceClient,
+		Detail:       "Company ID: " + client.CompanyID,
 	}); err != nil {
 		return err
 	}
@@ -219,13 +223,22 @@ func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
+	patchKeys := make([]string, 0, len(patch))
+	for k := range patch {
+		patchKeys = append(patchKeys, k)
+	}
+	sort.Strings(patchKeys)
+
 	if err := h.uc.RecordActivity(ctx, entity.ActivityLog{
-		Category:  entity.ActivityCategoryData,
-		ActorType: entity.ActivityActorHuman,
-		Actor:     actorFromCtx(r),
-		Action:    "edit_client",
-		Target:    companyID,
-		RefID:     companyID,
+		WorkspaceID:  ctxutil.GetWorkspaceID(ctx),
+		Category:     entity.ActivityCategoryData,
+		ActorType:    entity.ActivityActorHuman,
+		Actor:        actorFromCtx(r),
+		Action:       "edit_client",
+		Target:       companyID,
+		RefID:        companyID,
+		ResourceType: entity.ActivityResourceClient,
+		Detail:       "Ubah: " + strings.Join(patchKeys, ", "),
 	}); err != nil {
 		return err
 	}
@@ -257,12 +270,15 @@ func (h *ClientHandler) Delete(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if err := h.uc.RecordActivity(ctx, entity.ActivityLog{
-		Category:  entity.ActivityCategoryData,
-		ActorType: entity.ActivityActorHuman,
-		Actor:     actorFromCtx(r),
-		Action:    "delete_client",
-		Target:    companyID,
-		RefID:     companyID,
+		WorkspaceID:  ctxutil.GetWorkspaceID(ctx),
+		Category:     entity.ActivityCategoryData,
+		ActorType:    entity.ActivityActorHuman,
+		Actor:        actorFromCtx(r),
+		Action:       "delete_client",
+		Target:       companyID,
+		RefID:        companyID,
+		ResourceType: entity.ActivityResourceClient,
+		Detail:       "Company ID: " + companyID,
 	}); err != nil {
 		return err
 	}

@@ -161,6 +161,7 @@ func (r *logRepo) AppendActivity(ctx context.Context, entry entity.ActivityLog) 
 			"target",
 			"detail",
 			"ref_id",
+			"resource_type",
 			"status",
 			"occurred_at",
 		).
@@ -173,6 +174,7 @@ func (r *logRepo) AppendActivity(ctx context.Context, entry entity.ActivityLog) 
 			entry.Target,
 			entry.Detail,
 			entry.RefID,
+			entry.ResourceType,
 			entry.Status,
 			entry.OccurredAt,
 		).
@@ -205,6 +207,12 @@ func (r *logRepo) GetActivities(ctx context.Context, filter entity.ActivityFilte
 	if filter.Category != "" {
 		cond = append(cond, sq.Eq{"category": filter.Category})
 	}
+	if filter.ResourceType != "" {
+		cond = append(cond, sq.Eq{"resource_type": filter.ResourceType})
+	}
+	if filter.RefID != "" {
+		cond = append(cond, sq.Eq{"ref_id": filter.RefID})
+	}
 	if filter.Since != nil {
 		cond = append(cond, sq.GtOrEq{"occurred_at": *filter.Since})
 	}
@@ -234,7 +242,7 @@ func (r *logRepo) GetActivities(ctx context.Context, filter entity.ActivityFilte
 		Select(
 			"id", "workspace_id", "category", "actor_type",
 			"actor", "action", "target", "detail",
-			"ref_id", "status", "occurred_at",
+			"ref_id", "resource_type", "status", "occurred_at",
 		).
 		From("activity_log").
 		Where(cond).
@@ -256,17 +264,18 @@ func (r *logRepo) GetActivities(ctx context.Context, filter entity.ActivityFilte
 	for rows.Next() {
 		var a entity.ActivityLog
 		var (
-			nsWorkspaceID sql.NullString
-			nsActor       sql.NullString
-			nsTarget      sql.NullString
-			nsDetail      sql.NullString
-			nsRefID       sql.NullString
-			nsStatus      sql.NullString
+			nsWorkspaceID  sql.NullString
+			nsActor        sql.NullString
+			nsTarget       sql.NullString
+			nsDetail       sql.NullString
+			nsRefID        sql.NullString
+			nsResourceType sql.NullString
+			nsStatus       sql.NullString
 		)
 		if err := rows.Scan(
 			&a.ID, &nsWorkspaceID, &a.Category, &a.ActorType,
 			&nsActor, &a.Action, &nsTarget, &nsDetail,
-			&nsRefID, &nsStatus, &a.OccurredAt,
+			&nsRefID, &nsResourceType, &nsStatus, &a.OccurredAt,
 		); err != nil {
 			return nil, 0, fmt.Errorf("scan activity row: %w", err)
 		}
@@ -276,6 +285,7 @@ func (r *logRepo) GetActivities(ctx context.Context, filter entity.ActivityFilte
 		a.Target = nsTarget.String
 		a.Detail = nsDetail.String
 		a.RefID = nsRefID.String
+		a.ResourceType = nsResourceType.String
 		a.Status = nsStatus.String
 
 		logs = append(logs, a)

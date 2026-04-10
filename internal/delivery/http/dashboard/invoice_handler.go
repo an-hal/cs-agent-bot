@@ -129,12 +129,14 @@ func (h *InvoiceHandler) Update(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if err := h.uc.RecordActivity(ctx, entity.ActivityLog{
-		Category:  entity.ActivityCategoryData,
-		ActorType: entity.ActivityActorHuman,
-		Actor:     actorFromCtx(r),
-		Action:    "edit_invoice",
-		Target:    invoiceID,
-		RefID:     invoiceID,
+		WorkspaceID:  ctxutil.GetWorkspaceID(ctx),
+		Category:     entity.ActivityCategoryData,
+		ActorType:    entity.ActivityActorHuman,
+		Actor:        actorFromCtx(r),
+		Action:       "edit_invoice",
+		Target:       invoiceID,
+		RefID:        invoiceID,
+		ResourceType: entity.ActivityResourceInvoice,
 	}); err != nil {
 		return err
 	}

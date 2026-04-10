@@ -122,15 +122,16 @@ func (e *ActionExecutor) executeSendWA(ctx context.Context, rule entity.TriggerR
 
 	// Activity trail
 	if err := e.logRepo.AppendActivity(ctx, entity.ActivityLog{
-		WorkspaceID: clientCtx.Client.WorkspaceID,
-		Category:    entity.ActivityCategoryBot,
-		ActorType:   entity.ActivityActorBot,
-		Actor:       "bot",
-		Action:      rule.FlagKey,
-		Target:      clientCtx.Client.CompanyName,
-		Detail:      fmt.Sprintf("Rule: %s · Template: %s · Channel: WA", rule.RuleID, *rule.TemplateID),
-		RefID:       clientCtx.Client.CompanyID,
-		Status:      "delivered",
+		WorkspaceID:  clientCtx.Client.WorkspaceID,
+		Category:     entity.ActivityCategoryBot,
+		ActorType:    entity.ActivityActorBot,
+		Actor:        "bot",
+		Action:       rule.FlagKey,
+		Target:       clientCtx.Client.CompanyName,
+		Detail:       fmt.Sprintf("Rule: %s · Template: %s · Channel: WA", rule.RuleID, *rule.TemplateID),
+		RefID:        clientCtx.Client.CompanyID,
+		ResourceType: entity.ActivityResourceBot,
+		Status:       "delivered",
 	}); err != nil {
 		e.logger.Error().Err(err).Str("rule_id", rule.RuleID).Msg("Failed to append activity log")
 	}

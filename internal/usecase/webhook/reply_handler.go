@@ -100,15 +100,16 @@ func (h *replyHandler) HandleIncomingReply(ctx context.Context, payload WAWebhoo
 
 	// Append to unified audit trail
 	if err := h.logRepo.AppendActivity(ctx, entity.ActivityLog{
-		WorkspaceID: client.WorkspaceID,
-		Category:    entity.ActivityCategoryBot,
-		ActorType:   entity.ActivityActorBot,
-		Actor:       "bot",
-		Action:      "REPLY_" + strings.ToUpper(string(intent)),
-		Target:      client.CompanyName,
-		Detail:      payload.Text,
-		RefID:       client.CompanyID,
-		Status:      string(intent),
+		WorkspaceID:  client.WorkspaceID,
+		Category:     entity.ActivityCategoryBot,
+		ActorType:    entity.ActivityActorBot,
+		Actor:        "bot",
+		Action:       "REPLY_" + strings.ToUpper(string(intent)),
+		Target:       client.CompanyName,
+		Detail:       payload.Text,
+		RefID:        client.CompanyID,
+		ResourceType: entity.ActivityResourceBot,
+		Status:       string(intent),
 	}); err != nil {
 		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("failed to append activity log")
 	}

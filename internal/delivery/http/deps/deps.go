@@ -26,6 +26,7 @@ type Deps struct {
 	HandoffHandler   webhook.HandoffHandler
 	PaymentVerifier  usecasePayment.PaymentVerifier
 	DashboardUsecase dashboard.DashboardUsecase
+	LogRepo          repository.LogRepository
 	TriggerRuleRepo  repository.TriggerRuleRepository
 	RuleEngine       *trigger.RuleEngine
 }

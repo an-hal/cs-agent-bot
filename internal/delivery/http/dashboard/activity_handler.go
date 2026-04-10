@@ -30,12 +30,13 @@ func NewActivityHandler(uc dashboard.DashboardUsecase, logger zerolog.Logger, tr
 
 // recordActivityRequest is the request body for the POST endpoint.
 type recordActivityRequest struct {
-	Category string `json:"category"`
-	Action   string `json:"action"`
-	Target   string `json:"target"`
-	Detail   string `json:"detail"`
-	RefID    string `json:"ref_id"`
-	Status   string `json:"status"`
+	Category     string `json:"category"`
+	Action       string `json:"action"`
+	Target       string `json:"target"`
+	Detail       string `json:"detail"`
+	RefID        string `json:"ref_id"`
+	ResourceType string `json:"resource_type"`
+	Status       string `json:"status"`
 }
 
 // List godoc
@@ -43,10 +44,12 @@ type recordActivityRequest struct {
 // @Description  Returns paginated activity log entries across all categories (bot, data, team).
 // @Tags         Dashboard
 // @Param        X-Workspace-ID  header    string  true   "Workspace ID"
-// @Param        category        query     string  false  "Category filter: bot | data | team (default: all)"
-// @Param        offset          query     int     false  "Pagination offset (default 0)"
-// @Param        limit           query     int     false  "Max entries to return (default 10, max 100)"
-// @Param        since           query     string  false  "ISO 8601 timestamp — return entries after this time"
+// @Param        category       query     string  false  "Category filter: bot | data | team (default: all)"
+// @Param        resource_type  query     string  false  "Resource type filter: client | invoice | template | trigger_rule | bot | team"
+// @Param        ref_id         query     string  false  "Filter by record ID (company_id, template_id, rule_id, invoice_id)"
+// @Param        offset         query     int     false  "Pagination offset (default 0)"
+// @Param        limit          query     int     false  "Max entries to return (default 10, max 100)"
+// @Param        since          query     string  false  "ISO 8601 timestamp — return entries after this time"
 // @Success      200  {object}  response.StandardResponseWithMeta{data=[]entity.ActivityLog}
 // @Failure      500  {object}  response.StandardResponse
 // @Router       /api/dashboard/data-master/activity-logs [get]
@@ -60,8 +63,10 @@ func (h *ActivityHandler) List(w http.ResponseWriter, r *http.Request) error {
 	params := pagination.FromRequest(r)
 	workspaceID := ctxutil.GetWorkspaceID(ctx)
 	category := sp.Get("category")
+	resourceType := sp.Get("resource_type")
+	refID := sp.Get("ref_id")
 
-	logger.Info().Str("workspace_id", workspaceID).Str("category", category).Int("offset", params.Offset).Int("limit", params.Limit).Msg("Incoming list activity logs request")
+	logger.Info().Str("workspace_id", workspaceID).Str("category", category).Str("resource_type", resourceType).Str("ref_id", refID).Int("offset", params.Offset).Int("limit", params.Limit).Msg("Incoming list activity logs request")
 
 	var since *time.Time
 	if v := sp.Get("since"); v != "" {
@@ -73,9 +78,11 @@ func (h *ActivityHandler) List(w http.ResponseWriter, r *http.Request) error {
 	filter := entity.ActivityFilter{
 		WorkspaceIDs: []string{workspaceID},
 		Category:     category,
-		Since:       since,
-		Limit:       params.Limit,
-		Offset:      params.Offset,
+		ResourceType: resourceType,
+		RefID:        refID,
+		Since:        since,
+		Limit:        params.Limit,
+		Offset:       params.Offset,
 	}
 
 	logs, total, err := h.uc.GetActivityLogs(ctx, filter)
@@ -132,15 +139,16 @@ func (h *ActivityHandler) Record(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	entry := entity.ActivityLog{
-		WorkspaceID: ctxutil.GetWorkspaceID(ctx),
-		Category:    req.Category,
-		ActorType:   entity.ActivityActorHuman,
-		Actor:       actor,
-		Action:      req.Action,
-		Target:      req.Target,
-		Detail:      req.Detail,
-		RefID:       req.RefID,
-		Status:      req.Status,
+		WorkspaceID:  ctxutil.GetWorkspaceID(ctx),
+		Category:     req.Category,
+		ActorType:    entity.ActivityActorHuman,
+		Actor:        actor,
+		Action:       req.Action,
+		Target:       req.Target,
+		Detail:       req.Detail,
+		RefID:        req.RefID,
+		ResourceType: req.ResourceType,
+		Status:       req.Status,
 	}
 
 	if err := h.uc.RecordActivity(ctx, entry); err != nil {

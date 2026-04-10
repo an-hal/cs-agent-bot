@@ -45,14 +45,15 @@ func (u *dashboardUsecase) StartImportClients(ctx context.Context, workspaceID, 
 	}
 
 	if err := u.logRepo.AppendActivity(ctx, entity.ActivityLog{
-		WorkspaceID: workspaceID,
-		Category:    entity.ActivityCategoryData,
-		ActorType:   entity.ActivityActorHuman,
-		Actor:       actor,
-		Action:      "start_import",
-		Target:      filename,
-		RefID:       job.ID,
-		Detail:      fmt.Sprintf("job_id=%s filename=%s", job.ID, filename),
+		WorkspaceID:  workspaceID,
+		Category:     entity.ActivityCategoryData,
+		ActorType:    entity.ActivityActorHuman,
+		Actor:        actor,
+		Action:       "start_import",
+		Target:       filename,
+		RefID:        job.ID,
+		ResourceType: entity.ActivityResourceClient,
+		Detail:       fmt.Sprintf("job_id=%s filename=%s", job.ID, filename),
 	}); err != nil {
 		logger.Warn().Err(err).Msg("Failed to record start_import activity")
 	}
@@ -154,14 +155,15 @@ func (u *dashboardUsecase) updateJobProgress(ctx context.Context, jobID string, 
 
 func (u *dashboardUsecase) recordImportRowActivity(ctx context.Context, workspaceID, actor, jobID, companyID, companyName, action string) {
 	_ = u.logRepo.AppendActivity(ctx, entity.ActivityLog{
-		WorkspaceID: workspaceID,
-		Category:    entity.ActivityCategoryData,
-		ActorType:   entity.ActivityActorHuman,
-		Actor:       actor,
-		Action:      "import_client_" + action,
-		Target:      companyName,
-		RefID:       companyID,
-		Detail:      fmt.Sprintf("job_id=%s", jobID),
+		WorkspaceID:  workspaceID,
+		Category:     entity.ActivityCategoryData,
+		ActorType:    entity.ActivityActorHuman,
+		Actor:        actor,
+		Action:       "import_client_" + action,
+		Target:       companyName,
+		RefID:        companyID,
+		ResourceType: entity.ActivityResourceClient,
+		Detail:       fmt.Sprintf("job_id=%s", jobID),
 	})
 }
 

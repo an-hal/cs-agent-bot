@@ -248,6 +248,7 @@ func main() {
 		HandoffHandler:   handoffHandler,
 		PaymentVerifier:  paymentVerifier,
 		DashboardUsecase: dashboardUsecase,
+		LogRepo:          logRepo,
 		TriggerRuleRepo:  triggerRuleRepo,
 		RuleEngine:       ruleEngine,
 	})

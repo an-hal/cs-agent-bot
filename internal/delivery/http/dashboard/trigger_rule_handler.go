@@ -2,14 +2,18 @@ package dashboard
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/router"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/response"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/apperror"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/ctxutil"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
@@ -21,6 +25,7 @@ import (
 // TriggerRuleHandler handles CRUD for trigger rules and template variables.
 type TriggerRuleHandler struct {
 	repo       repository.TriggerRuleRepository
+	logRepo    repository.LogRepository
 	ruleEngine *trigger.RuleEngine
 	logger     zerolog.Logger
 	tracer     tracer.Tracer
@@ -28,11 +33,12 @@ type TriggerRuleHandler struct {
 
 func NewTriggerRuleHandler(
 	repo repository.TriggerRuleRepository,
+	logRepo repository.LogRepository,
 	ruleEngine *trigger.RuleEngine,
 	logger zerolog.Logger,
 	tr tracer.Tracer,
 ) *TriggerRuleHandler {
-	return &TriggerRuleHandler{repo: repo, ruleEngine: ruleEngine, logger: logger, tracer: tr}
+	return &TriggerRuleHandler{repo: repo, logRepo: logRepo, ruleEngine: ruleEngine, logger: logger, tracer: tr}
 }
 
 // List godoc
@@ -139,6 +145,20 @@ func (h *TriggerRuleHandler) Create(w http.ResponseWriter, r *http.Request) erro
 		h.ruleEngine.InvalidateCache()
 	}
 
+	if err := h.logRepo.AppendActivity(ctx, entity.ActivityLog{
+		WorkspaceID:  ctxutil.GetWorkspaceID(ctx),
+		Category:     entity.ActivityCategoryData,
+		ActorType:    entity.ActivityActorHuman,
+		Actor:        actorFromCtx(r),
+		Action:       "add_trigger_rule",
+		Target:       rule.RuleID,
+		RefID:        rule.RuleID,
+		ResourceType: entity.ActivityResourceTriggerRule,
+		Detail:       fmt.Sprintf("group=%s action_type=%s", rule.RuleGroup, rule.ActionType),
+	}); err != nil {
+		return err
+	}
+
 	return response.StandardSuccess(w, r, http.StatusCreated, "Trigger rule created", rule)
 }
 
@@ -204,6 +224,26 @@ func (h *TriggerRuleHandler) Update(w http.ResponseWriter, r *http.Request) erro
 		h.ruleEngine.InvalidateCache()
 	}
 
+	keys := make([]string, 0, len(patch))
+	for k := range patch {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	if err := h.logRepo.AppendActivity(ctx, entity.ActivityLog{
+		WorkspaceID:  ctxutil.GetWorkspaceID(ctx),
+		Category:     entity.ActivityCategoryData,
+		ActorType:    entity.ActivityActorHuman,
+		Actor:        actorFromCtx(r),
+		Action:       "edit_trigger_rule",
+		Target:       ruleID,
+		RefID:        ruleID,
+		ResourceType: entity.ActivityResourceTriggerRule,
+		Detail:       "Ubah: " + strings.Join(keys, ", "),
+	}); err != nil {
+		return err
+	}
+
 	return response.StandardSuccess(w, r, http.StatusOK, "Trigger rule updated", nil)
 }
 
@@ -224,6 +264,19 @@ func (h *TriggerRuleHandler) Delete(w http.ResponseWriter, r *http.Request) erro
 
 	if h.ruleEngine != nil {
 		h.ruleEngine.InvalidateCache()
+	}
+
+	if err := h.logRepo.AppendActivity(ctx, entity.ActivityLog{
+		WorkspaceID:  ctxutil.GetWorkspaceID(ctx),
+		Category:     entity.ActivityCategoryData,
+		ActorType:    entity.ActivityActorHuman,
+		Actor:        actorFromCtx(r),
+		Action:       "delete_trigger_rule",
+		Target:       ruleID,
+		RefID:        ruleID,
+		ResourceType: entity.ActivityResourceTriggerRule,
+	}); err != nil {
+		return err
 	}
 
 	return response.StandardSuccess(w, r, http.StatusOK, "Trigger rule deleted", nil)
