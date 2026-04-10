@@ -9,6 +9,12 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// sensitiveConfigKeys are masked (value replaced with "***") in API responses.
+var sensitiveConfigKeys = map[string]bool{
+	"WA_API_TOKEN":       true,
+	"TELEGRAM_BOT_TOKEN": true,
+}
+
 type AppConfig struct {
 	// Application
 	Env         string
@@ -196,12 +202,11 @@ func LoadConfig() *AppConfig {
 }
 
 func validateRequired(cfg *AppConfig) {
+	// Only validate keys that must come from env vars (used before DB is available).
+	// API keys (HALOAI_API_URL, WA_API_TOKEN, TELEGRAM_*) are validated after DB
+	// hydration via ValidateCriticalAfterHydration().
 	required := map[string]string{
-		"HALOAI_API_URL":         cfg.HaloAIAPIURL,
-		"WA_API_TOKEN":           cfg.WAAPIToken,
 		"WA_WEBHOOK_SECRET":      cfg.WAWebhookSecret,
-		"TELEGRAM_BOT_TOKEN":     cfg.TelegramBotToken,
-		"TELEGRAM_AE_LEAD_ID":    cfg.TelegramAELeadID,
 		"HANDOFF_WEBHOOK_SECRET": cfg.HandoffWebhookSecret,
 	}
 
@@ -216,6 +221,93 @@ func validateRequired(cfg *AppConfig) {
 			log.Fatalf("Required environment variable %s is not set", key)
 		}
 	}
+}
+
+// HydrateFromDB overwrites config fields with values from the system_config table.
+// A DB value only takes effect when it is non-empty; env-var defaults remain as fallback.
+func (c *AppConfig) HydrateFromDB(values map[string]string) {
+	if v := values["HALOAI_API_URL"]; v != "" {
+		c.HaloAIAPIURL = v
+	}
+	if v := values["WA_API_TOKEN"]; v != "" {
+		c.WAAPIToken = v
+	}
+	if v := values["HALOAI_BUSINESS_ID"]; v != "" {
+		c.HaloAIBusinessID = v
+	}
+	if v := values["HALOAI_CHANNEL_ID"]; v != "" {
+		c.HaloAIChannelID = v
+	}
+	if v := values["TELEGRAM_BOT_TOKEN"]; v != "" {
+		c.TelegramBotToken = v
+	}
+	if v := values["TELEGRAM_AE_LEAD_ID"]; v != "" {
+		c.TelegramAELeadID = v
+	}
+	if v := values["PROMO_DEADLINE"]; v != "" {
+		c.PromoDeadline = v
+	}
+	if v := values["SURVEY_PLATFORM_URL"]; v != "" {
+		c.SurveyPlatformURL = v
+	}
+	if v := values["CHECKIN_FORM_URL"]; v != "" {
+		c.CheckinFormURL = v
+	}
+	if v := values["REFERRAL_BENEFIT"]; v != "" {
+		c.ReferralBenefit = v
+	}
+	if v := values["QUOTATION_URL"]; v != "" {
+		c.QuotationURL = v
+	}
+	if v := values["ACV_HIGH_THRESHOLD"]; v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			c.ACVHighThreshold = f
+		}
+	}
+	if v := values["ACV_MID_THRESHOLD"]; v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil {
+			c.ACVMidThreshold = f
+		}
+	}
+	if v := values["SENIOR_AE_TELEGRAM_IDS"]; v != "" {
+		c.SeniorAETelegramIDs = v
+	}
+	if v := values["AE_TEAM_TELEGRAM_IDS"]; v != "" {
+		c.AETeamTelegramIDs = v
+	}
+	if v := values["ANGRY_KEYWORDS_EXTRA"]; v != "" {
+		c.AngryKeywordsExtra = v
+	}
+	if v := values["SILENCE_THRESHOLD_DAYS"]; v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			c.SilenceThresholdDays = n
+		}
+	}
+	if v := values["JWT_VALIDATE_URL"]; v != "" {
+		c.JWTValidateURL = v
+	}
+}
+
+// ValidateCriticalAfterHydration checks that API keys required for external
+// services are set — either from env vars or from the DB via HydrateFromDB.
+func (c *AppConfig) ValidateCriticalAfterHydration() {
+	critical := map[string]string{
+		"HALOAI_API_URL":      c.HaloAIAPIURL,
+		"WA_API_TOKEN":        c.WAAPIToken,
+		"TELEGRAM_BOT_TOKEN":  c.TelegramBotToken,
+		"TELEGRAM_AE_LEAD_ID": c.TelegramAELeadID,
+	}
+	for key, val := range critical {
+		if val == "" {
+			log.Fatalf("Critical config %s is not set (set via env var or system_config table)", key)
+		}
+	}
+}
+
+// IsSensitiveConfigKey reports whether the system_config key holds a secret
+// that should be masked in API responses.
+func IsSensitiveConfigKey(key string) bool {
+	return sensitiveConfigKeys[key]
 }
 
 func getEnv(key, defaultVal string) string {

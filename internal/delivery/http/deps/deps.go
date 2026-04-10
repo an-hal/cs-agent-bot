@@ -28,5 +28,6 @@ type Deps struct {
 	DashboardUsecase dashboard.DashboardUsecase
 	LogRepo          repository.LogRepository
 	TriggerRuleRepo  repository.TriggerRuleRepository
+	SystemConfigRepo repository.SystemConfigRepository
 	RuleEngine       *trigger.RuleEngine
 }

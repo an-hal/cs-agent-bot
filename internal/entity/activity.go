@@ -45,10 +45,11 @@ const (
 
 // Activity resource type constants — used to power per-module activity feeds.
 const (
-	ActivityResourceClient      = "client"
-	ActivityResourceInvoice     = "invoice"
-	ActivityResourceTemplate    = "template"
-	ActivityResourceTriggerRule = "trigger_rule"
-	ActivityResourceBot         = "bot"
-	ActivityResourceTeam        = "team"
+	ActivityResourceClient       = "client"
+	ActivityResourceInvoice      = "invoice"
+	ActivityResourceTemplate     = "template"
+	ActivityResourceTriggerRule  = "trigger_rule"
+	ActivityResourceSystemConfig = "system_config"
+	ActivityResourceBot          = "bot"
+	ActivityResourceTeam         = "team"
 )

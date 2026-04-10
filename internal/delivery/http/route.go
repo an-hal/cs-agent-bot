@@ -31,6 +31,7 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	escalationH := dashboard.NewEscalationHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 	bgJobH := dashboard.NewBackgroundJobHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 	triggerRuleH := dashboard.NewTriggerRuleHandler(deps.TriggerRuleRepo, deps.LogRepo, deps.RuleEngine, deps.Logger, deps.Tracer)
+	systemConfigH := dashboard.NewSystemConfigHandler(deps.SystemConfigRepo, deps.LogRepo, deps.Logger, deps.Tracer)
 
 	// Per-route auth wrappers
 	oidcAuth := middleware.OIDCAuthMiddleware(deps.Cfg.AppURL, deps.Cfg.SchedulerSAEmail, deps.Cfg.Env, deps.Logger)
@@ -86,6 +87,8 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	dataMaster.Handle(http.MethodDelete, "/trigger-rules/{rule_id}", jwtAuth(triggerRuleH.Delete))
 	dataMaster.Handle(http.MethodPost, "/trigger-rules/cache/invalidate", jwtAuth(triggerRuleH.InvalidateCache))
 	dataMaster.Handle(http.MethodGet, "/template-variables", jwtAuth(triggerRuleH.ListVariables))
+	dataMaster.Handle(http.MethodGet, "/system-config", jwtAuth(systemConfigH.List))
+	dataMaster.Handle(http.MethodPut, "/system-config/{key}", jwtAuth(systemConfigH.Update))
 
 	// Swagger
 	r.HandlePrefix(http.MethodGet, "/swagger", httpSwagger.WrapHandler)

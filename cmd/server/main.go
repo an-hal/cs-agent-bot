@@ -94,6 +94,17 @@ func main() {
 
 	queryTimeout := cfg.DBQueryTimeout
 
+	// Hydrate config from system_config table. DB-sourced values override env vars
+	// when non-empty, preserving env-var fallback for backward compatibility.
+	systemConfigRepo := repository.NewSystemConfigRepo(db, queryTimeout, tracerInstance, logger)
+	if dbValues, err := systemConfigRepo.GetAll(context.Background()); err != nil {
+		logger.Warn().Err(err).Msg("Failed to load system_config from DB; using env vars only")
+	} else {
+		cfg.HydrateFromDB(dbValues)
+		logger.Info().Msg("Config hydrated from system_config table")
+	}
+	cfg.ValidateCriticalAfterHydration()
+
 	clientRepo := repository.NewClientRepo(db, queryTimeout, tracerInstance, logger)
 	invoiceRepo := repository.NewInvoiceRepo(db, queryTimeout, tracerInstance, logger)
 	flagsRepo := repository.NewFlagsRepo(db, queryTimeout, tracerInstance, logger)
@@ -250,6 +261,7 @@ func main() {
 		DashboardUsecase: dashboardUsecase,
 		LogRepo:          logRepo,
 		TriggerRuleRepo:  triggerRuleRepo,
+		SystemConfigRepo: systemConfigRepo,
 		RuleEngine:       ruleEngine,
 	})
 
