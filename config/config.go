@@ -172,7 +172,7 @@ func LoadConfig() *AppConfig {
 		UseDynamicRules: getEnvBool("USE_DYNAMIC_RULES", false),
 
 		// Background Jobs
-		ExportStoragePath: getEnv("EXPORT_STORAGE_PATH", "/tmp/exports"),
+		ExportStoragePath: getEnv("EXPORT_STORAGE_PATH", "./tmp/exports"),
 
 		// OpenTelemetry Tracing
 		TracerExporter:            getEnv("TRACER_EXPORTER", "zipkin"),

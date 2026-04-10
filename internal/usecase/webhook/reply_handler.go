@@ -151,7 +151,9 @@ func (h *replyHandler) handleAngry(ctx context.Context, client entity.Client) er
 	convState, err := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
 	if err != nil {
 		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to get conversation state in handleAngry")
+		convState = &entity.ConversationState{CompanyID: client.CompanyID, BotActive: true}
 	}
+	convState.WorkspaceID = client.WorkspaceID
 	convState.ResponseClassification = entity.StringPtr(entity.RespAngry)
 	convState.BotActive = false
 	convState.ReasonBotPaused = entity.StringPtr("Angry client detected")
@@ -175,14 +177,26 @@ func (h *replyHandler) handlePaidClaim(ctx context.Context, client entity.Client
 	convState, err := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
 	if err != nil {
 		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to get conversation state in handlePaidClaim")
+		convState = &entity.ConversationState{CompanyID: client.CompanyID, BotActive: true}
 	}
-	inv, _ := h.invoiceRepo.GetActiveByCompanyID(ctx, client.CompanyID)
+	inv, err := h.invoiceRepo.GetActiveByCompanyID(ctx, client.CompanyID)
+	if err != nil {
+		h.logger.Warn().Err(err).Str("company_id", client.CompanyID).Msg("No active invoice found for paid claim; notifying AE without invoice detail")
+	}
+	convState.WorkspaceID = client.WorkspaceID
 	convState.ResponseClassification = entity.StringPtr(entity.RespPaid)
 	convState.ResponseStatus = entity.ResponseStatusPending
 	if err := h.convStateRepo.CreateOrUpdate(ctx, *convState); err != nil {
 		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to update conversation state in handlePaidClaim")
 	}
 
+	if inv == nil {
+		msg := fmt.Sprintf(
+			"Paid claim received from <b>%s</b> (%s), but no active invoice was found.\nPlease verify manually.",
+			client.CompanyName, client.CompanyID,
+		)
+		return h.telegram.SendMessage(ctx, client.OwnerTelegramID, msg)
+	}
 	formatted := h.telegram.FormatPaymentClaim(client, inv)
 	return h.telegram.SendMessage(ctx, client.OwnerTelegramID, formatted)
 }
@@ -199,7 +213,9 @@ func (h *replyHandler) handleNPS(ctx context.Context, client entity.Client, text
 	convState, err := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
 	if err != nil {
 		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to get conversation state in handleNPS")
+		convState = &entity.ConversationState{CompanyID: client.CompanyID, BotActive: true}
 	}
+	convState.WorkspaceID = client.WorkspaceID
 	convState.ResponseClassification = entity.StringPtr(entity.RespNPS)
 	if updateErr := h.convStateRepo.CreateOrUpdate(ctx, *convState); updateErr != nil {
 		h.logger.Error().Err(updateErr).Str("company_id", client.CompanyID).Msg("Failed to update conversation state in handleNPS")
@@ -234,7 +250,9 @@ func (h *replyHandler) handleReject(ctx context.Context, client entity.Client) e
 	convState, err := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
 	if err != nil {
 		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to get conversation state in handleReject")
+		convState = &entity.ConversationState{CompanyID: client.CompanyID, BotActive: true}
 	}
+	convState.WorkspaceID = client.WorkspaceID
 	convState.ResponseClassification = entity.StringPtr(entity.RespReject)
 	convState.BotActive = false
 	convState.ReasonBotPaused = entity.StringPtr("Client rejected automation")
@@ -252,7 +270,9 @@ func (h *replyHandler) handleDelay(ctx context.Context, client entity.Client) er
 	convState, err := h.convStateRepo.GetByCompanyID(ctx, client.CompanyID)
 	if err != nil {
 		h.logger.Error().Err(err).Str("company_id", client.CompanyID).Msg("Failed to get conversation state in handleDelay")
+		convState = &entity.ConversationState{CompanyID: client.CompanyID, BotActive: true}
 	}
+	convState.WorkspaceID = client.WorkspaceID
 	convState.ResponseClassification = entity.StringPtr(entity.RespDelay)
 	convState.NextScheduledAction = entity.StringPtr("REACTIVATE_FLOW")
 	convState.NextScheduledDate = func() *time.Time { t := time.Now().AddDate(0, 1, 0); return &t }()

@@ -48,6 +48,7 @@ func (r *conversationStateRepo) withTimeout(ctx context.Context) (context.Contex
 // csColumns lists all conversation_states columns in scan order.
 var csColumns = []string{
 	"company_id",
+	"workspace_id",
 	"company_name",
 	"active_flow",
 	"current_stage",
@@ -71,6 +72,7 @@ func scanConversationState(scanner interface {
 	var s entity.ConversationState
 	err := scanner.Scan(
 		&s.CompanyID,
+		&s.WorkspaceID,
 		&s.CompanyName,
 		&s.ActiveFlow,
 		&s.CurrentStage,
@@ -96,6 +98,7 @@ func scanConversationState(scanner interface {
 func csValues(s entity.ConversationState) []interface{} {
 	return []interface{}{
 		s.CompanyID,
+		s.WorkspaceID,
 		s.CompanyName,
 		s.ActiveFlow,
 		s.CurrentStage,

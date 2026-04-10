@@ -28,6 +28,7 @@ const (
 // Nullable DB columns use Go pointer types so that sql.Scan can handle NULL.
 type ConversationState struct {
 	CompanyID              string     `json:"company_id"`
+	WorkspaceID            string     `json:"workspace_id"`
 	CompanyName            *string    `json:"company_name"`
 	ActiveFlow             *string    `json:"active_flow"`
 	CurrentStage           *string    `json:"current_stage"`

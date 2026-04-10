@@ -1,10 +1,13 @@
 package webhook
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/dto"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/ctxutil"
 	usecaseWebhook "github.com/Sejutacita/cs-agent-bot/internal/usecase/webhook"
 	"github.com/rs/zerolog"
 )
@@ -45,12 +48,32 @@ func (h *WAWebhookHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		Text:        payload.Message.Body,
 	}
 
+	// Extract request-scoped values before responding — r.Context() is canceled once the handler returns.
+	requestID := ctxutil.GetRequestID(r.Context())
+	traceID := ctxutil.GetTraceID(r.Context())
+
 	// Respond BEFORE any processing (must return 200 within 5 seconds)
 	w.WriteHeader(http.StatusOK)
 
-	// Process in background goroutine with request context
+	// Process in background goroutine using a detached context so the DB/HTTP calls
+	// are not canceled when the HTTP handler returns.
 	go func() {
-		if err := h.replyHandler.HandleIncomingReply(r.Context(), ucPayload); err != nil {
+		defer func() {
+			if rv := recover(); rv != nil {
+				h.logger.Error().
+					Interface("panic", rv).
+					Str("message_id", payload.Trigger.MessageID).
+					Msg("Panic in webhook processing goroutine")
+			}
+		}()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+
+		ctx = ctxutil.SetRequestID(ctx, requestID)
+		ctx = ctxutil.SetTraceID(ctx, traceID)
+
+		if err := h.replyHandler.HandleIncomingReply(ctx, ucPayload); err != nil {
 			h.logger.Error().Err(err).
 				Str("message_id", payload.Trigger.MessageID).
 				Msg("Failed to handle incoming reply")
