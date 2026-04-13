@@ -102,6 +102,11 @@ type AppConfig struct {
 
 	// JWT Auth
 	JWTValidateURL string
+
+	// Dashboard Auth (Feature 01)
+	AuthProxyURL       string
+	GoogleClientID     string
+	SessionSecret      string
 }
 
 func LoadConfig() *AppConfig {
@@ -194,6 +199,11 @@ func LoadConfig() *AppConfig {
 
 		// JWT Auth
 		JWTValidateURL: getEnv("JWT_VALIDATE_URL", "https://api.sejutacita.id/v1/login/self"),
+
+		// Dashboard Auth (Feature 01)
+		AuthProxyURL:   getEnv("AUTH_PROXY_URL", "https://ms-auth-proxy.up.railway.app"),
+		GoogleClientID: getEnv("GOOGLE_CLIENT_ID", ""),
+		SessionSecret:  getEnv("SESSION_SECRET", ""),
 	}
 
 	validateRequired(cfg)
@@ -208,6 +218,8 @@ func validateRequired(cfg *AppConfig) {
 	required := map[string]string{
 		"WA_WEBHOOK_SECRET":      cfg.WAWebhookSecret,
 		"HANDOFF_WEBHOOK_SECRET": cfg.HandoffWebhookSecret,
+		"SESSION_SECRET":         cfg.SessionSecret,
+		"GOOGLE_CLIENT_ID":       cfg.GoogleClientID,
 	}
 
 	// OIDC config only required for production

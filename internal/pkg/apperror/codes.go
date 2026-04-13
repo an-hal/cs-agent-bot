@@ -9,4 +9,5 @@ const (
 	CodeForbidden    = "FORBIDDEN"
 	CodeInternal     = "INTERNAL_ERROR"
 	CodeConflict     = "CONFLICT"
+	CodeTooManyReq   = "TOO_MANY_REQUESTS"
 )

@@ -3,6 +3,7 @@ package http
 import (
 	"net/http"
 
+	authHandler "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/auth"
 	cronHandler "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/cron"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/dashboard"
 	deliveryHttpDeps "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/deps"
@@ -32,6 +33,7 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	bgJobH := dashboard.NewBackgroundJobHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 	triggerRuleH := dashboard.NewTriggerRuleHandler(deps.TriggerRuleRepo, deps.LogRepo, deps.RuleEngine, deps.Logger, deps.Tracer)
 	systemConfigH := dashboard.NewSystemConfigHandler(deps.SystemConfigRepo, deps.LogRepo, deps.Logger, deps.Tracer)
+	authH := authHandler.NewAuthHandler(deps.AuthUsecase, deps.Cfg.Env, deps.Logger, deps.Tracer)
 
 	// Per-route auth wrappers
 	oidcAuth := middleware.OIDCAuthMiddleware(deps.Cfg.AppURL, deps.Cfg.SchedulerSAEmail, deps.Cfg.Env, deps.Logger)
@@ -55,6 +57,14 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 
 	// API routes
 	api := r.Group(deps.Cfg.RoutePrefix)
+	api.Handle(http.MethodPost, "/auth/login", authH.Login)
+	api.Handle(http.MethodPost, "/auth/google", authH.LoginGoogle)
+	api.Handle(http.MethodPost, "/auth/logout", authH.Logout)
+	api.Handle(http.MethodGet, "/whitelist/check", authH.CheckWhitelist)
+	api.Handle(http.MethodGet, "/whitelist", jwtAuth(authH.ListWhitelist))
+	api.Handle(http.MethodPost, "/whitelist", jwtAuth(authH.AddWhitelist))
+	api.Handle(http.MethodDelete, "/whitelist/{id}", jwtAuth(authH.DeleteWhitelist))
+
 	api.Handle(http.MethodGet, "/cron/run", oidcAuth(cronH.Run))
 	api.Handle(http.MethodPost, "/handoff/new-client", hmacAuth(handoffH.Handle))
 	api.Handle(http.MethodPost, "/payment/verify", hmacAuth(paymentVerifyH.Handle))

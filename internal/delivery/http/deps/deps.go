@@ -6,6 +6,7 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/validator"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/auth"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
@@ -30,4 +31,5 @@ type Deps struct {
 	TriggerRuleRepo  repository.TriggerRuleRepository
 	SystemConfigRepo repository.SystemConfigRepository
 	RuleEngine       *trigger.RuleEngine
+	AuthUsecase      auth.AuthUsecase
 }
