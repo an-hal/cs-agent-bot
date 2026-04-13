@@ -9,9 +9,11 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/auth"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/notification"
 	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/trigger"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/webhook"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/workspace"
 	"github.com/rs/zerolog"
 )
 
@@ -32,4 +34,6 @@ type Deps struct {
 	SystemConfigRepo repository.SystemConfigRepository
 	RuleEngine       *trigger.RuleEngine
 	AuthUsecase      auth.AuthUsecase
+	WorkspaceUC      workspace.Usecase
+	NotificationUC   notification.Usecase
 }
