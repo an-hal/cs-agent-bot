@@ -31,6 +31,7 @@ import (
 	pkgValidator "github.com/Sejutacita/cs-agent-bot/internal/pkg/validator"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
 	appTracer "github.com/Sejutacita/cs-agent-bot/internal/tracer"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/auth"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/classifier"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
@@ -115,6 +116,7 @@ func main() {
 	workspaceRepo := repository.NewWorkspaceRepo(db, queryTimeout, tracerInstance, logger)
 	templateRepo := repository.NewTemplateRepo(db, queryTimeout, tracerInstance)
 	bgJobRepo := repository.NewBackgroundJobRepo(db, queryTimeout, tracerInstance, logger)
+	whitelistRepo := repository.NewWhitelistRepo(db, queryTimeout, tracerInstance, logger)
 
 	fileStore, err := jobstore.NewLocalFileStore(cfg.ExportStoragePath)
 	if err != nil {
@@ -243,6 +245,10 @@ func main() {
 		logger,
 	)
 
+	authProxyClient := auth.NewAuthProxyClient(cfg.AuthProxyURL)
+	googleVerifier := auth.NewGoogleTokenVerifier(cfg.GoogleClientID)
+	authUsecase := auth.NewAuthUsecase(whitelistRepo, authProxyClient, googleVerifier, cfg.SessionSecret, logger)
+
 	validate := pkgValidator.New()
 
 	exceptionHandler := response.NewHTTPExceptionHandler(logger, cfg.EnableStackTrace)
@@ -263,6 +269,7 @@ func main() {
 		TriggerRuleRepo:  triggerRuleRepo,
 		SystemConfigRepo: systemConfigRepo,
 		RuleEngine:       ruleEngine,
+		AuthUsecase:      authUsecase,
 	})
 
 	server := &http.Server{

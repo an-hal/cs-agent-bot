@@ -171,6 +171,18 @@ func Conflict(message string) *AppError {
 	}
 }
 
+// TooManyRequests creates a 429 Too Many Requests error.
+func TooManyRequests(message string) *AppError {
+	if message == "" {
+		message = "Too many requests"
+	}
+	return &AppError{
+		Code:       CodeTooManyReq,
+		Message:    message,
+		HTTPStatus: http.StatusTooManyRequests,
+	}
+}
+
 // GetAppError extracts *AppError from an error if possible
 // Returns nil if the error is not an *AppError
 func GetAppError(err error) *AppError {
