@@ -37,11 +37,13 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/escalation"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai"
+	notificationuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/notification"
 	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/telegram"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/template"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/trigger"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/webhook"
+	workspaceuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/workspace"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
@@ -114,6 +116,9 @@ func main() {
 	escalationRepo := repository.NewEscalationRepo(db, queryTimeout, tracerInstance, logger)
 	configRepo := repository.NewConfigRepo(db, queryTimeout, tracerInstance, logger)
 	workspaceRepo := repository.NewWorkspaceRepo(db, queryTimeout, tracerInstance, logger)
+	workspaceMemberRepo := repository.NewWorkspaceMemberRepo(db, queryTimeout, tracerInstance, logger)
+	workspaceInvitationRepo := repository.NewWorkspaceInvitationRepo(db, queryTimeout, tracerInstance, logger)
+	notificationRepo := repository.NewNotificationRepo(db, queryTimeout, tracerInstance, logger)
 	templateRepo := repository.NewTemplateRepo(db, queryTimeout, tracerInstance)
 	bgJobRepo := repository.NewBackgroundJobRepo(db, queryTimeout, tracerInstance, logger)
 	whitelistRepo := repository.NewWhitelistRepo(db, queryTimeout, tracerInstance, logger)
@@ -248,6 +253,8 @@ func main() {
 	authProxyClient := auth.NewAuthProxyClient(cfg.AuthProxyURL)
 	googleVerifier := auth.NewGoogleTokenVerifier(cfg.GoogleClientID)
 	authUsecase := auth.NewAuthUsecase(whitelistRepo, authProxyClient, googleVerifier, cfg.SessionSecret, logger)
+	workspaceUsecase := workspaceuc.New(workspaceRepo, workspaceMemberRepo, workspaceInvitationRepo, nil, nil)
+	notificationUsecase := notificationuc.New(notificationRepo)
 
 	validate := pkgValidator.New()
 
@@ -270,6 +277,8 @@ func main() {
 		SystemConfigRepo: systemConfigRepo,
 		RuleEngine:       ruleEngine,
 		AuthUsecase:      authUsecase,
+		WorkspaceUC:      workspaceUsecase,
+		NotificationUC:   notificationUsecase,
 	})
 
 	server := &http.Server{
