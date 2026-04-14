@@ -34,9 +34,11 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/auth"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/classifier"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
+	customfielduc "github.com/Sejutacita/cs-agent-bot/internal/usecase/custom_field"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/escalation"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai"
+	masterdatauc "github.com/Sejutacita/cs-agent-bot/internal/usecase/master_data"
 	notificationuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/notification"
 	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/telegram"
@@ -122,6 +124,10 @@ func main() {
 	templateRepo := repository.NewTemplateRepo(db, queryTimeout, tracerInstance)
 	bgJobRepo := repository.NewBackgroundJobRepo(db, queryTimeout, tracerInstance, logger)
 	whitelistRepo := repository.NewWhitelistRepo(db, queryTimeout, tracerInstance, logger)
+	masterDataRepo := repository.NewMasterDataRepo(db, queryTimeout, tracerInstance, logger)
+	customFieldRepo := repository.NewCustomFieldDefinitionRepo(db, queryTimeout, tracerInstance, logger)
+	masterDataMutationRepo := repository.NewMasterDataMutationRepo(db, queryTimeout, tracerInstance, logger)
+	approvalRequestRepo := repository.NewApprovalRequestRepo(db, queryTimeout, tracerInstance, logger)
 
 	fileStore, err := jobstore.NewLocalFileStore(cfg.ExportStoragePath)
 	if err != nil {
@@ -255,6 +261,8 @@ func main() {
 	authUsecase := auth.NewAuthUsecase(whitelistRepo, authProxyClient, googleVerifier, cfg.SessionSecret, logger)
 	workspaceUsecase := workspaceuc.New(workspaceRepo, workspaceMemberRepo, workspaceInvitationRepo, nil, nil)
 	notificationUsecase := notificationuc.New(notificationRepo)
+	masterDataUsecase := masterdatauc.New(masterDataRepo, customFieldRepo, masterDataMutationRepo, approvalRequestRepo)
+	customFieldUsecase := customfielduc.New(customFieldRepo)
 
 	validate := pkgValidator.New()
 
@@ -279,6 +287,8 @@ func main() {
 		AuthUsecase:      authUsecase,
 		WorkspaceUC:      workspaceUsecase,
 		NotificationUC:   notificationUsecase,
+		MasterDataUC:     masterDataUsecase,
+		CustomFieldUC:    customFieldUsecase,
 	})
 
 	server := &http.Server{

@@ -34,6 +34,8 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	bgJobH := dashboard.NewBackgroundJobHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 	triggerRuleH := dashboard.NewTriggerRuleHandler(deps.TriggerRuleRepo, deps.LogRepo, deps.RuleEngine, deps.Logger, deps.Tracer)
 	systemConfigH := dashboard.NewSystemConfigHandler(deps.SystemConfigRepo, deps.LogRepo, deps.Logger, deps.Tracer)
+	masterDataH := dashboard.NewMasterDataHandler(deps.MasterDataUC, deps.Logger, deps.Tracer)
+	customFieldH := dashboard.NewCustomFieldHandler(deps.CustomFieldUC, deps.Logger, deps.Tracer)
 	authH := authHandler.NewAuthHandler(deps.AuthUsecase, deps.Cfg.Env, deps.Logger, deps.Tracer)
 
 	// Per-route auth wrappers
@@ -115,6 +117,26 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	dataMaster.Handle(http.MethodGet, "/template-variables", jwtAuth(triggerRuleH.ListVariables))
 	dataMaster.Handle(http.MethodGet, "/system-config", jwtAuth(systemConfigH.List))
 	dataMaster.Handle(http.MethodPut, "/system-config/{key}", jwtAuth(systemConfigH.Update))
+
+	masterData := api.Group("/master-data")
+	masterData.Handle(http.MethodGet, "/clients", wsRequired(jwtAuth(masterDataH.List)))
+	masterData.Handle(http.MethodGet, "/clients/export", wsRequired(jwtAuth(masterDataH.Export)))
+	masterData.Handle(http.MethodGet, "/clients/template", wsRequired(jwtAuth(masterDataH.Template)))
+	masterData.Handle(http.MethodPost, "/clients/import", wsRequired(jwtAuth(masterDataH.Import)))
+	masterData.Handle(http.MethodPost, "/clients", wsRequired(jwtAuth(masterDataH.Create)))
+	masterData.Handle(http.MethodGet, "/clients/{id}", wsRequired(jwtAuth(masterDataH.Get)))
+	masterData.Handle(http.MethodPut, "/clients/{id}", wsRequired(jwtAuth(masterDataH.Patch)))
+	masterData.Handle(http.MethodDelete, "/clients/{id}", wsRequired(jwtAuth(masterDataH.Delete)))
+	masterData.Handle(http.MethodPost, "/clients/{id}/transition", wsRequired(jwtAuth(masterDataH.Transition)))
+	masterData.Handle(http.MethodPost, "/query", wsRequired(jwtAuth(masterDataH.Query)))
+	masterData.Handle(http.MethodGet, "/stats", wsRequired(jwtAuth(masterDataH.Stats)))
+	masterData.Handle(http.MethodGet, "/attention", wsRequired(jwtAuth(masterDataH.Attention)))
+	masterData.Handle(http.MethodGet, "/mutations", wsRequired(jwtAuth(masterDataH.Mutations)))
+	masterData.Handle(http.MethodGet, "/field-definitions", wsRequired(jwtAuth(customFieldH.List)))
+	masterData.Handle(http.MethodPost, "/field-definitions", wsRequired(jwtAuth(customFieldH.Create)))
+	masterData.Handle(http.MethodPut, "/field-definitions/reorder", wsRequired(jwtAuth(customFieldH.Reorder)))
+	masterData.Handle(http.MethodPut, "/field-definitions/{id}", wsRequired(jwtAuth(customFieldH.Update)))
+	masterData.Handle(http.MethodDelete, "/field-definitions/{id}", wsRequired(jwtAuth(customFieldH.Delete)))
 
 	// Swagger
 	r.HandlePrefix(http.MethodGet, "/swagger", httpSwagger.WrapHandler)

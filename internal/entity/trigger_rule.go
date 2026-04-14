@@ -12,14 +12,14 @@ type TriggerRule struct {
 	RuleGroup    string          `json:"rule_group" db:"rule_group"`
 	Priority     int             `json:"priority" db:"priority"`
 	SubPriority  int             `json:"sub_priority" db:"sub_priority"`
-	Condition    json.RawMessage `json:"condition" db:"condition"`
+	Condition    json.RawMessage `json:"condition" db:"condition" swaggertype:"object"`
 	ActionType   string          `json:"action_type" db:"action_type"`
 	TemplateID   *string         `json:"template_id,omitempty" db:"template_id"`
 	FlagKey      string          `json:"flag_key" db:"flag_key"`
 	EscalationID *string         `json:"escalation_id,omitempty" db:"escalation_id"`
 	EscPriority  *string         `json:"esc_priority,omitempty" db:"esc_priority"`
 	EscReason    *string         `json:"esc_reason,omitempty" db:"esc_reason"`
-	ExtraFlags   json.RawMessage `json:"extra_flags,omitempty" db:"extra_flags"`
+	ExtraFlags   json.RawMessage `json:"extra_flags,omitempty" db:"extra_flags" swaggertype:"object"`
 	StopOnFire   bool            `json:"stop_on_fire" db:"stop_on_fire"`
 	Active       bool            `json:"active" db:"active"`
 	Description  *string         `json:"description,omitempty" db:"description"`
