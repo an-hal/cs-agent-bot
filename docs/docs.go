@@ -18,7 +18,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/dashboard/clients": {
+        "/api/clients": {
             "post": {
                 "description": "Creates a new client in the workspace specified in the X-Workspace-ID header.",
                 "tags": [
@@ -77,7 +77,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/clients/{company_id}": {
+        "/api/clients/{company_id}": {
             "get": {
                 "description": "Returns a single client by company_id.",
                 "tags": [
@@ -203,7 +203,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/data-master/activity-logs": {
+        "/api/data-master/activity-logs": {
             "get": {
                 "description": "Returns paginated activity log entries across all categories (bot, data, team).",
                 "tags": [
@@ -343,7 +343,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/data-master/clients": {
+        "/api/data-master/clients": {
             "get": {
                 "description": "Returns paginated clients for the workspace specified in the X-Workspace-ID header.",
                 "tags": [
@@ -444,7 +444,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/data-master/clients/export": {
+        "/api/data-master/clients/export": {
             "post": {
                 "description": "Starts a background export job for the workspace. Poll /jobs/{job_id} for status, then download via /jobs/{job_id}/download.",
                 "tags": [
@@ -518,7 +518,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/data-master/clients/import": {
+        "/api/data-master/clients/import": {
             "post": {
                 "description": "Accepts a multipart XLSX file (Template Import sheet), creates a background import job, and returns immediately with the job ID.",
                 "tags": [
@@ -581,7 +581,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/data-master/escalations": {
+        "/api/data-master/escalations": {
             "get": {
                 "description": "Returns paginated escalations for the workspace specified in the X-Workspace-ID header.",
                 "tags": [
@@ -664,7 +664,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/data-master/invoices": {
+        "/api/data-master/invoices": {
             "get": {
                 "description": "Returns paginated invoices for the workspace specified in the X-Workspace-ID header.",
                 "tags": [
@@ -735,7 +735,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/data-master/jobs": {
+        "/api/data-master/jobs": {
             "get": {
                 "description": "Returns paginated background jobs for the workspace, optionally filtered by job_type and entity_type.",
                 "tags": [
@@ -806,7 +806,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/data-master/jobs/{job_id}": {
+        "/api/data-master/jobs/{job_id}": {
             "get": {
                 "description": "Returns the current status and progress of any background job (import or export).",
                 "tags": [
@@ -863,7 +863,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/data-master/jobs/{job_id}/download": {
+        "/api/data-master/jobs/{job_id}/download": {
             "get": {
                 "description": "Streams the XLSX file for a completed export job. Returns 409 if the job is not yet done.",
                 "produces": [
@@ -917,7 +917,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/invoices/{invoice_id}": {
+        "/api/invoices/{invoice_id}": {
             "get": {
                 "description": "Returns a single invoice by invoice_id.",
                 "tags": [
@@ -1013,7 +1013,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/master-data/attention": {
+        "/api/master-data/attention": {
             "get": {
                 "security": [
                     {
@@ -1061,7 +1061,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/master-data/clients": {
+        "/api/master-data/clients": {
             "get": {
                 "security": [
                     {
@@ -1218,7 +1218,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/master-data/clients/export": {
+        "/api/master-data/clients/export": {
             "get": {
                 "security": [
                     {
@@ -1251,7 +1251,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/master-data/clients/import": {
+        "/api/master-data/clients/import": {
             "post": {
                 "security": [
                     {
@@ -1310,7 +1310,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/master-data/clients/template": {
+        "/api/master-data/clients/template": {
             "get": {
                 "security": [
                     {
@@ -1343,7 +1343,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/master-data/clients/{id}": {
+        "/api/master-data/clients/{id}": {
             "get": {
                 "security": [
                     {
@@ -1498,7 +1498,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/master-data/clients/{id}/transition": {
+        "/api/master-data/clients/{id}/transition": {
             "post": {
                 "security": [
                     {
@@ -1559,7 +1559,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/master-data/field-definitions": {
+        "/api/master-data/field-definitions": {
             "get": {
                 "security": [
                     {
@@ -1656,7 +1656,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/master-data/field-definitions/reorder": {
+        "/api/master-data/field-definitions/reorder": {
             "put": {
                 "security": [
                     {
@@ -1698,7 +1698,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/master-data/field-definitions/{id}": {
+        "/api/master-data/field-definitions/{id}": {
             "put": {
                 "security": [
                     {
@@ -1794,7 +1794,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/master-data/mutations": {
+        "/api/master-data/mutations": {
             "get": {
                 "security": [
                     {
@@ -1836,7 +1836,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/master-data/query": {
+        "/api/master-data/query": {
             "post": {
                 "security": [
                     {
@@ -1878,7 +1878,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/master-data/stats": {
+        "/api/master-data/stats": {
             "get": {
                 "security": [
                     {
@@ -1920,7 +1920,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/message-template": {
+        "/api/message-template": {
             "get": {
                 "description": "Returns paginated message templates with optional filters.",
                 "tags": [
@@ -1990,7 +1990,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/message-template/{template_id}": {
+        "/api/message-template/{template_id}": {
             "get": {
                 "description": "Returns a single message template by template_id.",
                 "tags": [
@@ -2086,7 +2086,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/notifications": {
+        "/api/notifications": {
             "get": {
                 "security": [
                     {
@@ -2207,7 +2207,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/notifications/count": {
+        "/api/notifications/count": {
             "get": {
                 "security": [
                     {
@@ -2237,7 +2237,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/notifications/read-all": {
+        "/api/notifications/read-all": {
             "put": {
                 "security": [
                     {
@@ -2267,7 +2267,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/notifications/{id}/read": {
+        "/api/notifications/{id}/read": {
             "put": {
                 "security": [
                     {
@@ -2304,7 +2304,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/team/invitations/{token}/accept": {
+        "/api/team/invitations/{token}/accept": {
             "post": {
                 "security": [
                     {
@@ -2358,7 +2358,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/team/members": {
+        "/api/team/members": {
             "get": {
                 "security": [
                     {
@@ -2442,7 +2442,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/team/members/invite": {
+        "/api/team/members/invite": {
             "post": {
                 "security": [
                     {
@@ -2508,7 +2508,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/team/members/{id}": {
+        "/api/team/members/{id}": {
             "get": {
                 "security": [
                     {
@@ -2669,7 +2669,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/team/members/{id}/role": {
+        "/api/team/members/{id}/role": {
             "put": {
                 "security": [
                     {
@@ -2736,7 +2736,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/team/members/{id}/status": {
+        "/api/team/members/{id}/status": {
             "put": {
                 "security": [
                     {
@@ -2803,7 +2803,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/team/members/{id}/workspaces": {
+        "/api/team/members/{id}/workspaces": {
             "put": {
                 "security": [
                     {
@@ -2864,7 +2864,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/team/permissions/me": {
+        "/api/team/permissions/me": {
             "get": {
                 "security": [
                     {
@@ -2906,7 +2906,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/team/roles": {
+        "/api/team/roles": {
             "get": {
                 "security": [
                     {
@@ -3003,7 +3003,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/team/roles/{id}": {
+        "/api/team/roles/{id}": {
             "get": {
                 "security": [
                     {
@@ -3170,7 +3170,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/team/roles/{id}/permissions": {
+        "/api/team/roles/{id}/permissions": {
             "put": {
                 "security": [
                     {
@@ -3243,7 +3243,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/workspaces": {
+        "/api/workspaces": {
             "get": {
                 "security": [
                     {
@@ -3342,7 +3342,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/workspaces/invitations/{token}/accept": {
+        "/api/workspaces/invitations/{token}/accept": {
             "post": {
                 "security": [
                     {
@@ -3384,7 +3384,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/workspaces/{id}": {
+        "/api/workspaces/{id}": {
             "get": {
                 "security": [
                     {
@@ -3530,7 +3530,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/workspaces/{id}/members": {
+        "/api/workspaces/{id}/members": {
             "get": {
                 "security": [
                     {
@@ -3575,7 +3575,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/workspaces/{id}/members/invite": {
+        "/api/workspaces/{id}/members/invite": {
             "post": {
                 "security": [
                     {
@@ -3629,7 +3629,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/workspaces/{id}/members/{member_id}": {
+        "/api/workspaces/{id}/members/{member_id}": {
             "put": {
                 "security": [
                     {
@@ -3725,7 +3725,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/workspaces/{id}/switch": {
+        "/api/workspaces/{id}/switch": {
             "post": {
                 "security": [
                     {

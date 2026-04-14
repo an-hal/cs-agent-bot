@@ -33,7 +33,7 @@ func NewCustomFieldHandler(uc custom_field.Usecase, logger zerolog.Logger, tr tr
 // @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace ID"
 // @Success      200 {object} response.StandardResponse{data=[]entity.CustomFieldDefinition}
-// @Router       /api/dashboard/master-data/field-definitions [get]
+// @Router       /api/master-data/field-definitions [get]
 func (h *CustomFieldHandler) List(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.CustomFieldList")
 	defer span.End()
@@ -55,7 +55,7 @@ func (h *CustomFieldHandler) List(w http.ResponseWriter, r *http.Request) error 
 // @Param        X-Workspace-ID header string true "Workspace ID"
 // @Param        body body custom_field.CreateRequest true "Create payload"
 // @Success      201 {object} response.StandardResponse{data=entity.CustomFieldDefinition}
-// @Router       /api/dashboard/master-data/field-definitions [post]
+// @Router       /api/master-data/field-definitions [post]
 func (h *CustomFieldHandler) Create(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.CustomFieldCreate")
 	defer span.End()
@@ -79,7 +79,7 @@ func (h *CustomFieldHandler) Create(w http.ResponseWriter, r *http.Request) erro
 // @Param        id   path string true "Field definition UUID"
 // @Param        body body custom_field.UpdateRequest true "Update payload"
 // @Success      200 {object} response.StandardResponse{data=entity.CustomFieldDefinition}
-// @Router       /api/dashboard/master-data/field-definitions/{id} [put]
+// @Router       /api/master-data/field-definitions/{id} [put]
 func (h *CustomFieldHandler) Update(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.CustomFieldUpdate")
 	defer span.End()
@@ -102,7 +102,7 @@ func (h *CustomFieldHandler) Update(w http.ResponseWriter, r *http.Request) erro
 // @Param        X-Workspace-ID header string true "Workspace ID"
 // @Param        id path string true "Field definition UUID"
 // @Success      200 {object} response.StandardResponse
-// @Router       /api/dashboard/master-data/field-definitions/{id} [delete]
+// @Router       /api/master-data/field-definitions/{id} [delete]
 func (h *CustomFieldHandler) Delete(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.CustomFieldDelete")
 	defer span.End()
@@ -126,7 +126,7 @@ type ReorderRequest struct {
 // @Param        X-Workspace-ID header string true "Workspace ID"
 // @Param        body body ReorderRequest true "Reorder payload"
 // @Success      200 {object} response.StandardResponse
-// @Router       /api/dashboard/master-data/field-definitions/reorder [put]
+// @Router       /api/master-data/field-definitions/reorder [put]
 func (h *CustomFieldHandler) Reorder(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.CustomFieldReorder")
 	defer span.End()

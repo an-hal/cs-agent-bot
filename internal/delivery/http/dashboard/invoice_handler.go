@@ -36,7 +36,7 @@ func NewInvoiceHandler(uc dashboard.DashboardUsecase, logger zerolog.Logger, tr 
 // @Param        limit           query     int     false  "Limit per page (default 10, max 100)"
 // @Success      200  {object}  response.StandardResponseWithMeta{data=[]entity.Invoice}
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/data-master/invoices [get]
+// @Router       /api/data-master/invoices [get]
 func (h *InvoiceHandler) List(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.InvoiceList")
 	defer span.End()
@@ -77,7 +77,7 @@ func (h *InvoiceHandler) List(w http.ResponseWriter, r *http.Request) error {
 // @Success      200  {object}  response.StandardResponse{data=entity.Invoice}
 // @Failure      404  {object}  response.StandardResponse
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/invoices/{invoice_id} [get]
+// @Router       /api/invoices/{invoice_id} [get]
 func (h *InvoiceHandler) Get(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.InvoiceGet")
 	defer span.End()
@@ -109,7 +109,7 @@ func (h *InvoiceHandler) Get(w http.ResponseWriter, r *http.Request) error {
 // @Success      200  {object}  response.StandardResponse
 // @Failure      400  {object}  response.StandardResponse
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/invoices/{invoice_id} [put]
+// @Router       /api/invoices/{invoice_id} [put]
 func (h *InvoiceHandler) Update(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.InvoiceUpdate")
 	defer span.End()

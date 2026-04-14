@@ -38,7 +38,7 @@ func callerEmail(r *http.Request) string {
 // @Security     BearerAuth
 // @Success      200  {object}  response.StandardResponse{data=[]entity.Workspace}
 // @Failure      401  {object}  response.StandardResponse
-// @Router       /api/dashboard/workspaces [get]
+// @Router       /api/workspaces [get]
 func (h *WorkspaceHandler) List(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.WorkspaceList")
 	defer span.End()
@@ -63,7 +63,7 @@ func (h *WorkspaceHandler) List(w http.ResponseWriter, r *http.Request) error {
 // @Success      200  {object}  response.StandardResponse{data=workspace.WorkspaceDetail}
 // @Failure      403  {object}  response.StandardResponse
 // @Failure      404  {object}  response.StandardResponse
-// @Router       /api/dashboard/workspaces/{id} [get]
+// @Router       /api/workspaces/{id} [get]
 func (h *WorkspaceHandler) Get(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.WorkspaceGet")
 	defer span.End()
@@ -85,7 +85,7 @@ func (h *WorkspaceHandler) Get(w http.ResponseWriter, r *http.Request) error {
 // @Success      201   {object}  response.StandardResponse{data=entity.Workspace}
 // @Failure      400   {object}  response.StandardResponse
 // @Failure      409   {object}  response.StandardResponse
-// @Router       /api/dashboard/workspaces [post]
+// @Router       /api/workspaces [post]
 func (h *WorkspaceHandler) Create(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.WorkspaceCreate")
 	defer span.End()
@@ -110,7 +110,7 @@ func (h *WorkspaceHandler) Create(w http.ResponseWriter, r *http.Request) error 
 // @Param        body  body      workspace.UpdateRequest  true  "Partial update"
 // @Success      200   {object}  response.StandardResponse{data=entity.Workspace}
 // @Failure      403   {object}  response.StandardResponse
-// @Router       /api/dashboard/workspaces/{id} [put]
+// @Router       /api/workspaces/{id} [put]
 func (h *WorkspaceHandler) Update(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.WorkspaceUpdate")
 	defer span.End()
@@ -134,7 +134,7 @@ func (h *WorkspaceHandler) Update(w http.ResponseWriter, r *http.Request) error 
 // @Param        id   path      string  true  "Workspace ID"
 // @Success      200  {object}  response.StandardResponse
 // @Failure      403  {object}  response.StandardResponse
-// @Router       /api/dashboard/workspaces/{id} [delete]
+// @Router       /api/workspaces/{id} [delete]
 func (h *WorkspaceHandler) SoftDelete(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.WorkspaceDelete")
 	defer span.End()
@@ -152,7 +152,7 @@ func (h *WorkspaceHandler) SoftDelete(w http.ResponseWriter, r *http.Request) er
 // @Security     BearerAuth
 // @Param        id   path      string  true  "Workspace ID"
 // @Success      200  {object}  response.StandardResponse{data=workspace.SwitchResponse}
-// @Router       /api/dashboard/workspaces/{id}/switch [post]
+// @Router       /api/workspaces/{id}/switch [post]
 func (h *WorkspaceHandler) Switch(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.WorkspaceSwitch")
 	defer span.End()
@@ -171,7 +171,7 @@ func (h *WorkspaceHandler) Switch(w http.ResponseWriter, r *http.Request) error 
 // @Security     BearerAuth
 // @Param        id   path      string  true  "Workspace ID"
 // @Success      200  {object}  response.StandardResponse{data=[]entity.WorkspaceMember}
-// @Router       /api/dashboard/workspaces/{id}/members [get]
+// @Router       /api/workspaces/{id}/members [get]
 func (h *WorkspaceHandler) ListMembers(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.WorkspaceListMembers")
 	defer span.End()
@@ -195,7 +195,7 @@ func (h *WorkspaceHandler) ListMembers(w http.ResponseWriter, r *http.Request) e
 // @Param        id    path      string                   true  "Workspace ID"
 // @Param        body  body      workspace.InviteRequest  true  "Invitation payload"
 // @Success      201   {object}  response.StandardResponse{data=entity.WorkspaceInvitation}
-// @Router       /api/dashboard/workspaces/{id}/members/invite [post]
+// @Router       /api/workspaces/{id}/members/invite [post]
 func (h *WorkspaceHandler) Invite(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.WorkspaceInvite")
 	defer span.End()
@@ -221,7 +221,7 @@ func (h *WorkspaceHandler) Invite(w http.ResponseWriter, r *http.Request) error 
 // @Param        member_id  path      string                       true  "Member ID"
 // @Param        body       body      dashboard.UpdateRoleRequest  true  "Role payload"
 // @Success      200        {object}  response.StandardResponse{data=entity.WorkspaceMember}
-// @Router       /api/dashboard/workspaces/{id}/members/{member_id} [put]
+// @Router       /api/workspaces/{id}/members/{member_id} [put]
 func (h *WorkspaceHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.WorkspaceUpdateMemberRole")
 	defer span.End()
@@ -246,7 +246,7 @@ func (h *WorkspaceHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Reque
 // @Param        id         path      string  true  "Workspace ID"
 // @Param        member_id  path      string  true  "Member ID"
 // @Success      200        {object}  response.StandardResponse
-// @Router       /api/dashboard/workspaces/{id}/members/{member_id} [delete]
+// @Router       /api/workspaces/{id}/members/{member_id} [delete]
 func (h *WorkspaceHandler) RemoveMember(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.WorkspaceRemoveMember")
 	defer span.End()
@@ -265,7 +265,7 @@ func (h *WorkspaceHandler) RemoveMember(w http.ResponseWriter, r *http.Request) 
 // @Security     BearerAuth
 // @Param        token  path      string  true  "Invitation token"
 // @Success      200    {object}  response.StandardResponse{data=entity.WorkspaceMember}
-// @Router       /api/dashboard/workspaces/invitations/{token}/accept [post]
+// @Router       /api/workspaces/invitations/{token}/accept [post]
 func (h *WorkspaceHandler) AcceptInvitation(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.WorkspaceAcceptInvitation")
 	defer span.End()

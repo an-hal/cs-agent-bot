@@ -47,7 +47,7 @@ func NewMasterDataHandler(uc master_data.Usecase, logger zerolog.Logger, tr trac
 // @Param        sort_by query string false "updated_at|company_name|stage|created_at|contract_end|final_price"
 // @Param        sort_dir query string false "asc|desc"
 // @Success      200 {object} response.StandardResponseWithMeta{data=[]entity.MasterData}
-// @Router       /api/dashboard/master-data/clients [get]
+// @Router       /api/master-data/clients [get]
 func (h *MasterDataHandler) List(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.MasterDataList")
 	defer span.End()
@@ -100,7 +100,7 @@ func (h *MasterDataHandler) List(w http.ResponseWriter, r *http.Request) error {
 // @Param        X-Workspace-ID header string true "Workspace ID"
 // @Param        id path string true "Master data UUID"
 // @Success      200 {object} response.StandardResponse{data=entity.MasterData}
-// @Router       /api/dashboard/master-data/clients/{id} [get]
+// @Router       /api/master-data/clients/{id} [get]
 func (h *MasterDataHandler) Get(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.MasterDataGet")
 	defer span.End()
@@ -120,7 +120,7 @@ func (h *MasterDataHandler) Get(w http.ResponseWriter, r *http.Request) error {
 // @Param        X-Workspace-ID header string true "Workspace ID"
 // @Param        body body master_data.CreateRequest true "Create request"
 // @Success      201 {object} response.StandardResponse{data=entity.MasterData}
-// @Router       /api/dashboard/master-data/clients [post]
+// @Router       /api/master-data/clients [post]
 func (h *MasterDataHandler) Create(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.MasterDataCreate")
 	defer span.End()
@@ -144,7 +144,7 @@ func (h *MasterDataHandler) Create(w http.ResponseWriter, r *http.Request) error
 // @Param        id   path string true "Master data UUID"
 // @Param        body body master_data.PatchRequest true "Patch request"
 // @Success      200 {object} response.StandardResponse{data=entity.MasterData}
-// @Router       /api/dashboard/master-data/clients/{id} [put]
+// @Router       /api/master-data/clients/{id} [put]
 func (h *MasterDataHandler) Patch(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.MasterDataPatch")
 	defer span.End()
@@ -168,7 +168,7 @@ func (h *MasterDataHandler) Patch(w http.ResponseWriter, r *http.Request) error 
 // @Param        X-Workspace-ID header string true "Workspace ID"
 // @Param        id path string true "Master data UUID"
 // @Success      202 {object} response.StandardResponse{data=entity.ApprovalRequest}
-// @Router       /api/dashboard/master-data/clients/{id} [delete]
+// @Router       /api/master-data/clients/{id} [delete]
 func (h *MasterDataHandler) Delete(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.MasterDataDelete")
 	defer span.End()
@@ -189,7 +189,7 @@ func (h *MasterDataHandler) Delete(w http.ResponseWriter, r *http.Request) error
 // @Param        id   path string true "Master data UUID"
 // @Param        body body master_data.TransitionRequest true "Transition payload"
 // @Success      200 {object} response.StandardResponse{data=master_data.TransitionResult}
-// @Router       /api/dashboard/master-data/clients/{id}/transition [post]
+// @Router       /api/master-data/clients/{id}/transition [post]
 func (h *MasterDataHandler) Transition(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.MasterDataTransition")
 	defer span.End()
@@ -213,7 +213,7 @@ func (h *MasterDataHandler) Transition(w http.ResponseWriter, r *http.Request) e
 // @Param        X-Workspace-ID header string true "Workspace ID"
 // @Param        body body QueryRequest true "Query request"
 // @Success      200 {object} response.StandardResponseWithMeta
-// @Router       /api/dashboard/master-data/query [post]
+// @Router       /api/master-data/query [post]
 func (h *MasterDataHandler) Query(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.MasterDataQuery")
 	defer span.End()
@@ -247,7 +247,7 @@ type QueryRequest struct {
 // @Security     BearerAuth
 // @Param        X-Workspace-ID header string true "Workspace ID"
 // @Success      200 {object} response.StandardResponse{data=repository.MasterDataStats}
-// @Router       /api/dashboard/master-data/stats [get]
+// @Router       /api/master-data/stats [get]
 func (h *MasterDataHandler) Stats(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.MasterDataStats")
 	defer span.End()
@@ -267,7 +267,7 @@ func (h *MasterDataHandler) Stats(w http.ResponseWriter, r *http.Request) error 
 // @Param        limit  query int false "Limit"
 // @Param        search query string false "Search company_name/pic_name"
 // @Success      200 {object} response.StandardResponseWithMeta
-// @Router       /api/dashboard/master-data/attention [get]
+// @Router       /api/master-data/attention [get]
 func (h *MasterDataHandler) Attention(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.MasterDataAttention")
 	defer span.End()
@@ -296,7 +296,7 @@ func (h *MasterDataHandler) Attention(w http.ResponseWriter, r *http.Request) er
 // @Param        since query string false "RFC3339 lower bound"
 // @Param        limit query int false "Limit (max 500)"
 // @Success      200 {object} response.StandardResponse
-// @Router       /api/dashboard/master-data/mutations [get]
+// @Router       /api/master-data/mutations [get]
 func (h *MasterDataHandler) Mutations(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.MasterDataMutations")
 	defer span.End()
@@ -327,7 +327,7 @@ func (h *MasterDataHandler) Mutations(w http.ResponseWriter, r *http.Request) er
 // @Param        file formData file true "Excel file"
 // @Param        mode formData string true "add_new|update_existing"
 // @Success      202 {object} response.StandardResponse{data=entity.ApprovalRequest}
-// @Router       /api/dashboard/master-data/clients/import [post]
+// @Router       /api/master-data/clients/import [post]
 func (h *MasterDataHandler) Import(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.MasterDataImport")
 	defer span.End()
@@ -372,7 +372,7 @@ func (h *MasterDataHandler) Import(w http.ResponseWriter, r *http.Request) error
 // @Param        X-Workspace-ID header string true "Workspace ID"
 // @Produce      application/octet-stream
 // @Success      200 {file} file
-// @Router       /api/dashboard/master-data/clients/export [get]
+// @Router       /api/master-data/clients/export [get]
 func (h *MasterDataHandler) Export(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.MasterDataExport")
 	defer span.End()
@@ -391,7 +391,7 @@ func (h *MasterDataHandler) Export(w http.ResponseWriter, r *http.Request) error
 // @Param        X-Workspace-ID header string true "Workspace ID"
 // @Produce      application/octet-stream
 // @Success      200 {file} file
-// @Router       /api/dashboard/master-data/clients/template [get]
+// @Router       /api/master-data/clients/template [get]
 func (h *MasterDataHandler) Template(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.MasterDataTemplate")
 	defer span.End()
@@ -402,4 +402,3 @@ func (h *MasterDataHandler) Template(w http.ResponseWriter, r *http.Request) err
 	}
 	return nil
 }
-

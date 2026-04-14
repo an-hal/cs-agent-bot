@@ -36,7 +36,7 @@ func NewNotificationHandler(uc notification.Usecase, logger zerolog.Logger, tr t
 // @Param        limit           query   int     false  "Max items (default 50, max 200)"
 // @Param        offset          query   int     false  "Offset"
 // @Success      200             {object}  response.StandardResponseWithMeta{data=[]entity.Notification}
-// @Router       /api/dashboard/notifications [get]
+// @Router       /api/notifications [get]
 func (h *NotificationHandler) List(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.NotificationList")
 	defer span.End()
@@ -70,7 +70,7 @@ func (h *NotificationHandler) List(w http.ResponseWriter, r *http.Request) error
 // @Security     BearerAuth
 // @Param        X-Workspace-ID  header  string  true  "Workspace ID"
 // @Success      200  {object}  response.StandardResponse
-// @Router       /api/dashboard/notifications/count [get]
+// @Router       /api/notifications/count [get]
 func (h *NotificationHandler) Count(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.NotificationCount")
 	defer span.End()
@@ -89,7 +89,7 @@ func (h *NotificationHandler) Count(w http.ResponseWriter, r *http.Request) erro
 // @Param        X-Workspace-ID  header  string  true  "Workspace ID"
 // @Param        id              path    string  true  "Notification ID"
 // @Success      200  {object}  response.StandardResponse
-// @Router       /api/dashboard/notifications/{id}/read [put]
+// @Router       /api/notifications/{id}/read [put]
 func (h *NotificationHandler) MarkRead(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.NotificationMarkRead")
 	defer span.End()
@@ -107,7 +107,7 @@ func (h *NotificationHandler) MarkRead(w http.ResponseWriter, r *http.Request) e
 // @Security     BearerAuth
 // @Param        X-Workspace-ID  header  string  true  "Workspace ID"
 // @Success      200  {object}  response.StandardResponse
-// @Router       /api/dashboard/notifications/read-all [put]
+// @Router       /api/notifications/read-all [put]
 func (h *NotificationHandler) MarkAllRead(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.NotificationMarkAllRead")
 	defer span.End()
@@ -126,7 +126,7 @@ func (h *NotificationHandler) MarkAllRead(w http.ResponseWriter, r *http.Request
 // @Param        X-Workspace-ID  header  string                       true  "Workspace ID"
 // @Param        body            body    notification.CreateRequest   true  "Notification payload"
 // @Success      201  {object}  response.StandardResponse{data=entity.Notification}
-// @Router       /api/dashboard/notifications [post]
+// @Router       /api/notifications [post]
 func (h *NotificationHandler) Create(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.NotificationCreate")
 	defer span.End()

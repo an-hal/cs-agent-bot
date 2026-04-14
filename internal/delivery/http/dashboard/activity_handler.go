@@ -52,7 +52,7 @@ type recordActivityRequest struct {
 // @Param        since          query     string  false  "ISO 8601 timestamp — return entries after this time"
 // @Success      200  {object}  response.StandardResponseWithMeta{data=[]entity.ActivityLog}
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/data-master/activity-logs [get]
+// @Router       /api/data-master/activity-logs [get]
 func (h *ActivityHandler) List(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ActivityList")
 	defer span.End()
@@ -108,7 +108,7 @@ func (h *ActivityHandler) List(w http.ResponseWriter, r *http.Request) error {
 // @Success      201  {object}  response.StandardResponse{data=entity.ActivityLog}
 // @Failure      400  {object}  response.StandardResponse
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/data-master/activity-logs [post]
+// @Router       /api/data-master/activity-logs [post]
 func (h *ActivityHandler) Record(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ActivityRecord")
 	defer span.End()

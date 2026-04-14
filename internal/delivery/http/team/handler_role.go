@@ -17,7 +17,7 @@ import (
 // @Security     BearerAuth
 // @Param        X-Workspace-ID  header  string  true  "Workspace ID"
 // @Success      200  {object}  response.StandardResponse{data=[]team.RoleSummary}
-// @Router       /api/dashboard/team/roles [get]
+// @Router       /api/team/roles [get]
 func (h *Handler) ListRoles(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.ListRoles")
 	defer span.End()
@@ -38,7 +38,7 @@ func (h *Handler) ListRoles(w http.ResponseWriter, r *http.Request) error {
 // @Param        X-Workspace-ID  header  string  true  "Workspace ID"
 // @Success      200  {object}  response.StandardResponse{data=team.RoleDetail}
 // @Failure      404  {object}  response.StandardResponse
-// @Router       /api/dashboard/team/roles/{id} [get]
+// @Router       /api/team/roles/{id} [get]
 func (h *Handler) GetRole(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.GetRole")
 	defer span.End()
@@ -60,7 +60,7 @@ func (h *Handler) GetRole(w http.ResponseWriter, r *http.Request) error {
 // @Param        X-Workspace-ID  header  string                  true  "Workspace ID"
 // @Param        body            body    team.CreateRoleRequest  true  "Role payload"
 // @Success      201  {object}  response.StandardResponse{data=entity.Role}
-// @Router       /api/dashboard/team/roles [post]
+// @Router       /api/team/roles [post]
 func (h *Handler) CreateRole(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.CreateRole")
 	defer span.End()
@@ -86,7 +86,7 @@ func (h *Handler) CreateRole(w http.ResponseWriter, r *http.Request) error {
 // @Param        body            body    team.UpdateRoleRequest  true  "Patch payload"
 // @Success      200  {object}  response.StandardResponse{data=entity.Role}
 // @Failure      403  {object}  response.StandardResponse
-// @Router       /api/dashboard/team/roles/{id} [put]
+// @Router       /api/team/roles/{id} [put]
 func (h *Handler) UpdateRole(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.UpdateRole")
 	defer span.End()
@@ -114,7 +114,7 @@ func (h *Handler) UpdateRole(w http.ResponseWriter, r *http.Request) error {
 // @Success      200  {object}  response.StandardResponse{data=team.PermissionChange}
 // @Failure      400  {object}  response.StandardResponse
 // @Failure      403  {object}  response.StandardResponse
-// @Router       /api/dashboard/team/roles/{id}/permissions [put]
+// @Router       /api/team/roles/{id}/permissions [put]
 func (h *Handler) UpdateRolePermissions(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.UpdateRolePermissions")
 	defer span.End()
@@ -143,7 +143,7 @@ func (h *Handler) UpdateRolePermissions(w http.ResponseWriter, r *http.Request) 
 // @Success      200  {object}  response.StandardResponse
 // @Failure      403  {object}  response.StandardResponse
 // @Failure      409  {object}  response.StandardResponse
-// @Router       /api/dashboard/team/roles/{id} [delete]
+// @Router       /api/team/roles/{id} [delete]
 func (h *Handler) DeleteRole(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.DeleteRole")
 	defer span.End()
@@ -161,7 +161,7 @@ func (h *Handler) DeleteRole(w http.ResponseWriter, r *http.Request) error {
 // @Security     BearerAuth
 // @Param        X-Workspace-ID  header  string  true  "Workspace ID"
 // @Success      200  {object}  response.StandardResponse{data=team.MyPermissions}
-// @Router       /api/dashboard/team/permissions/me [get]
+// @Router       /api/team/permissions/me [get]
 func (h *Handler) GetMyPermissions(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.GetMyPermissions")
 	defer span.End()

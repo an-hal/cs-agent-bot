@@ -39,7 +39,7 @@ func NewTemplateHandler(uc dashboard.DashboardUsecase, logger zerolog.Logger, tr
 // @Param        limit     query     int     false  "Limit per page (default 10, max 100)"
 // @Success      200  {object}  response.StandardResponseWithMeta{data=[]entity.Template}
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/message-template [get]
+// @Router       /api/message-template [get]
 func (h *TemplateHandler) List(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.TemplateList")
 	defer span.End()
@@ -83,7 +83,7 @@ func (h *TemplateHandler) List(w http.ResponseWriter, r *http.Request) error {
 // @Success      200  {object}  response.StandardResponse{data=entity.Template}
 // @Failure      404  {object}  response.StandardResponse
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/message-template/{template_id} [get]
+// @Router       /api/message-template/{template_id} [get]
 func (h *TemplateHandler) Get(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.TemplateGet")
 	defer span.End()
@@ -115,7 +115,7 @@ func (h *TemplateHandler) Get(w http.ResponseWriter, r *http.Request) error {
 // @Success      200  {object}  response.StandardResponse
 // @Failure      400  {object}  response.StandardResponse
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/message-template/{template_id} [put]
+// @Router       /api/message-template/{template_id} [put]
 func (h *TemplateHandler) Update(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.TemplateUpdate")
 	defer span.End()

@@ -58,6 +58,8 @@ func (r *workspaceRepo) withTimeout(ctx context.Context) (context.Context, conte
 
 const workspaceColumns = "id::text, slug, name, logo, color, plan, is_holding, member_ids::text[], settings, is_active, created_at, updated_at"
 
+const workspaceColumnsQualified = "w.id::text, w.slug, w.name, w.logo, w.color, w.plan, w.is_holding, w.member_ids::text[], w.settings, w.is_active, w.created_at, w.updated_at"
+
 func scanWorkspace(scanner interface {
 	Scan(dest ...interface{}) error
 }) (*entity.Workspace, error) {
@@ -180,7 +182,7 @@ func (r *workspaceRepo) ListForUser(ctx context.Context, userEmail string) ([]en
 	defer cancel()
 
 	query, args, err := database.PSQL.
-		Select("DISTINCT " + workspaceColumns).
+		Select("DISTINCT " + workspaceColumnsQualified).
 		From("workspaces w").
 		LeftJoin("workspace_members wm ON wm.workspace_id = w.id").
 		Where(sq.And{

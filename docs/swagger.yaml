@@ -1477,7 +1477,7 @@ info:
   title: Customer Service Agent Bot API
   version: "1.0"
 paths:
-  /api/dashboard/clients:
+  /api/clients:
     post:
       description: Creates a new client in the workspace specified in the X-Workspace-ID
         header.
@@ -1514,7 +1514,7 @@ paths:
       summary: Create client
       tags:
       - Dashboard
-  /api/dashboard/clients/{company_id}:
+  /api/clients/{company_id}:
     delete:
       description: Soft-deletes a client by company_id (sets blacklisted=true).
       parameters:
@@ -1595,7 +1595,7 @@ paths:
       summary: Update client
       tags:
       - Dashboard
-  /api/dashboard/data-master/activity-logs:
+  /api/data-master/activity-logs:
     get:
       description: Returns paginated activity log entries across all categories (bot,
         data, team).
@@ -1684,7 +1684,7 @@ paths:
       summary: Record an activity
       tags:
       - Dashboard
-  /api/dashboard/data-master/clients:
+  /api/data-master/clients:
     get:
       description: Returns paginated clients for the workspace specified in the X-Workspace-ID
         header.
@@ -1749,7 +1749,7 @@ paths:
       summary: List clients
       tags:
       - Dashboard
-  /api/dashboard/data-master/clients/export:
+  /api/data-master/clients/export:
     post:
       description: Starts a background export job for the workspace. Poll /jobs/{job_id}
         for status, then download via /jobs/{job_id}/download.
@@ -1796,7 +1796,7 @@ paths:
       summary: Export clients to XLSX
       tags:
       - Background Jobs
-  /api/dashboard/data-master/clients/import:
+  /api/data-master/clients/import:
     post:
       description: Accepts a multipart XLSX file (Template Import sheet), creates
         a background import job, and returns immediately with the job ID.
@@ -1836,7 +1836,7 @@ paths:
       summary: Import clients from XLSX
       tags:
       - Background Jobs
-  /api/dashboard/data-master/escalations:
+  /api/data-master/escalations:
     get:
       description: Returns paginated escalations for the workspace specified in the
         X-Workspace-ID header.
@@ -1889,7 +1889,7 @@ paths:
       summary: List escalations
       tags:
       - Dashboard
-  /api/dashboard/data-master/invoices:
+  /api/data-master/invoices:
     get:
       description: Returns paginated invoices for the workspace specified in the X-Workspace-ID
         header.
@@ -1934,7 +1934,7 @@ paths:
       summary: List invoices
       tags:
       - Dashboard
-  /api/dashboard/data-master/jobs:
+  /api/data-master/jobs:
     get:
       description: Returns paginated background jobs for the workspace, optionally
         filtered by job_type and entity_type.
@@ -1979,7 +1979,7 @@ paths:
       summary: List background jobs
       tags:
       - Background Jobs
-  /api/dashboard/data-master/jobs/{job_id}:
+  /api/data-master/jobs/{job_id}:
     get:
       description: Returns the current status and progress of any background job (import
         or export).
@@ -2015,7 +2015,7 @@ paths:
       summary: Get background job status
       tags:
       - Background Jobs
-  /api/dashboard/data-master/jobs/{job_id}/download:
+  /api/data-master/jobs/{job_id}/download:
     get:
       description: Streams the XLSX file for a completed export job. Returns 409 if
         the job is not yet done.
@@ -2052,7 +2052,7 @@ paths:
       summary: Download export file
       tags:
       - Background Jobs
-  /api/dashboard/invoices/{invoice_id}:
+  /api/invoices/{invoice_id}:
     get:
       description: Returns a single invoice by invoice_id.
       parameters:
@@ -2113,7 +2113,7 @@ paths:
       summary: Update invoice
       tags:
       - Dashboard
-  /api/dashboard/master-data/attention:
+  /api/master-data/attention:
     get:
       parameters:
       - description: Workspace ID
@@ -2143,7 +2143,7 @@ paths:
       summary: Attention tab — high-risk / overdue / expiring
       tags:
       - MasterData
-  /api/dashboard/master-data/clients:
+  /api/master-data/clients:
     get:
       parameters:
       - description: Workspace ID
@@ -2238,7 +2238,7 @@ paths:
       summary: Create a new master data record
       tags:
       - MasterData
-  /api/dashboard/master-data/clients/{id}:
+  /api/master-data/clients/{id}:
     delete:
       parameters:
       - description: Workspace ID
@@ -2328,7 +2328,7 @@ paths:
       summary: Patch a master data record (partial)
       tags:
       - MasterData
-  /api/dashboard/master-data/clients/{id}/transition:
+  /api/master-data/clients/{id}/transition:
     post:
       consumes:
       - application/json
@@ -2364,7 +2364,7 @@ paths:
       summary: Transition stage atomically
       tags:
       - MasterData
-  /api/dashboard/master-data/clients/export:
+  /api/master-data/clients/export:
     get:
       parameters:
       - description: Workspace ID
@@ -2384,7 +2384,7 @@ paths:
       summary: Export master data as XLSX
       tags:
       - MasterData
-  /api/dashboard/master-data/clients/import:
+  /api/master-data/clients/import:
     post:
       consumes:
       - multipart/form-data
@@ -2419,7 +2419,7 @@ paths:
       summary: Bulk import (creates approval)
       tags:
       - MasterData
-  /api/dashboard/master-data/clients/template:
+  /api/master-data/clients/template:
     get:
       parameters:
       - description: Workspace ID
@@ -2439,7 +2439,7 @@ paths:
       summary: Download import template
       tags:
       - MasterData
-  /api/dashboard/master-data/field-definitions:
+  /api/master-data/field-definitions:
     get:
       parameters:
       - description: Workspace ID
@@ -2494,7 +2494,7 @@ paths:
       summary: Create a custom field definition
       tags:
       - CustomField
-  /api/dashboard/master-data/field-definitions/{id}:
+  /api/master-data/field-definitions/{id}:
     delete:
       parameters:
       - description: Workspace ID
@@ -2552,7 +2552,7 @@ paths:
       summary: Update a custom field definition (field_key immutable)
       tags:
       - CustomField
-  /api/dashboard/master-data/field-definitions/reorder:
+  /api/master-data/field-definitions/reorder:
     put:
       consumes:
       - application/json
@@ -2578,7 +2578,7 @@ paths:
       summary: Reorder custom field definitions in a single transaction
       tags:
       - CustomField
-  /api/dashboard/master-data/mutations:
+  /api/master-data/mutations:
     get:
       parameters:
       - description: Workspace ID
@@ -2604,7 +2604,7 @@ paths:
       summary: Master Data mutation log
       tags:
       - MasterData
-  /api/dashboard/master-data/query:
+  /api/master-data/query:
     post:
       consumes:
       - application/json
@@ -2630,7 +2630,7 @@ paths:
       summary: Flexible workflow query (whitelisted ops)
       tags:
       - MasterData
-  /api/dashboard/master-data/stats:
+  /api/master-data/stats:
     get:
       parameters:
       - description: Workspace ID
@@ -2653,7 +2653,7 @@ paths:
       summary: Master Data summary cards
       tags:
       - MasterData
-  /api/dashboard/message-template:
+  /api/message-template:
     get:
       description: Returns paginated message templates with optional filters.
       parameters:
@@ -2696,7 +2696,7 @@ paths:
       summary: List message templates
       tags:
       - Dashboard
-  /api/dashboard/message-template/{template_id}:
+  /api/message-template/{template_id}:
     get:
       description: Returns a single message template by template_id.
       parameters:
@@ -2757,7 +2757,7 @@ paths:
       summary: Update message template
       tags:
       - Dashboard
-  /api/dashboard/notifications:
+  /api/notifications:
     get:
       parameters:
       - description: Workspace ID
@@ -2828,7 +2828,7 @@ paths:
       summary: Publish a notification (internal)
       tags:
       - Notification
-  /api/dashboard/notifications/{id}/read:
+  /api/notifications/{id}/read:
     put:
       parameters:
       - description: Workspace ID
@@ -2851,7 +2851,7 @@ paths:
       summary: Mark a notification as read
       tags:
       - Notification
-  /api/dashboard/notifications/count:
+  /api/notifications/count:
     get:
       parameters:
       - description: Workspace ID
@@ -2869,7 +2869,7 @@ paths:
       summary: Count unread notifications
       tags:
       - Notification
-  /api/dashboard/notifications/read-all:
+  /api/notifications/read-all:
     put:
       parameters:
       - description: Workspace ID
@@ -2887,7 +2887,7 @@ paths:
       summary: Mark all notifications as read
       tags:
       - Notification
-  /api/dashboard/team/invitations/{token}/accept:
+  /api/team/invitations/{token}/accept:
     post:
       parameters:
       - description: Invite token
@@ -2918,7 +2918,7 @@ paths:
       summary: Accept a team invitation
       tags:
       - Team
-  /api/dashboard/team/members:
+  /api/team/members:
     get:
       parameters:
       - description: Workspace ID
@@ -2969,7 +2969,7 @@ paths:
       summary: List team members in the current workspace
       tags:
       - Team
-  /api/dashboard/team/members/{id}:
+  /api/team/members/{id}:
     delete:
       parameters:
       - description: Member ID
@@ -3066,7 +3066,7 @@ paths:
       summary: Update a member (partial)
       tags:
       - Team
-  /api/dashboard/team/members/{id}/role:
+  /api/team/members/{id}/role:
     put:
       consumes:
       - application/json
@@ -3106,7 +3106,7 @@ paths:
       summary: Change a member's role
       tags:
       - Team
-  /api/dashboard/team/members/{id}/status:
+  /api/team/members/{id}/status:
     put:
       consumes:
       - application/json
@@ -3146,7 +3146,7 @@ paths:
       summary: Change a member's status
       tags:
       - Team
-  /api/dashboard/team/members/{id}/workspaces:
+  /api/team/members/{id}/workspaces:
     put:
       consumes:
       - application/json
@@ -3182,7 +3182,7 @@ paths:
       summary: Replace the set of workspaces a member is assigned to
       tags:
       - Team
-  /api/dashboard/team/members/invite:
+  /api/team/members/invite:
     post:
       consumes:
       - application/json
@@ -3221,7 +3221,7 @@ paths:
       summary: Invite a new member to the team
       tags:
       - Team
-  /api/dashboard/team/permissions/me:
+  /api/team/permissions/me:
     get:
       parameters:
       - description: Workspace ID
@@ -3244,7 +3244,7 @@ paths:
       summary: Get the caller's full permission matrix for the current workspace
       tags:
       - Team
-  /api/dashboard/team/roles:
+  /api/team/roles:
     get:
       parameters:
       - description: Workspace ID
@@ -3299,7 +3299,7 @@ paths:
       summary: Create a new role
       tags:
       - Team
-  /api/dashboard/team/roles/{id}:
+  /api/team/roles/{id}:
     delete:
       parameters:
       - description: Role ID
@@ -3400,7 +3400,7 @@ paths:
       summary: Update a role (partial)
       tags:
       - Team
-  /api/dashboard/team/roles/{id}/permissions:
+  /api/team/roles/{id}/permissions:
     put:
       consumes:
       - application/json
@@ -3444,7 +3444,7 @@ paths:
       summary: Update one (workspace, module) permission cell for a role
       tags:
       - Team
-  /api/dashboard/workspaces:
+  /api/workspaces:
     get:
       responses:
         "200":
@@ -3500,7 +3500,7 @@ paths:
       summary: Create a new workspace
       tags:
       - Workspace
-  /api/dashboard/workspaces/{id}:
+  /api/workspaces/{id}:
     delete:
       parameters:
       - description: Workspace ID
@@ -3586,7 +3586,7 @@ paths:
       summary: Update a workspace (partial)
       tags:
       - Workspace
-  /api/dashboard/workspaces/{id}/members:
+  /api/workspaces/{id}/members:
     get:
       parameters:
       - description: Workspace ID
@@ -3611,7 +3611,7 @@ paths:
       summary: List members of a workspace
       tags:
       - Workspace
-  /api/dashboard/workspaces/{id}/members/{member_id}:
+  /api/workspaces/{id}/members/{member_id}:
     delete:
       parameters:
       - description: Workspace ID
@@ -3669,7 +3669,7 @@ paths:
       summary: Update workspace member role
       tags:
       - Workspace
-  /api/dashboard/workspaces/{id}/members/invite:
+  /api/workspaces/{id}/members/invite:
     post:
       consumes:
       - application/json
@@ -3700,7 +3700,7 @@ paths:
       summary: Invite user to workspace
       tags:
       - Workspace
-  /api/dashboard/workspaces/{id}/switch:
+  /api/workspaces/{id}/switch:
     post:
       parameters:
       - description: Workspace ID
@@ -3723,7 +3723,7 @@ paths:
       summary: Switch active workspace (audit)
       tags:
       - Workspace
-  /api/dashboard/workspaces/invitations/{token}/accept:
+  /api/workspaces/invitations/{token}/accept:
     post:
       parameters:
       - description: Invitation token

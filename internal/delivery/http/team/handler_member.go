@@ -38,7 +38,7 @@ func NewHandler(uc teamuc.Usecase, logger zerolog.Logger, tr tracer.Tracer) *Han
 // @Success      200  {object}  response.StandardResponse{data=team.ListMembersResult}
 // @Failure      401  {object}  response.StandardResponse
 // @Failure      403  {object}  response.StandardResponse
-// @Router       /api/dashboard/team/members [get]
+// @Router       /api/team/members [get]
 func (h *Handler) ListMembers(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.ListMembers")
 	defer span.End()
@@ -60,7 +60,7 @@ func (h *Handler) ListMembers(w http.ResponseWriter, r *http.Request) error {
 // @Param        X-Workspace-ID  header  string  true  "Workspace ID"
 // @Success      200  {object}  response.StandardResponse{data=team.MemberDetail}
 // @Failure      404  {object}  response.StandardResponse
-// @Router       /api/dashboard/team/members/{id} [get]
+// @Router       /api/team/members/{id} [get]
 func (h *Handler) GetMember(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.GetMember")
 	defer span.End()
@@ -83,7 +83,7 @@ func (h *Handler) GetMember(w http.ResponseWriter, r *http.Request) error {
 // @Success      201  {object}  response.StandardResponse{data=entity.TeamMember}
 // @Failure      400  {object}  response.StandardResponse
 // @Failure      409  {object}  response.StandardResponse
-// @Router       /api/dashboard/team/members/invite [post]
+// @Router       /api/team/members/invite [post]
 func (h *Handler) InviteMember(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.InviteMember")
 	defer span.End()
@@ -109,7 +109,7 @@ func (h *Handler) InviteMember(w http.ResponseWriter, r *http.Request) error {
 // @Param        body            body    team.UpdateMemberRequest    true  "Patch payload"
 // @Success      200  {object}  response.StandardResponse{data=entity.TeamMember}
 // @Failure      404  {object}  response.StandardResponse
-// @Router       /api/dashboard/team/members/{id} [put]
+// @Router       /api/team/members/{id} [put]
 func (h *Handler) UpdateMember(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.UpdateMember")
 	defer span.End()
@@ -136,7 +136,7 @@ func (h *Handler) UpdateMember(w http.ResponseWriter, r *http.Request) error {
 // @Param        body            body    ChangeRoleRequest  true  "Role payload"
 // @Success      200  {object}  response.StandardResponse{data=entity.TeamMember}
 // @Failure      403  {object}  response.StandardResponse
-// @Router       /api/dashboard/team/members/{id}/role [put]
+// @Router       /api/team/members/{id}/role [put]
 func (h *Handler) ChangeRole(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.ChangeRole")
 	defer span.End()
@@ -166,7 +166,7 @@ func (h *Handler) ChangeRole(w http.ResponseWriter, r *http.Request) error {
 // @Param        body            body    ChangeStatusRequest  true  "Status payload"
 // @Success      200  {object}  response.StandardResponse{data=entity.TeamMember}
 // @Failure      400  {object}  response.StandardResponse
-// @Router       /api/dashboard/team/members/{id}/status [put]
+// @Router       /api/team/members/{id}/status [put]
 func (h *Handler) ChangeStatus(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.ChangeStatus")
 	defer span.End()
@@ -192,7 +192,7 @@ func (h *Handler) ChangeStatus(w http.ResponseWriter, r *http.Request) error {
 // @Param        X-Workspace-ID  header  string                   true  "Workspace ID"
 // @Param        body            body    UpdateWorkspacesRequest  true  "Workspace IDs"
 // @Success      200  {object}  response.StandardResponse{data=entity.TeamMember}
-// @Router       /api/dashboard/team/members/{id}/workspaces [put]
+// @Router       /api/team/members/{id}/workspaces [put]
 func (h *Handler) UpdateMemberWorkspaces(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.UpdateMemberWorkspaces")
 	defer span.End()
@@ -217,7 +217,7 @@ func (h *Handler) UpdateMemberWorkspaces(w http.ResponseWriter, r *http.Request)
 // @Param        X-Workspace-ID  header  string  true  "Workspace ID"
 // @Success      200  {object}  response.StandardResponse
 // @Failure      403  {object}  response.StandardResponse
-// @Router       /api/dashboard/team/members/{id} [delete]
+// @Router       /api/team/members/{id} [delete]
 func (h *Handler) RemoveMember(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.RemoveMember")
 	defer span.End()
@@ -237,7 +237,7 @@ func (h *Handler) RemoveMember(w http.ResponseWriter, r *http.Request) error {
 // @Success      200  {object}  response.StandardResponse{data=entity.TeamMember}
 // @Failure      400  {object}  response.StandardResponse
 // @Failure      404  {object}  response.StandardResponse
-// @Router       /api/dashboard/team/invitations/{token}/accept [post]
+// @Router       /api/team/invitations/{token}/accept [post]
 func (h *Handler) AcceptInvitation(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "team.handler.AcceptInvitation")
 	defer span.End()
