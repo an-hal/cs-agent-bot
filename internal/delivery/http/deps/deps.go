@@ -13,6 +13,7 @@ import (
 	masterdata "github.com/Sejutacita/cs-agent-bot/internal/usecase/master_data"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/notification"
 	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
+	teamuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/team"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/trigger"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/webhook"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/workspace"
@@ -40,4 +41,5 @@ type Deps struct {
 	NotificationUC   notification.Usecase
 	MasterDataUC     masterdata.Usecase
 	CustomFieldUC    customfield.Usecase
+	TeamUC           teamuc.Usecase
 }

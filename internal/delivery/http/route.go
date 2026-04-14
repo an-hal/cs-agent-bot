@@ -6,6 +6,8 @@ import (
 	authHandler "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/auth"
 	cronHandler "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/cron"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/dashboard"
+	teamHandler "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/team"
+	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	deliveryHttpDeps "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/deps"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/health"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/middleware"
@@ -37,6 +39,7 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	masterDataH := dashboard.NewMasterDataHandler(deps.MasterDataUC, deps.Logger, deps.Tracer)
 	customFieldH := dashboard.NewCustomFieldHandler(deps.CustomFieldUC, deps.Logger, deps.Tracer)
 	authH := authHandler.NewAuthHandler(deps.AuthUsecase, deps.Cfg.Env, deps.Logger, deps.Tracer)
+	teamH := teamHandler.NewHandler(deps.TeamUC, deps.Logger, deps.Tracer)
 
 	// Per-route auth wrappers
 	oidcAuth := middleware.OIDCAuthMiddleware(deps.Cfg.AppURL, deps.Cfg.SchedulerSAEmail, deps.Cfg.Env, deps.Logger)
@@ -137,6 +140,28 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	masterData.Handle(http.MethodPut, "/field-definitions/reorder", wsRequired(jwtAuth(customFieldH.Reorder)))
 	masterData.Handle(http.MethodPut, "/field-definitions/{id}", wsRequired(jwtAuth(customFieldH.Update)))
 	masterData.Handle(http.MethodDelete, "/field-definitions/{id}", wsRequired(jwtAuth(customFieldH.Delete)))
+
+	// Team / RBAC
+	requireTeam := func(action string) func(middleware.ErrorHandler) middleware.ErrorHandler {
+		return middleware.RequirePermission(entity.ModuleTeam, action, deps.TeamUC)
+	}
+	team := api.Group("/team")
+	team.Handle(http.MethodGet, "/members", wsRequired(jwtAuth(requireTeam(entity.ActionViewList)(teamH.ListMembers))))
+	team.Handle(http.MethodPost, "/members/invite", wsRequired(jwtAuth(requireTeam(entity.ActionCreate)(teamH.InviteMember))))
+	team.Handle(http.MethodGet, "/members/{id}", wsRequired(jwtAuth(requireTeam(entity.ActionViewDetail)(teamH.GetMember))))
+	team.Handle(http.MethodPut, "/members/{id}", wsRequired(jwtAuth(requireTeam(entity.ActionEdit)(teamH.UpdateMember))))
+	team.Handle(http.MethodPut, "/members/{id}/role", wsRequired(jwtAuth(requireTeam(entity.ActionEdit)(teamH.ChangeRole))))
+	team.Handle(http.MethodPut, "/members/{id}/status", wsRequired(jwtAuth(requireTeam(entity.ActionEdit)(teamH.ChangeStatus))))
+	team.Handle(http.MethodPut, "/members/{id}/workspaces", wsRequired(jwtAuth(requireTeam(entity.ActionEdit)(teamH.UpdateMemberWorkspaces))))
+	team.Handle(http.MethodDelete, "/members/{id}", wsRequired(jwtAuth(requireTeam(entity.ActionDelete)(teamH.RemoveMember))))
+	team.Handle(http.MethodPost, "/invitations/{token}/accept", jwtAuth(teamH.AcceptInvitation))
+	team.Handle(http.MethodGet, "/roles", wsRequired(jwtAuth(requireTeam(entity.ActionViewList)(teamH.ListRoles))))
+	team.Handle(http.MethodPost, "/roles", wsRequired(jwtAuth(requireTeam(entity.ActionCreate)(teamH.CreateRole))))
+	team.Handle(http.MethodGet, "/roles/{id}", wsRequired(jwtAuth(requireTeam(entity.ActionViewDetail)(teamH.GetRole))))
+	team.Handle(http.MethodPut, "/roles/{id}", wsRequired(jwtAuth(requireTeam(entity.ActionEdit)(teamH.UpdateRole))))
+	team.Handle(http.MethodPut, "/roles/{id}/permissions", wsRequired(jwtAuth(requireTeam(entity.ActionEdit)(teamH.UpdateRolePermissions))))
+	team.Handle(http.MethodDelete, "/roles/{id}", wsRequired(jwtAuth(requireTeam(entity.ActionDelete)(teamH.DeleteRole))))
+	team.Handle(http.MethodGet, "/permissions/me", wsRequired(jwtAuth(teamH.GetMyPermissions)))
 
 	// Swagger
 	r.HandlePrefix(http.MethodGet, "/swagger", httpSwagger.WrapHandler)

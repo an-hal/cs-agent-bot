@@ -40,6 +40,7 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai"
 	masterdatauc "github.com/Sejutacita/cs-agent-bot/internal/usecase/master_data"
 	notificationuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/notification"
+	teamuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/team"
 	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/telegram"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/template"
@@ -128,6 +129,10 @@ func main() {
 	customFieldRepo := repository.NewCustomFieldDefinitionRepo(db, queryTimeout, tracerInstance, logger)
 	masterDataMutationRepo := repository.NewMasterDataMutationRepo(db, queryTimeout, tracerInstance, logger)
 	approvalRequestRepo := repository.NewApprovalRequestRepo(db, queryTimeout, tracerInstance, logger)
+	roleRepo := repository.NewRoleRepo(db, queryTimeout, tracerInstance, logger)
+	rolePermissionRepo := repository.NewRolePermissionRepo(db, queryTimeout, tracerInstance, logger)
+	teamMemberRepo := repository.NewTeamMemberRepo(db, queryTimeout, tracerInstance, logger)
+	memberWorkspaceAssignmentRepo := repository.NewMemberWorkspaceAssignmentRepo(db, queryTimeout, tracerInstance, logger)
 
 	fileStore, err := jobstore.NewLocalFileStore(cfg.ExportStoragePath)
 	if err != nil {
@@ -263,6 +268,15 @@ func main() {
 	notificationUsecase := notificationuc.New(notificationRepo)
 	masterDataUsecase := masterdatauc.New(masterDataRepo, customFieldRepo, masterDataMutationRepo, approvalRequestRepo)
 	customFieldUsecase := customfielduc.New(customFieldRepo)
+	teamUsecase := teamuc.New(
+		roleRepo,
+		rolePermissionRepo,
+		teamMemberRepo,
+		memberWorkspaceAssignmentRepo,
+		approvalRequestRepo,
+		whitelistRepo,
+		teamuc.Options{},
+	)
 
 	validate := pkgValidator.New()
 
@@ -289,6 +303,7 @@ func main() {
 		NotificationUC:   notificationUsecase,
 		MasterDataUC:     masterDataUsecase,
 		CustomFieldUC:    customFieldUsecase,
+		TeamUC:           teamUsecase,
 	})
 
 	server := &http.Server{

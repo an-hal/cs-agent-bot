@@ -685,6 +685,25 @@ definitions:
       workspace_id:
         type: string
     type: object
+  entity.Role:
+    properties:
+      bg_color:
+        type: string
+      color:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      is_system:
+        type: boolean
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
   entity.SystemConfig:
     properties:
       description:
@@ -696,6 +715,41 @@ definitions:
       updated_by:
         type: string
       value:
+        type: string
+    type: object
+  entity.TeamMember:
+    properties:
+      avatar_color:
+        type: string
+      created_at:
+        type: string
+      department:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      initials:
+        type: string
+      invite_expires:
+        type: string
+      invite_token:
+        type: string
+      invited_by:
+        type: string
+      joined_at:
+        type: string
+      last_active_at:
+        type: string
+      name:
+        type: string
+      role_id:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+      user_id:
         type: string
     type: object
   entity.Template:
@@ -1033,6 +1087,21 @@ definitions:
       sort_order:
         type: integer
     type: object
+  repository.TeamMemberSummary:
+    properties:
+      active:
+        format: int64
+        type: integer
+      inactive:
+        format: int64
+        type: integer
+      pending:
+        format: int64
+        type: integer
+      total:
+        format: int64
+        type: integer
+    type: object
   response.StandardResponse:
     properties:
       data: {}
@@ -1074,6 +1143,230 @@ definitions:
       validationErrors:
         items:
           $ref: '#/definitions/apperror.FieldError'
+        type: array
+    type: object
+  team.ChangeRoleRequest:
+    properties:
+      role_id:
+        type: string
+    type: object
+  team.ChangeStatusRequest:
+    properties:
+      status:
+        type: string
+    type: object
+  team.CreateRoleRequest:
+    properties:
+      bg_color:
+        type: string
+      color:
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  team.InviteRequest:
+    properties:
+      department:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      role_id:
+        type: string
+      workspace_ids:
+        items:
+          type: string
+        type: array
+    type: object
+  team.ListMembersResult:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/team.MemberDetail'
+        type: array
+      meta:
+        $ref: '#/definitions/team.ListMeta'
+      summary:
+        $ref: '#/definitions/repository.TeamMemberSummary'
+    type: object
+  team.ListMeta:
+    properties:
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  team.MemberDetail:
+    properties:
+      avatar_color:
+        type: string
+      created_at:
+        type: string
+      department:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      initials:
+        type: string
+      invite_expires:
+        type: string
+      invite_token:
+        type: string
+      invited_by:
+        type: string
+      joined_at:
+        type: string
+      last_active_at:
+        type: string
+      name:
+        type: string
+      role:
+        $ref: '#/definitions/entity.Role'
+      role_id:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+      user_id:
+        type: string
+      workspace_ids:
+        items:
+          type: string
+        type: array
+    type: object
+  team.MyPermissions:
+    properties:
+      permissions:
+        additionalProperties:
+          $ref: '#/definitions/team.PermissionFlags'
+        type: object
+      role:
+        $ref: '#/definitions/entity.Role'
+      workspace_id:
+        type: string
+    type: object
+  team.PermissionChange:
+    properties:
+      changed_actions:
+        items:
+          type: string
+        type: array
+      module_id:
+        type: string
+      permissions:
+        $ref: '#/definitions/team.PermissionFlags'
+      role:
+        $ref: '#/definitions/entity.Role'
+      summary:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  team.PermissionFlags:
+    properties:
+      create:
+        type: boolean
+      delete:
+        type: boolean
+      edit:
+        type: boolean
+      export:
+        type: boolean
+      import:
+        type: boolean
+      view_detail:
+        type: boolean
+      view_list:
+        type: string
+    type: object
+  team.RoleDetail:
+    properties:
+      bg_color:
+        type: string
+      color:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      is_system:
+        type: boolean
+      member_count:
+        type: integer
+      name:
+        type: string
+      permissions:
+        additionalProperties:
+          $ref: '#/definitions/team.PermissionFlags'
+        type: object
+      updated_at:
+        type: string
+    type: object
+  team.RoleSummary:
+    properties:
+      bg_color:
+        type: string
+      color:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      is_system:
+        type: boolean
+      member_count:
+        type: integer
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  team.UpdateMemberRequest:
+    properties:
+      avatar_color:
+        type: string
+      department:
+        type: string
+      name:
+        type: string
+    type: object
+  team.UpdateRolePermissionRequest:
+    properties:
+      module_id:
+        type: string
+      permissions:
+        $ref: '#/definitions/team.PermissionFlags'
+      workspace_id:
+        type: string
+    type: object
+  team.UpdateRoleRequest:
+    properties:
+      bg_color:
+        type: string
+      color:
+        type: string
+      description:
+        type: string
+      name:
+        type: string
+    type: object
+  team.UpdateWorkspacesRequest:
+    properties:
+      workspace_ids:
+        items:
+          type: string
         type: array
     type: object
   template.VariableInfo:
@@ -2594,6 +2887,563 @@ paths:
       summary: Mark all notifications as read
       tags:
       - Notification
+  /api/dashboard/team/invitations/{token}/accept:
+    post:
+      parameters:
+      - description: Invite token
+        in: path
+        name: token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.TeamMember'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Accept a team invitation
+      tags:
+      - Team
+  /api/dashboard/team/members:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Filter by status
+        in: query
+        name: status
+        type: string
+      - description: Filter by role
+        in: query
+        name: role_id
+        type: string
+      - description: Search name/email/dept
+        in: query
+        name: search
+        type: string
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      - description: Pagination limit
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/team.ListMembersResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: List team members in the current workspace
+      tags:
+      - Team
+  /api/dashboard/team/members/{id}:
+    delete:
+      parameters:
+      - description: Member ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove a team member
+      tags:
+      - Team
+    get:
+      parameters:
+      - description: Member ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/team.MemberDetail'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Get a single team member
+      tags:
+      - Team
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Member ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Patch payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/team.UpdateMemberRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.TeamMember'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a member (partial)
+      tags:
+      - Team
+  /api/dashboard/team/members/{id}/role:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Member ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Role payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/team.ChangeRoleRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.TeamMember'
+              type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Change a member's role
+      tags:
+      - Team
+  /api/dashboard/team/members/{id}/status:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Member ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Status payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/team.ChangeStatusRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.TeamMember'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Change a member's status
+      tags:
+      - Team
+  /api/dashboard/team/members/{id}/workspaces:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Member ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Workspace IDs
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/team.UpdateWorkspacesRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.TeamMember'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Replace the set of workspaces a member is assigned to
+      tags:
+      - Team
+  /api/dashboard/team/members/invite:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Invite payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/team.InviteRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.TeamMember'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Invite a new member to the team
+      tags:
+      - Team
+  /api/dashboard/team/permissions/me:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/team.MyPermissions'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get the caller's full permission matrix for the current workspace
+      tags:
+      - Team
+  /api/dashboard/team/roles:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/team.RoleSummary'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List roles
+      tags:
+      - Team
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Role payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/team.CreateRoleRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Role'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new role
+      tags:
+      - Team
+  /api/dashboard/team/roles/{id}:
+    delete:
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a role
+      tags:
+      - Team
+    get:
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/team.RoleDetail'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Get role with full permission matrix for current workspace
+      tags:
+      - Team
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Patch payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/team.UpdateRoleRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Role'
+              type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a role (partial)
+      tags:
+      - Team
+  /api/dashboard/team/roles/{id}/permissions:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Role ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Permission payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/team.UpdateRolePermissionRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/team.PermissionChange'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Update one (workspace, module) permission cell for a role
+      tags:
+      - Team
   /api/dashboard/workspaces:
     get:
       responses:
