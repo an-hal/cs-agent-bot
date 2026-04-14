@@ -32,6 +32,7 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	activityH := dashboard.NewActivityHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 	invoiceH := dashboard.NewInvoiceHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 	templateH := dashboard.NewTemplateHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
+	messagingH := dashboard.NewMessagingHandler(deps.MessagingUC, deps.Logger, deps.Tracer)
 	escalationH := dashboard.NewEscalationHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 	bgJobH := dashboard.NewBackgroundJobHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 	triggerRuleH := dashboard.NewTriggerRuleHandler(deps.TriggerRuleRepo, deps.LogRepo, deps.RuleEngine, deps.Logger, deps.Tracer)
@@ -162,6 +163,23 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	team.Handle(http.MethodPut, "/roles/{id}/permissions", wsRequired(jwtAuth(requireTeam(entity.ActionEdit)(teamH.UpdateRolePermissions))))
 	team.Handle(http.MethodDelete, "/roles/{id}", wsRequired(jwtAuth(requireTeam(entity.ActionDelete)(teamH.DeleteRole))))
 	team.Handle(http.MethodGet, "/permissions/me", wsRequired(jwtAuth(teamH.GetMyPermissions)))
+
+	// Messaging templates (feat/05-messaging) — workspace-scoped.
+	tpl := api.Group("/templates")
+	tpl.Handle(http.MethodGet, "/messages", wsRequired(jwtAuth(messagingH.ListMessages)))
+	tpl.Handle(http.MethodPost, "/messages", wsRequired(jwtAuth(messagingH.CreateMessage)))
+	tpl.Handle(http.MethodGet, "/messages/{id}", wsRequired(jwtAuth(messagingH.GetMessage)))
+	tpl.Handle(http.MethodPut, "/messages/{id}", wsRequired(jwtAuth(messagingH.UpdateMessage)))
+	tpl.Handle(http.MethodDelete, "/messages/{id}", wsRequired(jwtAuth(messagingH.DeleteMessage)))
+	tpl.Handle(http.MethodGet, "/emails", wsRequired(jwtAuth(messagingH.ListEmails)))
+	tpl.Handle(http.MethodPost, "/emails", wsRequired(jwtAuth(messagingH.CreateEmail)))
+	tpl.Handle(http.MethodGet, "/emails/{id}", wsRequired(jwtAuth(messagingH.GetEmail)))
+	tpl.Handle(http.MethodPut, "/emails/{id}", wsRequired(jwtAuth(messagingH.UpdateEmail)))
+	tpl.Handle(http.MethodDelete, "/emails/{id}", wsRequired(jwtAuth(messagingH.DeleteEmail)))
+	tpl.Handle(http.MethodPost, "/preview", wsRequired(jwtAuth(messagingH.Preview)))
+	tpl.Handle(http.MethodGet, "/edit-logs", wsRequired(jwtAuth(messagingH.ListEditLogs)))
+	tpl.Handle(http.MethodGet, "/edit-logs/{template_id}", wsRequired(jwtAuth(messagingH.GetEditLogsForTemplate)))
+	tpl.Handle(http.MethodGet, "/variables", wsRequired(jwtAuth(messagingH.ListVariables)))
 
 	// Swagger
 	r.HandlePrefix(http.MethodGet, "/swagger", httpSwagger.WrapHandler)
