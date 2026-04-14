@@ -39,6 +39,7 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/escalation"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai"
 	masterdatauc "github.com/Sejutacita/cs-agent-bot/internal/usecase/master_data"
+	messaginguc "github.com/Sejutacita/cs-agent-bot/internal/usecase/messaging"
 	notificationuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/notification"
 	teamuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/team"
 	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
@@ -133,6 +134,10 @@ func main() {
 	rolePermissionRepo := repository.NewRolePermissionRepo(db, queryTimeout, tracerInstance, logger)
 	teamMemberRepo := repository.NewTeamMemberRepo(db, queryTimeout, tracerInstance, logger)
 	memberWorkspaceAssignmentRepo := repository.NewMemberWorkspaceAssignmentRepo(db, queryTimeout, tracerInstance, logger)
+	messageTemplateRepo := repository.NewMessageTemplateRepo(db, queryTimeout, tracerInstance, logger)
+	emailTemplateRepo := repository.NewEmailTemplateRepo(db, queryTimeout, tracerInstance, logger)
+	templateVariableRepo := repository.NewTemplateVariableRepo(db, queryTimeout, tracerInstance, logger)
+	templateEditLogRepo := repository.NewTemplateEditLogRepo(db, queryTimeout, tracerInstance, logger)
 
 	fileStore, err := jobstore.NewLocalFileStore(cfg.ExportStoragePath)
 	if err != nil {
@@ -277,6 +282,13 @@ func main() {
 		whitelistRepo,
 		teamuc.Options{},
 	)
+	messagingUsecase := messaginguc.New(
+		messageTemplateRepo,
+		emailTemplateRepo,
+		templateVariableRepo,
+		templateEditLogRepo,
+		logger,
+	)
 
 	validate := pkgValidator.New()
 
@@ -304,6 +316,7 @@ func main() {
 		MasterDataUC:     masterDataUsecase,
 		CustomFieldUC:    customFieldUsecase,
 		TeamUC:           teamUsecase,
+		MessagingUC:      messagingUsecase,
 	})
 
 	server := &http.Server{

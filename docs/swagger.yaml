@@ -510,6 +510,35 @@ definitions:
       workspace_id:
         type: string
     type: object
+  entity.EmailTemplate:
+    properties:
+      body_html:
+        type: string
+      category:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      role:
+        type: string
+      status:
+        type: string
+      subject:
+        type: string
+      updated_at:
+        type: string
+      updated_by:
+        type: string
+      variables:
+        items:
+          type: string
+        type: array
+      workspace_id:
+        type: string
+    type: object
   entity.Escalation:
     properties:
       company_id:
@@ -654,6 +683,49 @@ definitions:
         description: WorkspaceName is populated for holding workspace queries only.
         type: string
     type: object
+  entity.MessageTemplate:
+    properties:
+      action:
+        type: string
+      category:
+        type: string
+      channel:
+        type: string
+      condition:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      phase:
+        type: string
+      phase_label:
+        type: string
+      priority:
+        type: string
+      role:
+        type: string
+      sent_flag:
+        type: string
+      stop_if:
+        type: string
+      timing:
+        type: string
+      trigger_id:
+        type: string
+      updated_at:
+        type: string
+      updated_by:
+        type: string
+      variables:
+        items:
+          type: string
+        type: array
+      workspace_id:
+        type: string
+    type: object
   entity.Notification:
     properties:
       created_at:
@@ -777,6 +849,48 @@ definitions:
       updated_at:
         type: string
       wa_content:
+        type: string
+    type: object
+  entity.TemplateEditLog:
+    properties:
+      edited_at:
+        type: string
+      edited_by:
+        type: string
+      field:
+        type: string
+      id:
+        type: string
+      new_value:
+        type: string
+      old_value:
+        type: string
+      template_id:
+        type: string
+      template_type:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  entity.TemplateVariable:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      display_label:
+        type: string
+      example_value:
+        type: string
+      id:
+        type: string
+      source_field:
+        type: string
+      source_type:
+        type: string
+      variable_key:
+        type: string
+      workspace_id:
         type: string
     type: object
   entity.TriggerRule:
@@ -1031,6 +1145,32 @@ definitions:
       data:
         $ref: '#/definitions/entity.MasterData'
       previous_stage:
+        type: string
+    type: object
+  messaging.PreviewRequest:
+    properties:
+      sample_data:
+        additionalProperties:
+          type: string
+        type: object
+      template_id:
+        type: string
+      template_type:
+        type: string
+    type: object
+  messaging.PreviewResult:
+    properties:
+      body_html:
+        type: string
+      missing_variables:
+        items:
+          type: string
+        type: array
+      rendered:
+        type: string
+      subject:
+        type: string
+      template_type:
         type: string
     type: object
   notification.CreateRequest:
@@ -2052,6 +2192,230 @@ paths:
       summary: Download export file
       tags:
       - Background Jobs
+  /api/data-master/system-config:
+    get:
+      description: Returns all system_config entries. Sensitive values (tokens) are
+        masked.
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.SystemConfig'
+                  type: array
+              type: object
+      summary: List all system config entries
+      tags:
+      - Dashboard
+  /api/data-master/system-config/{key}:
+    put:
+      description: Updates the value of a single system_config key.
+      parameters:
+      - description: Config key (e.g. HALOAI_API_URL)
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: '{ \'
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Update a system config entry
+      tags:
+      - Dashboard
+  /api/data-master/template-variables:
+    get:
+      parameters:
+      - description: Filter by channel (wa, email)
+        in: query
+        name: channel
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/template.VariableInfo'
+                  type: array
+              type: object
+      summary: List available template variables
+      tags:
+      - Dashboard
+  /api/data-master/trigger-rules:
+    get:
+      parameters:
+      - description: Filter by rule group
+        in: query
+        name: rule_group
+        type: string
+      - description: Filter by action type
+        in: query
+        name: action_type
+        type: string
+      - description: Filter by active status
+        in: query
+        name: active
+        type: string
+      - description: Search by rule_id, group, description
+        in: query
+        name: search
+        type: string
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      - description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.TriggerRule'
+                  type: array
+              type: object
+      summary: List trigger rules
+      tags:
+      - Dashboard
+    post:
+      parameters:
+      - description: Trigger rule
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.TriggerRule'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Create trigger rule
+      tags:
+      - Dashboard
+  /api/data-master/trigger-rules/{rule_id}:
+    delete:
+      parameters:
+      - description: Rule ID
+        in: path
+        name: rule_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Delete trigger rule (soft delete)
+      tags:
+      - Dashboard
+    get:
+      parameters:
+      - description: Rule ID
+        in: path
+        name: rule_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.TriggerRule'
+              type: object
+      summary: Get trigger rule by ID
+      tags:
+      - Dashboard
+    put:
+      parameters:
+      - description: Rule ID
+        in: path
+        name: rule_id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Update trigger rule
+      tags:
+      - Dashboard
+  /api/data-master/trigger-rules/cache/invalidate:
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Invalidate trigger rule cache
+      tags:
+      - Dashboard
+  /api/handoff/new-client:
+    post:
+      description: Creates a new client record when a Business Development team member
+        hands off a new prospect. Requires HMAC authentication using X-Handoff-Secret
+        header.
+      parameters:
+      - description: New client handoff payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.HandoffCreateRequest'
+      responses:
+        "201":
+          description: Client onboarded successfully
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Invalid request body or validation error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "401":
+          description: Unauthorized - invalid HMAC signature
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - X-Handoff-Secret: []
+      summary: Onboard New Client from BD Handoff
+      tags:
+      - api
   /api/invoices/{invoice_id}:
     get:
       description: Returns a single invoice by invoice_id.
@@ -2887,6 +3251,44 @@ paths:
       summary: Mark all notifications as read
       tags:
       - Notification
+  /api/payment/verify:
+    post:
+      description: Verifies and marks a client's payment as paid after AE verification.
+        Sends confirmation to client via WhatsApp and creates tracking record. Requires
+        HMAC authentication using X-Verify-Secret header.
+      parameters:
+      - description: Payment verification payload
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_delivery_http_payment.VerifyPaymentRequest'
+      responses:
+        "200":
+          description: Payment verified successfully
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Invalid request body or validation error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "401":
+          description: Unauthorized - invalid HMAC signature
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Client not found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - X-Verify-Secret: []
+      summary: Verify Client Payment
+      tags:
+      - api
   /api/team/invitations/{token}/accept:
     post:
       parameters:
@@ -3444,6 +3846,335 @@ paths:
       summary: Update one (workspace, module) permission cell for a role
       tags:
       - Team
+  /api/templates/edit-logs:
+    get:
+      parameters:
+      - description: Filter by template_id
+        in: query
+        name: template_id
+        type: string
+      - description: message | email
+        in: query
+        name: template_type
+        type: string
+      - description: Max rows (default 50)
+        in: query
+        name: limit
+        type: integer
+      - description: RFC3339 timestamp
+        in: query
+        name: since
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.TemplateEditLog'
+                  type: array
+              type: object
+      summary: List template edit logs
+      tags:
+      - Messaging
+  /api/templates/edit-logs/{template_id}:
+    get:
+      parameters:
+      - description: Template ID
+        in: path
+        name: template_id
+        required: true
+        type: string
+      - description: Max rows
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.TemplateEditLog'
+                  type: array
+              type: object
+      summary: List edit logs for a specific template
+      tags:
+      - Messaging
+  /api/templates/emails:
+    get:
+      parameters:
+      - description: sdr | bd | ae
+        in: query
+        name: role
+        type: string
+      - description: Category filter
+        in: query
+        name: category
+        type: string
+      - description: active | draft | archived
+        in: query
+        name: status
+        type: string
+      - description: Search id/name/subject
+        in: query
+        name: search
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.EmailTemplate'
+                  type: array
+              type: object
+      summary: List email templates
+      tags:
+      - Messaging
+    post:
+      parameters:
+      - description: Template body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.EmailTemplate'
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.EmailTemplate'
+              type: object
+      summary: Create email template
+      tags:
+      - Messaging
+  /api/templates/emails/{id}:
+    delete:
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Delete email template
+      tags:
+      - Messaging
+    get:
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.EmailTemplate'
+              type: object
+      summary: Get email template by ID
+      tags:
+      - Messaging
+    put:
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Partial update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.EmailTemplate'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Update email template
+      tags:
+      - Messaging
+  /api/templates/messages:
+    get:
+      description: List workspace-scoped WA/Telegram templates.
+      parameters:
+      - description: sdr | bd | ae
+        in: query
+        name: role
+        type: string
+      - description: Comma-separated phases (P0,P1)
+        in: query
+        name: phase
+        type: string
+      - description: whatsapp | telegram
+        in: query
+        name: channel
+        type: string
+      - description: Category filter
+        in: query
+        name: category
+        type: string
+      - description: Search id/action/message
+        in: query
+        name: search
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.MessageTemplate'
+                  type: array
+              type: object
+      summary: List message templates
+      tags:
+      - Messaging
+    post:
+      parameters:
+      - description: Template body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.MessageTemplate'
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.MessageTemplate'
+              type: object
+      summary: Create message template
+      tags:
+      - Messaging
+  /api/templates/messages/{id}:
+    delete:
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Delete message template
+      tags:
+      - Messaging
+    get:
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.MessageTemplate'
+              type: object
+      summary: Get message template by ID
+      tags:
+      - Messaging
+    put:
+      parameters:
+      - description: Template ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Partial update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.MessageTemplate'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Update message template
+      tags:
+      - Messaging
+  /api/templates/preview:
+    post:
+      parameters:
+      - description: Preview request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/messaging.PreviewRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/messaging.PreviewResult'
+              type: object
+      summary: Render template with sample data
+      tags:
+      - Messaging
+  /api/templates/variables:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.TemplateVariable'
+                  type: array
+              type: object
+      summary: List template variables available in this workspace
+      tags:
+      - Messaging
   /api/workspaces:
     get:
       responses:
@@ -3746,268 +4477,6 @@ paths:
       summary: Accept a workspace invitation
       tags:
       - Workspace
-  /api/data-master/system-config:
-    get:
-      description: Returns all system_config entries. Sensitive values (tokens) are
-        masked.
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/response.StandardResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/entity.SystemConfig'
-                  type: array
-              type: object
-      summary: List all system config entries
-      tags:
-      - Dashboard
-  /api/data-master/system-config/{key}:
-    put:
-      description: Updates the value of a single system_config key.
-      parameters:
-      - description: Config key (e.g. HALOAI_API_URL)
-        in: path
-        name: key
-        required: true
-        type: string
-      - description: '{ \'
-        in: body
-        name: body
-        required: true
-        schema:
-          type: object
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-      summary: Update a system config entry
-      tags:
-      - Dashboard
-  /api/data-master/template-variables:
-    get:
-      parameters:
-      - description: Filter by channel (wa, email)
-        in: query
-        name: channel
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/response.StandardResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/template.VariableInfo'
-                  type: array
-              type: object
-      summary: List available template variables
-      tags:
-      - Dashboard
-  /api/data-master/trigger-rules:
-    get:
-      parameters:
-      - description: Filter by rule group
-        in: query
-        name: rule_group
-        type: string
-      - description: Filter by action type
-        in: query
-        name: action_type
-        type: string
-      - description: Filter by active status
-        in: query
-        name: active
-        type: string
-      - description: Search by rule_id, group, description
-        in: query
-        name: search
-        type: string
-      - description: Pagination offset
-        in: query
-        name: offset
-        type: integer
-      - description: Limit per page
-        in: query
-        name: limit
-        type: integer
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/response.StandardResponseWithMeta'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/entity.TriggerRule'
-                  type: array
-              type: object
-      summary: List trigger rules
-      tags:
-      - Dashboard
-    post:
-      parameters:
-      - description: Trigger rule
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/entity.TriggerRule'
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-      summary: Create trigger rule
-      tags:
-      - Dashboard
-  /api/data-master/trigger-rules/{rule_id}:
-    delete:
-      parameters:
-      - description: Rule ID
-        in: path
-        name: rule_id
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-      summary: Delete trigger rule (soft delete)
-      tags:
-      - Dashboard
-    get:
-      parameters:
-      - description: Rule ID
-        in: path
-        name: rule_id
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/response.StandardResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/entity.TriggerRule'
-              type: object
-      summary: Get trigger rule by ID
-      tags:
-      - Dashboard
-    put:
-      parameters:
-      - description: Rule ID
-        in: path
-        name: rule_id
-        required: true
-        type: string
-      - description: Fields to update
-        in: body
-        name: body
-        required: true
-        schema:
-          additionalProperties: true
-          type: object
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-      summary: Update trigger rule
-      tags:
-      - Dashboard
-  /api/data-master/trigger-rules/cache/invalidate:
-    post:
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-      summary: Invalidate trigger rule cache
-      tags:
-      - Dashboard
-  /api/handoff/new-client:
-    post:
-      description: Creates a new client record when a Business Development team member
-        hands off a new prospect. Requires HMAC authentication using X-Handoff-Secret
-        header.
-      parameters:
-      - description: New client handoff payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.HandoffCreateRequest'
-      responses:
-        "201":
-          description: Client onboarded successfully
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "400":
-          description: Invalid request body or validation error
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "401":
-          description: Unauthorized - invalid HMAC signature
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-      security:
-      - X-Handoff-Secret: []
-      summary: Onboard New Client from BD Handoff
-      tags:
-      - api
-  /api/payment/verify:
-    post:
-      description: Verifies and marks a client's payment as paid after AE verification.
-        Sends confirmation to client via WhatsApp and creates tracking record. Requires
-        HMAC authentication using X-Verify-Secret header.
-      parameters:
-      - description: Payment verification payload
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/internal_delivery_http_payment.VerifyPaymentRequest'
-      responses:
-        "200":
-          description: Payment verified successfully
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "400":
-          description: Invalid request body or validation error
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "401":
-          description: Unauthorized - invalid HMAC signature
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "404":
-          description: Client not found
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-        "500":
-          description: Internal server error
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-      security:
-      - X-Verify-Secret: []
-      summary: Verify Client Payment
-      tags:
-      - api
   /cron/run:
     get:
       description: Triggers the bot's cron job. Creates one background job per workspace

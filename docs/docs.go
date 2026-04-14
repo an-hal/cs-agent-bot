@@ -917,6 +917,366 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/data-master/system-config": {
+            "get": {
+                "description": "Returns all system_config entries. Sensitive values (tokens) are masked.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "List all system config entries",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.SystemConfig"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/data-master/system-config/{key}": {
+            "put": {
+                "description": "Updates the value of a single system_config key.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Update a system config entry",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Config key (e.g. HALOAI_API_URL)",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "{ \\",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/data-master/template-variables": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "List available template variables",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by channel (wa, email)",
+                        "name": "channel",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/template.VariableInfo"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/data-master/trigger-rules": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "List trigger rules",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by rule group",
+                        "name": "rule_group",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by action type",
+                        "name": "action_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by active status",
+                        "name": "active",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by rule_id, group, description",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.TriggerRule"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Create trigger rule",
+                "parameters": [
+                    {
+                        "description": "Trigger rule",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entity.TriggerRule"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/data-master/trigger-rules/cache/invalidate": {
+            "post": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Invalidate trigger rule cache",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/data-master/trigger-rules/{rule_id}": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Get trigger rule by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "rule_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.TriggerRule"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Update trigger rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "rule_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Delete trigger rule (soft delete)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "rule_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/handoff/new-client": {
+            "post": {
+                "security": [
+                    {
+                        "X-Handoff-Secret": []
+                    }
+                ],
+                "description": "Creates a new client record when a Business Development team member hands off a new prospect. Requires HMAC authentication using X-Handoff-Secret header.",
+                "tags": [
+                    "api"
+                ],
+                "summary": "Onboard New Client from BD Handoff",
+                "parameters": [
+                    {
+                        "description": "New client handoff payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.HandoffCreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Client onboarded successfully",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - invalid HMAC signature",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/invoices/{invoice_id}": {
             "get": {
                 "description": "Returns a single invoice by invoice_id.",
@@ -2304,6 +2664,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/payment/verify": {
+            "post": {
+                "security": [
+                    {
+                        "X-Verify-Secret": []
+                    }
+                ],
+                "description": "Verifies and marks a client's payment as paid after AE verification. Sends confirmation to client via WhatsApp and creates tracking record. Requires HMAC authentication using X-Verify-Secret header.",
+                "tags": [
+                    "api"
+                ],
+                "summary": "Verify Client Payment",
+                "parameters": [
+                    {
+                        "description": "Payment verification payload",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_delivery_http_payment.VerifyPaymentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Payment verified successfully",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request body or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - invalid HMAC signature",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Client not found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/team/invitations/{token}/accept": {
             "post": {
                 "security": [
@@ -3243,6 +3660,558 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/templates/edit-logs": {
+            "get": {
+                "tags": [
+                    "Messaging"
+                ],
+                "summary": "List template edit logs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by template_id",
+                        "name": "template_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "message | email",
+                        "name": "template_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max rows (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "RFC3339 timestamp",
+                        "name": "since",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.TemplateEditLog"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/templates/edit-logs/{template_id}": {
+            "get": {
+                "tags": [
+                    "Messaging"
+                ],
+                "summary": "List edit logs for a specific template",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Template ID",
+                        "name": "template_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max rows",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.TemplateEditLog"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/templates/emails": {
+            "get": {
+                "tags": [
+                    "Messaging"
+                ],
+                "summary": "List email templates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "sdr | bd | ae",
+                        "name": "role",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Category filter",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "active | draft | archived",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search id/name/subject",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.EmailTemplate"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Messaging"
+                ],
+                "summary": "Create email template",
+                "parameters": [
+                    {
+                        "description": "Template body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entity.EmailTemplate"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.EmailTemplate"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/templates/emails/{id}": {
+            "get": {
+                "tags": [
+                    "Messaging"
+                ],
+                "summary": "Get email template by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Template ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.EmailTemplate"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Messaging"
+                ],
+                "summary": "Update email template",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Template ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Partial update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entity.EmailTemplate"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Messaging"
+                ],
+                "summary": "Delete email template",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Template ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/templates/messages": {
+            "get": {
+                "description": "List workspace-scoped WA/Telegram templates.",
+                "tags": [
+                    "Messaging"
+                ],
+                "summary": "List message templates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "sdr | bd | ae",
+                        "name": "role",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated phases (P0,P1)",
+                        "name": "phase",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "whatsapp | telegram",
+                        "name": "channel",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Category filter",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search id/action/message",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.MessageTemplate"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Messaging"
+                ],
+                "summary": "Create message template",
+                "parameters": [
+                    {
+                        "description": "Template body",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entity.MessageTemplate"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.MessageTemplate"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/templates/messages/{id}": {
+            "get": {
+                "tags": [
+                    "Messaging"
+                ],
+                "summary": "Get message template by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Template ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.MessageTemplate"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Messaging"
+                ],
+                "summary": "Update message template",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Template ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Partial update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entity.MessageTemplate"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Messaging"
+                ],
+                "summary": "Delete message template",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Template ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/templates/preview": {
+            "post": {
+                "tags": [
+                    "Messaging"
+                ],
+                "summary": "Render template with sample data",
+                "parameters": [
+                    {
+                        "description": "Preview request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/messaging.PreviewRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/messaging.PreviewResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/templates/variables": {
+            "get": {
+                "tags": [
+                    "Messaging"
+                ],
+                "summary": "List template variables available in this workspace",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.TemplateVariable"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/workspaces": {
             "get": {
                 "security": [
@@ -3762,423 +4731,6 @@ const docTemplate = `{
                                     }
                                 }
                             ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/data-master/system-config": {
-            "get": {
-                "description": "Returns all system_config entries. Sensitive values (tokens) are masked.",
-                "tags": [
-                    "Dashboard"
-                ],
-                "summary": "List all system config entries",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.StandardResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/entity.SystemConfig"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/data-master/system-config/{key}": {
-            "put": {
-                "description": "Updates the value of a single system_config key.",
-                "tags": [
-                    "Dashboard"
-                ],
-                "summary": "Update a system config entry",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Config key (e.g. HALOAI_API_URL)",
-                        "name": "key",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "{ \\",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/data-master/template-variables": {
-            "get": {
-                "tags": [
-                    "Dashboard"
-                ],
-                "summary": "List available template variables",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Filter by channel (wa, email)",
-                        "name": "channel",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.StandardResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/template.VariableInfo"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/data-master/trigger-rules": {
-            "get": {
-                "tags": [
-                    "Dashboard"
-                ],
-                "summary": "List trigger rules",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Filter by rule group",
-                        "name": "rule_group",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by action type",
-                        "name": "action_type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by active status",
-                        "name": "active",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Search by rule_id, group, description",
-                        "name": "search",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Pagination offset",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Limit per page",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/entity.TriggerRule"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "post": {
-                "tags": [
-                    "Dashboard"
-                ],
-                "summary": "Create trigger rule",
-                "parameters": [
-                    {
-                        "description": "Trigger rule",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/entity.TriggerRule"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/data-master/trigger-rules/cache/invalidate": {
-            "post": {
-                "tags": [
-                    "Dashboard"
-                ],
-                "summary": "Invalidate trigger rule cache",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/data-master/trigger-rules/{rule_id}": {
-            "get": {
-                "tags": [
-                    "Dashboard"
-                ],
-                "summary": "Get trigger rule by ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Rule ID",
-                        "name": "rule_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.StandardResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/entity.TriggerRule"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "put": {
-                "tags": [
-                    "Dashboard"
-                ],
-                "summary": "Update trigger rule",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Rule ID",
-                        "name": "rule_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Fields to update",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Dashboard"
-                ],
-                "summary": "Delete trigger rule (soft delete)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Rule ID",
-                        "name": "rule_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/handoff/new-client": {
-            "post": {
-                "security": [
-                    {
-                        "X-Handoff-Secret": []
-                    }
-                ],
-                "description": "Creates a new client record when a Business Development team member hands off a new prospect. Requires HMAC authentication using X-Handoff-Secret header.",
-                "tags": [
-                    "api"
-                ],
-                "summary": "Onboard New Client from BD Handoff",
-                "parameters": [
-                    {
-                        "description": "New client handoff payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.HandoffCreateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Client onboarded successfully",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request body or validation error",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized - invalid HMAC signature",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/payment/verify": {
-            "post": {
-                "security": [
-                    {
-                        "X-Verify-Secret": []
-                    }
-                ],
-                "description": "Verifies and marks a client's payment as paid after AE verification. Sends confirmation to client via WhatsApp and creates tracking record. Requires HMAC authentication using X-Verify-Secret header.",
-                "tags": [
-                    "api"
-                ],
-                "summary": "Verify Client Payment",
-                "parameters": [
-                    {
-                        "description": "Payment verification payload",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_delivery_http_payment.VerifyPaymentRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Payment verified successfully",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request body or validation error",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized - invalid HMAC signature",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Client not found",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
                         }
                     }
                 }
@@ -5082,6 +5634,50 @@ const docTemplate = `{
                 }
             }
         },
+        "entity.EmailTemplate": {
+            "type": "object",
+            "properties": {
+                "body_html": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "type": "string"
+                },
+                "variables": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
         "entity.Escalation": {
             "type": "object",
             "properties": {
@@ -5299,6 +5895,71 @@ const docTemplate = `{
                 }
             }
         },
+        "entity.MessageTemplate": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "channel": {
+                    "type": "string"
+                },
+                "condition": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "phase": {
+                    "type": "string"
+                },
+                "phase_label": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "sent_flag": {
+                    "type": "string"
+                },
+                "stop_if": {
+                    "type": "string"
+                },
+                "timing": {
+                    "type": "string"
+                },
+                "trigger_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "type": "string"
+                },
+                "variables": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
         "entity.Notification": {
             "type": "object",
             "properties": {
@@ -5485,6 +6146,70 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "wa_content": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.TemplateEditLog": {
+            "type": "object",
+            "properties": {
+                "edited_at": {
+                    "type": "string"
+                },
+                "edited_by": {
+                    "type": "string"
+                },
+                "field": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "new_value": {
+                    "type": "string"
+                },
+                "old_value": {
+                    "type": "string"
+                },
+                "template_id": {
+                    "type": "string"
+                },
+                "template_type": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.TemplateVariable": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "display_label": {
+                    "type": "string"
+                },
+                "example_value": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "source_field": {
+                    "type": "string"
+                },
+                "source_type": {
+                    "type": "string"
+                },
+                "variable_key": {
+                    "type": "string"
+                },
+                "workspace_id": {
                     "type": "string"
                 }
             }
@@ -5868,6 +6593,46 @@ const docTemplate = `{
                     "$ref": "#/definitions/entity.MasterData"
                 },
                 "previous_stage": {
+                    "type": "string"
+                }
+            }
+        },
+        "messaging.PreviewRequest": {
+            "type": "object",
+            "properties": {
+                "sample_data": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "template_id": {
+                    "type": "string"
+                },
+                "template_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "messaging.PreviewResult": {
+            "type": "object",
+            "properties": {
+                "body_html": {
+                    "type": "string"
+                },
+                "missing_variables": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "rendered": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "template_type": {
                     "type": "string"
                 }
             }
