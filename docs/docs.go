@@ -19,53 +19,8 @@ const docTemplate = `{
     "basePath": "{{.BasePath}}",
     "paths": {
         "/api/dashboard/clients": {
-            "get": {
-                "description": "Returns all clients for a given workspace. Use \"holding\" to aggregate across member workspaces. Defaults to \"dealls\" if omitted.",
-                "tags": [
-                    "Dashboard"
-                ],
-                "summary": "List clients",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "default": "dealls",
-                        "description": "Workspace slug",
-                        "name": "workspace",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.StandardResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/entity.Client"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    }
-                }
-            },
             "post": {
-                "description": "Creates a new client in the specified workspace. Defaults to \"dealls\" workspace if omitted.",
+                "description": "Creates a new client in the workspace specified in the X-Workspace-ID header.",
                 "tags": [
                     "Dashboard"
                 ],
@@ -73,10 +28,10 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "default": "dealls",
-                        "description": "Workspace slug",
-                        "name": "workspace",
-                        "in": "query"
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
                     },
                     {
                         "description": "Client payload",
@@ -172,7 +127,7 @@ const docTemplate = `{
                 }
             },
             "put": {
-                "description": "Partially updates a client by company_id. Accepts a JSON object with fields to update.",
+                "description": "Partially updates a client by company_id.",
                 "tags": [
                     "Dashboard"
                 ],
@@ -218,7 +173,7 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Soft-deletes a client by company_id (sets blacklisted=true, bot_active=false).",
+                "description": "Soft-deletes a client by company_id (sets blacklisted=true).",
                 "tags": [
                     "Dashboard"
                 ],
@@ -248,20 +203,56 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/clients/{company_id}/escalations": {
+        "/api/dashboard/data-master/activity-logs": {
             "get": {
-                "description": "Returns all escalation records for a given client.",
+                "description": "Returns paginated activity log entries across all categories (bot, data, team).",
                 "tags": [
                     "Dashboard"
                 ],
-                "summary": "Get client escalations",
+                "summary": "List activity logs",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Company ID",
-                        "name": "company_id",
-                        "in": "path",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Category filter: bot | data | team (default: all)",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Resource type filter: client | invoice | template | trigger_rule | bot | team",
+                        "name": "resource_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by record ID (company_id, template_id, rule_id, invoice_id)",
+                        "name": "ref_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max entries to return (default 10, max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "ISO 8601 timestamp — return entries after this time",
+                        "name": "since",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -270,7 +261,385 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.ActivityLog"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Records a data or team activity pushed by the dashboard.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Record an activity",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Activity payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.recordActivityRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
                                     "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ActivityLog"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/data-master/clients": {
+            "get": {
+                "description": "Returns paginated clients for the workspace specified in the X-Workspace-ID header.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "List clients",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search across company_id, company_name, etc.",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by segment",
+                        "name": "segment",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by payment status",
+                        "name": "payment_status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by CS sequence",
+                        "name": "sequence_cs",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by plan type",
+                        "name": "plan_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by bot active status",
+                        "name": "bot_active",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit per page (default 10, max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.Client"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/data-master/clients/export": {
+            "post": {
+                "description": "Starts a background export job for the workspace. Poll /jobs/{job_id} for status, then download via /jobs/{job_id}/download.",
+                "tags": [
+                    "Background Jobs"
+                ],
+                "summary": "Export clients to XLSX",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search term",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Segment filter",
+                        "name": "segment",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Payment status filter",
+                        "name": "payment_status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sequence CS filter",
+                        "name": "sequence_cs",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Plan type filter",
+                        "name": "plan_type",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.BackgroundJob"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/data-master/clients/import": {
+            "post": {
+                "description": "Accepts a multipart XLSX file (Template Import sheet), creates a background import job, and returns immediately with the job ID.",
+                "tags": [
+                    "Background Jobs"
+                ],
+                "summary": "Import clients from XLSX",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "XLSX file (max 5 MB)",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Update existing clients (default false)",
+                        "name": "update_existing",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.BackgroundJob"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/data-master/escalations": {
+            "get": {
+                "description": "Returns paginated escalations for the workspace specified in the X-Workspace-ID header.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "List escalations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by company ID",
+                        "name": "company_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by status (Open/Resolved)",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by priority",
+                        "name": "priority",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search across company_id, reason, esc_id, notes",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit per page (default 10, max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
                                 },
                                 {
                                     "type": "object",
@@ -295,20 +664,44 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/clients/{company_id}/invoices": {
+        "/api/dashboard/data-master/invoices": {
             "get": {
-                "description": "Returns all invoices for a given client.",
+                "description": "Returns paginated invoices for the workspace specified in the X-Workspace-ID header.",
                 "tags": [
                     "Dashboard"
                 ],
-                "summary": "Get client invoices",
+                "summary": "List invoices",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Company ID",
-                        "name": "company_id",
-                        "in": "path",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by company ID",
+                        "name": "company_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by payment status",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit per page (default 10, max 100)",
+                        "name": "limit",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -317,7 +710,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/response.StandardResponse"
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
                                 },
                                 {
                                     "type": "object",
@@ -342,13 +735,1586 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/dashboard/workspaces": {
+        "/api/dashboard/data-master/jobs": {
             "get": {
-                "description": "Returns all workspaces. Holding workspace aggregates data from member workspaces.",
+                "description": "Returns paginated background jobs for the workspace, optionally filtered by job_type and entity_type.",
+                "tags": [
+                    "Background Jobs"
+                ],
+                "summary": "List background jobs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by job type: import|export",
+                        "name": "job_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by entity type: client",
+                        "name": "entity_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.BackgroundJob"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/data-master/jobs/{job_id}": {
+            "get": {
+                "description": "Returns the current status and progress of any background job (import or export).",
+                "tags": [
+                    "Background Jobs"
+                ],
+                "summary": "Get background job status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "job_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.BackgroundJob"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/data-master/jobs/{job_id}/download": {
+            "get": {
+                "description": "Streams the XLSX file for a completed export job. Returns 409 if the job is not yet done.",
+                "produces": [
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ],
+                "tags": [
+                    "Background Jobs"
+                ],
+                "summary": "Download export file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "job_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/invoices/{invoice_id}": {
+            "get": {
+                "description": "Returns a single invoice by invoice_id.",
                 "tags": [
                     "Dashboard"
                 ],
-                "summary": "List workspaces",
+                "summary": "Get invoice by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invoice ID",
+                        "name": "invoice_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.Invoice"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Partially updates an invoice (safe fields only).",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Update invoice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invoice ID",
+                        "name": "invoice_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/master-data/attention": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "MasterData"
+                ],
+                "summary": "Attention tab — high-risk / overdue / expiring",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search company_name/pic_name",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponseWithMeta"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/master-data/clients": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "MasterData"
+                ],
+                "summary": "List master data records",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit (max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated stages",
+                        "name": "stage",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search company_name/pic_name/company_id",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "High|Mid|Low|None",
+                        "name": "risk_flag",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter by bot_active",
+                        "name": "bot_active",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exact match",
+                        "name": "payment_status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Days to expiry upper bound",
+                        "name": "expiry_within",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "updated_at|company_name|stage|created_at|contract_end|final_price",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "asc|desc",
+                        "name": "sort_dir",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.MasterData"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "MasterData"
+                ],
+                "summary": "Create a new master data record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Create request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/master_data.CreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.MasterData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/master-data/clients/export": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "MasterData"
+                ],
+                "summary": "Export master data as XLSX",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/master-data/clients/import": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "tags": [
+                    "MasterData"
+                ],
+                "summary": "Bulk import (creates approval)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Excel file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "add_new|update_existing",
+                        "name": "mode",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ApprovalRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/master-data/clients/template": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "MasterData"
+                ],
+                "summary": "Download import template",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/master-data/clients/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "MasterData"
+                ],
+                "summary": "Get a single master data record by id",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Master data UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.MasterData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "MasterData"
+                ],
+                "summary": "Patch a master data record (partial)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Master data UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Patch request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/master_data.PatchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.MasterData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "MasterData"
+                ],
+                "summary": "Request deletion of a master data record (creates approval)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Master data UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ApprovalRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/master-data/clients/{id}/transition": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "MasterData"
+                ],
+                "summary": "Transition stage atomically",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Master data UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Transition payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/master_data.TransitionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/master_data.TransitionResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/master-data/field-definitions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CustomField"
+                ],
+                "summary": "List custom field definitions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.CustomFieldDefinition"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "CustomField"
+                ],
+                "summary": "Create a custom field definition",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Create payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/custom_field.CreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.CustomFieldDefinition"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/master-data/field-definitions/reorder": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "CustomField"
+                ],
+                "summary": "Reorder custom field definitions in a single transaction",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Reorder payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.ReorderRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/master-data/field-definitions/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "CustomField"
+                ],
+                "summary": "Update a custom field definition (field_key immutable)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Field definition UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/custom_field.UpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.CustomFieldDefinition"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "CustomField"
+                ],
+                "summary": "Delete a custom field definition",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Field definition UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/master-data/mutations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "MasterData"
+                ],
+                "summary": "Master Data mutation log",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "RFC3339 lower bound",
+                        "name": "since",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit (max 500)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/master-data/query": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "MasterData"
+                ],
+                "summary": "Flexible workflow query (whitelisted ops)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Query request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.QueryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponseWithMeta"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/master-data/stats": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "MasterData"
+                ],
+                "summary": "Master Data summary cards",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/repository.MasterDataStats"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/message-template": {
+            "get": {
+                "description": "Returns paginated message templates with optional filters.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "List message templates",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by template category",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by language",
+                        "name": "language",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by active status (true/false)",
+                        "name": "active",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit per page (default 10, max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.Template"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/message-template/{template_id}": {
+            "get": {
+                "description": "Returns a single message template by template_id.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Get message template by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Template ID",
+                        "name": "template_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.Template"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Partially updates a message template (safe fields only).",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Update message template",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Template ID",
+                        "name": "template_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/notifications": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Notification"
+                ],
+                "summary": "List notifications for the caller in this workspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter to unread only",
+                        "name": "unread_only",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by notification type",
+                        "name": "type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.Notification"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Notification"
+                ],
+                "summary": "Publish a notification (internal)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Notification payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/notification.CreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.Notification"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/notifications/count": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Notification"
+                ],
+                "summary": "Count unread notifications",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/notifications/read-all": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Notification"
+                ],
+                "summary": "Mark all notifications as read",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/notifications/{id}/read": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Notification"
+                ],
+                "summary": "Mark a notification as read",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Notification ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/workspaces": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Workspace"
+                ],
+                "summary": "List workspaces visible to the caller",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -371,8 +2337,799 @@ const docTemplate = `{
                             ]
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspace"
+                ],
+                "summary": "Create a new workspace",
+                "parameters": [
+                    {
+                        "description": "Workspace payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/workspace.CreateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.Workspace"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/workspaces/invitations/{token}/accept": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Workspace"
+                ],
+                "summary": "Accept a workspace invitation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.WorkspaceMember"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/workspaces/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Workspace"
+                ],
+                "summary": "Get workspace details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/workspace.WorkspaceDetail"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspace"
+                ],
+                "summary": "Update a workspace (partial)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Partial update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/workspace.UpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.Workspace"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Workspace"
+                ],
+                "summary": "Soft-delete a workspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/workspaces/{id}/members": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Workspace"
+                ],
+                "summary": "List members of a workspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.WorkspaceMember"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/workspaces/{id}/members/invite": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspace"
+                ],
+                "summary": "Invite user to workspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Invitation payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/workspace.InviteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.WorkspaceInvitation"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/workspaces/{id}/members/{member_id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspace"
+                ],
+                "summary": "Update workspace member role",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Member ID",
+                        "name": "member_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Role payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.UpdateRoleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.WorkspaceMember"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Workspace"
+                ],
+                "summary": "Remove member from workspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Member ID",
+                        "name": "member_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/workspaces/{id}/switch": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Workspace"
+                ],
+                "summary": "Switch active workspace (audit)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/workspace.SwitchResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/data-master/system-config": {
+            "get": {
+                "description": "Returns all system_config entries. Sensitive values (tokens) are masked.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "List all system config entries",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.SystemConfig"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/data-master/system-config/{key}": {
+            "put": {
+                "description": "Updates the value of a single system_config key.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Update a system config entry",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Config key (e.g. HALOAI_API_URL)",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "{ \\",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/data-master/template-variables": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "List available template variables",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by channel (wa, email)",
+                        "name": "channel",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/template.VariableInfo"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/data-master/trigger-rules": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "List trigger rules",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter by rule group",
+                        "name": "rule_group",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by action type",
+                        "name": "action_type",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by active status",
+                        "name": "active",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search by rule_id, group, description",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.TriggerRule"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Create trigger rule",
+                "parameters": [
+                    {
+                        "description": "Trigger rule",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entity.TriggerRule"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/data-master/trigger-rules/cache/invalidate": {
+            "post": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Invalidate trigger rule cache",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/data-master/trigger-rules/{rule_id}": {
+            "get": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Get trigger rule by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "rule_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.TriggerRule"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Update trigger rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "rule_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Delete trigger rule (soft delete)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "rule_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
@@ -495,14 +3252,17 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Manually triggers the bot's cron job to process all clients and send scheduled WhatsApp messages. Requires GCP Cloud Scheduler OIDC token authentication.",
+                "description": "Triggers the bot's cron job. Creates one background job per workspace and returns immediately. Requires GCP Cloud Scheduler OIDC token authentication.",
+                "produces": [
+                    "application/json"
+                ],
                 "tags": [
                     "cron"
                 ],
                 "summary": "Trigger Cron Job",
                 "responses": {
-                    "200": {
-                        "description": "Cron run completed successfully",
+                    "202": {
+                        "description": "Cron jobs accepted - processing in background",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
@@ -514,7 +3274,7 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Internal server error - cron run failed",
+                        "description": "Internal server error - failed to start cron run",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
@@ -632,6 +3392,103 @@ const docTemplate = `{
                 }
             }
         },
+        "custom_field.CreateRequest": {
+            "type": "object",
+            "properties": {
+                "column_width": {
+                    "type": "integer"
+                },
+                "default_value": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "field_key": {
+                    "type": "string"
+                },
+                "field_label": {
+                    "type": "string"
+                },
+                "field_type": {
+                    "type": "string"
+                },
+                "is_required": {
+                    "type": "boolean"
+                },
+                "max_value": {
+                    "type": "number"
+                },
+                "min_value": {
+                    "type": "number"
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "placeholder": {
+                    "type": "string"
+                },
+                "regex_pattern": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "visible_in_table": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "custom_field.UpdateRequest": {
+            "type": "object",
+            "properties": {
+                "column_width": {
+                    "type": "integer"
+                },
+                "default_value": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "field_label": {
+                    "type": "string"
+                },
+                "field_type": {
+                    "type": "string"
+                },
+                "is_required": {
+                    "type": "boolean"
+                },
+                "max_value": {
+                    "type": "number"
+                },
+                "min_value": {
+                    "type": "number"
+                },
+                "options": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "placeholder": {
+                    "type": "string"
+                },
+                "regex_pattern": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "visible_in_table": {
+                    "type": "boolean"
+                }
+            }
+        },
         "dashboard.CreateClientRequest": {
             "type": "object",
             "properties": {
@@ -669,6 +3526,65 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "segment": {
+                    "type": "string"
+                }
+            }
+        },
+        "dashboard.QueryRequest": {
+            "type": "object",
+            "properties": {
+                "conditions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/repository.QueryCondition"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dashboard.ReorderRequest": {
+            "type": "object",
+            "properties": {
+                "order": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/repository.ReorderItem"
+                    }
+                }
+            }
+        },
+        "dashboard.UpdateRoleRequest": {
+            "type": "object",
+            "properties": {
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "dashboard.recordActivityRequest": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "detail": {
+                    "type": "string"
+                },
+                "ref_id": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "target": {
                     "type": "string"
                 }
             }
@@ -835,6 +3751,155 @@ const docTemplate = `{
                 },
                 "utm": {
                     "$ref": "#/definitions/dto.UTMDOT"
+                }
+            }
+        },
+        "entity.ActivityLog": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "actor": {
+                    "type": "string"
+                },
+                "actor_type": {
+                    "type": "string"
+                },
+                "category": {
+                    "type": "string"
+                },
+                "detail": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "occurred_at": {
+                    "type": "string"
+                },
+                "ref_id": {
+                    "type": "string"
+                },
+                "resource_type": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.ApprovalRequest": {
+            "type": "object",
+            "properties": {
+                "applied_at": {
+                    "type": "string"
+                },
+                "checker_at": {
+                    "type": "string"
+                },
+                "checker_email": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "maker_at": {
+                    "type": "string"
+                },
+                "maker_email": {
+                    "type": "string"
+                },
+                "payload": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "rejection_reason": {
+                    "type": "string"
+                },
+                "request_type": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.BackgroundJob": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "entity_type": {
+                    "type": "string"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.JobRowError"
+                    }
+                },
+                "failed": {
+                    "type": "integer"
+                },
+                "filename": {
+                    "type": "string"
+                },
+                "job_id": {
+                    "type": "string"
+                },
+                "job_type": {
+                    "type": "string"
+                },
+                "metadata": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "processed": {
+                    "type": "integer"
+                },
+                "skipped": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "integer"
+                },
+                "total_rows": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
                 }
             }
         },
@@ -1019,6 +4084,65 @@ const docTemplate = `{
                 }
             }
         },
+        "entity.CustomFieldDefinition": {
+            "type": "object",
+            "properties": {
+                "column_width": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "default_value": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "field_key": {
+                    "type": "string"
+                },
+                "field_label": {
+                    "type": "string"
+                },
+                "field_type": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_required": {
+                    "type": "boolean"
+                },
+                "max_value": {
+                    "type": "number"
+                },
+                "min_value": {
+                    "type": "number"
+                },
+                "options": {
+                    "type": "object"
+                },
+                "placeholder": {
+                    "type": "string"
+                },
+                "regex_pattern": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "visible_in_table": {
+                    "type": "boolean"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
         "entity.Escalation": {
             "type": "object",
             "properties": {
@@ -1113,6 +4237,296 @@ const docTemplate = `{
                 }
             }
         },
+        "entity.JobRowError": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                },
+                "ref_id": {
+                    "type": "string"
+                },
+                "row": {
+                    "type": "integer"
+                }
+            }
+        },
+        "entity.MasterData": {
+            "type": "object",
+            "properties": {
+                "blacklisted": {
+                    "type": "boolean"
+                },
+                "bot_active": {
+                    "type": "boolean"
+                },
+                "company_id": {
+                    "type": "string"
+                },
+                "company_name": {
+                    "type": "string"
+                },
+                "contract_end": {
+                    "type": "string"
+                },
+                "contract_months": {
+                    "type": "integer"
+                },
+                "contract_start": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "custom_fields": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "days_to_expiry": {
+                    "type": "integer"
+                },
+                "final_price": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "last_interaction_date": {
+                    "type": "string"
+                },
+                "last_payment_date": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "owner_name": {
+                    "type": "string"
+                },
+                "owner_telegram_id": {
+                    "type": "string"
+                },
+                "owner_wa": {
+                    "type": "string"
+                },
+                "payment_status": {
+                    "type": "string"
+                },
+                "payment_terms": {
+                    "type": "string"
+                },
+                "pic_email": {
+                    "type": "string"
+                },
+                "pic_name": {
+                    "type": "string"
+                },
+                "pic_nickname": {
+                    "type": "string"
+                },
+                "pic_role": {
+                    "type": "string"
+                },
+                "pic_wa": {
+                    "type": "string"
+                },
+                "renewed": {
+                    "type": "boolean"
+                },
+                "risk_flag": {
+                    "type": "string"
+                },
+                "sequence_status": {
+                    "type": "string"
+                },
+                "snooze_reason": {
+                    "type": "string"
+                },
+                "snooze_until": {
+                    "type": "string"
+                },
+                "stage": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                },
+                "workspace_name": {
+                    "description": "WorkspaceName is populated for holding workspace queries only.",
+                    "type": "string"
+                }
+            }
+        },
+        "entity.Notification": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "email_sent": {
+                    "type": "boolean"
+                },
+                "href": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "read": {
+                    "type": "boolean"
+                },
+                "read_at": {
+                    "type": "string"
+                },
+                "recipient_email": {
+                    "type": "string"
+                },
+                "source_feature": {
+                    "type": "string"
+                },
+                "source_id": {
+                    "type": "string"
+                },
+                "telegram_sent": {
+                    "type": "boolean"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.SystemConfig": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.Template": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "channel": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email_body_html": {
+                    "type": "string"
+                },
+                "email_body_text": {
+                    "type": "string"
+                },
+                "email_subject": {
+                    "type": "string"
+                },
+                "language": {
+                    "type": "string"
+                },
+                "template_category": {
+                    "type": "string"
+                },
+                "template_id": {
+                    "type": "string"
+                },
+                "template_name": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "wa_content": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.TriggerRule": {
+            "type": "object",
+            "properties": {
+                "action_type": {
+                    "type": "string"
+                },
+                "active": {
+                    "type": "boolean"
+                },
+                "condition": {
+                    "type": "object"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "esc_priority": {
+                    "type": "string"
+                },
+                "esc_reason": {
+                    "type": "string"
+                },
+                "escalation_id": {
+                    "type": "string"
+                },
+                "extra_flags": {
+                    "type": "object"
+                },
+                "flag_key": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "rule_group": {
+                    "type": "string"
+                },
+                "rule_id": {
+                    "type": "string"
+                },
+                "stop_on_fire": {
+                    "type": "boolean"
+                },
+                "sub_priority": {
+                    "type": "integer"
+                },
+                "template_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
         "entity.Workspace": {
             "type": "object",
             "properties": {
@@ -1124,6 +4538,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
                 },
                 "is_holding": {
                     "type": "boolean"
@@ -1143,7 +4560,91 @@ const docTemplate = `{
                 "plan": {
                     "type": "string"
                 },
+                "settings": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
                 "slug": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.WorkspaceInvitation": {
+            "type": "object",
+            "properties": {
+                "accepted_at": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "invite_token": {
+                    "type": "string"
+                },
+                "invited_by": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.WorkspaceMember": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "invited_at": {
+                    "type": "string"
+                },
+                "invited_by": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "joined_at": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "role": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_email": {
+                    "type": "string"
+                },
+                "user_name": {
+                    "type": "string"
+                },
+                "workspace_id": {
                     "type": "string"
                 }
             }
@@ -1162,6 +4663,273 @@ const docTemplate = `{
                 },
                 "verified_by": {
                     "type": "string"
+                }
+            }
+        },
+        "master_data.CreateRequest": {
+            "type": "object",
+            "properties": {
+                "blacklisted": {
+                    "type": "boolean"
+                },
+                "bot_active": {
+                    "type": "boolean"
+                },
+                "company_id": {
+                    "type": "string"
+                },
+                "company_name": {
+                    "type": "string"
+                },
+                "contract_end": {
+                    "type": "string"
+                },
+                "contract_months": {
+                    "type": "integer"
+                },
+                "contract_start": {
+                    "type": "string"
+                },
+                "custom_fields": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "final_price": {
+                    "type": "integer"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "owner_name": {
+                    "type": "string"
+                },
+                "owner_telegram_id": {
+                    "type": "string"
+                },
+                "owner_wa": {
+                    "type": "string"
+                },
+                "payment_status": {
+                    "type": "string"
+                },
+                "payment_terms": {
+                    "type": "string"
+                },
+                "pic_email": {
+                    "type": "string"
+                },
+                "pic_name": {
+                    "type": "string"
+                },
+                "pic_nickname": {
+                    "type": "string"
+                },
+                "pic_role": {
+                    "type": "string"
+                },
+                "pic_wa": {
+                    "type": "string"
+                },
+                "risk_flag": {
+                    "type": "string"
+                },
+                "sequence_status": {
+                    "type": "string"
+                },
+                "stage": {
+                    "type": "string"
+                }
+            }
+        },
+        "master_data.PatchRequest": {
+            "type": "object",
+            "properties": {
+                "blacklisted": {
+                    "type": "boolean"
+                },
+                "bot_active": {
+                    "type": "boolean"
+                },
+                "company_name": {
+                    "type": "string"
+                },
+                "contract_end": {
+                    "type": "string"
+                },
+                "contract_months": {
+                    "type": "integer"
+                },
+                "contract_start": {
+                    "type": "string"
+                },
+                "custom_fields": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "final_price": {
+                    "type": "integer"
+                },
+                "last_payment_date": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "owner_name": {
+                    "type": "string"
+                },
+                "owner_telegram_id": {
+                    "type": "string"
+                },
+                "owner_wa": {
+                    "type": "string"
+                },
+                "payment_status": {
+                    "type": "string"
+                },
+                "payment_terms": {
+                    "type": "string"
+                },
+                "pic_email": {
+                    "type": "string"
+                },
+                "pic_name": {
+                    "type": "string"
+                },
+                "pic_nickname": {
+                    "type": "string"
+                },
+                "pic_role": {
+                    "type": "string"
+                },
+                "pic_wa": {
+                    "type": "string"
+                },
+                "renewed": {
+                    "type": "boolean"
+                },
+                "risk_flag": {
+                    "type": "string"
+                },
+                "sequence_status": {
+                    "type": "string"
+                },
+                "stage": {
+                    "type": "string"
+                }
+            }
+        },
+        "master_data.TransitionRequest": {
+            "type": "object",
+            "properties": {
+                "custom_field_updates": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "new_stage": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "trigger_id": {
+                    "type": "string"
+                },
+                "updates": {
+                    "$ref": "#/definitions/master_data.PatchRequest"
+                }
+            }
+        },
+        "master_data.TransitionResult": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/entity.MasterData"
+                },
+                "previous_stage": {
+                    "type": "string"
+                }
+            }
+        },
+        "notification.CreateRequest": {
+            "type": "object",
+            "properties": {
+                "href": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "recipient_email": {
+                    "type": "string"
+                },
+                "source_feature": {
+                    "type": "string"
+                },
+                "source_id": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "repository.MasterDataStats": {
+            "type": "object",
+            "properties": {
+                "bot_active": {
+                    "type": "integer"
+                },
+                "by_stage": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "expiring_30d": {
+                    "type": "integer"
+                },
+                "high_risk": {
+                    "type": "integer"
+                },
+                "overdue_payment": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_revenue": {
+                    "type": "integer"
+                }
+            }
+        },
+        "repository.QueryCondition": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "op": {
+                    "type": "string"
+                },
+                "value": {}
+            }
+        },
+        "repository.ReorderItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
                 }
             }
         },
@@ -1193,6 +4961,188 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/apperror.FieldError"
                     }
+                }
+            }
+        },
+        "response.StandardResponseWithMeta": {
+            "type": "object",
+            "properties": {
+                "data": {},
+                "errorCode": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "meta": {},
+                "requestId": {
+                    "type": "string"
+                },
+                "stackTrace": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "\"success\" or \"error\"",
+                    "type": "string"
+                },
+                "traceId": {
+                    "type": "string"
+                },
+                "validationErrors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/apperror.FieldError"
+                    }
+                }
+            }
+        },
+        "template.VariableInfo": {
+            "type": "object",
+            "properties": {
+                "channels": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "sample_value": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "syntax": {
+                    "type": "string"
+                },
+                "var_key": {
+                    "type": "string"
+                }
+            }
+        },
+        "workspace.CreateRequest": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "logo": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "plan": {
+                    "type": "string"
+                },
+                "settings": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "workspace.InviteRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "workspace.SwitchResponse": {
+            "type": "object",
+            "properties": {
+                "last_active_at": {
+                    "type": "string"
+                },
+                "user_role": {
+                    "type": "string"
+                },
+                "workspace": {
+                    "$ref": "#/definitions/entity.Workspace"
+                }
+            }
+        },
+        "workspace.UpdateRequest": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "logo": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "plan": {
+                    "type": "string"
+                },
+                "settings": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "workspace.WorkspaceDetail": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "is_holding": {
+                    "type": "boolean"
+                },
+                "logo": {
+                    "type": "string"
+                },
+                "member_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "members": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.WorkspaceMember"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "plan": {
+                    "type": "string"
+                },
+                "settings": {
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
                 }
             }
         }

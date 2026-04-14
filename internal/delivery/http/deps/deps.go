@@ -8,7 +8,9 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/auth"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
+	customfield "github.com/Sejutacita/cs-agent-bot/internal/usecase/custom_field"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
+	masterdata "github.com/Sejutacita/cs-agent-bot/internal/usecase/master_data"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/notification"
 	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/trigger"
@@ -36,4 +38,6 @@ type Deps struct {
 	AuthUsecase      auth.AuthUsecase
 	WorkspaceUC      workspace.Usecase
 	NotificationUC   notification.Usecase
+	MasterDataUC     masterdata.Usecase
+	CustomFieldUC    customfield.Usecase
 }

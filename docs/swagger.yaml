@@ -7,6 +7,70 @@ definitions:
       message:
         type: string
     type: object
+  custom_field.CreateRequest:
+    properties:
+      column_width:
+        type: integer
+      default_value:
+        type: string
+      description:
+        type: string
+      field_key:
+        type: string
+      field_label:
+        type: string
+      field_type:
+        type: string
+      is_required:
+        type: boolean
+      max_value:
+        type: number
+      min_value:
+        type: number
+      options:
+        items:
+          type: string
+        type: array
+      placeholder:
+        type: string
+      regex_pattern:
+        type: string
+      sort_order:
+        type: integer
+      visible_in_table:
+        type: boolean
+    type: object
+  custom_field.UpdateRequest:
+    properties:
+      column_width:
+        type: integer
+      default_value:
+        type: string
+      description:
+        type: string
+      field_label:
+        type: string
+      field_type:
+        type: string
+      is_required:
+        type: boolean
+      max_value:
+        type: number
+      min_value:
+        type: number
+      options:
+        items:
+          type: string
+        type: array
+      placeholder:
+        type: string
+      regex_pattern:
+        type: string
+      sort_order:
+        type: integer
+      visible_in_table:
+        type: boolean
+    type: object
   dashboard.CreateClientRequest:
     properties:
       company_id:
@@ -32,6 +96,44 @@ definitions:
       plan_type:
         type: string
       segment:
+        type: string
+    type: object
+  dashboard.QueryRequest:
+    properties:
+      conditions:
+        items:
+          $ref: '#/definitions/repository.QueryCondition'
+        type: array
+      limit:
+        type: integer
+    type: object
+  dashboard.ReorderRequest:
+    properties:
+      order:
+        items:
+          $ref: '#/definitions/repository.ReorderItem'
+        type: array
+    type: object
+  dashboard.UpdateRoleRequest:
+    properties:
+      role:
+        type: string
+    type: object
+  dashboard.recordActivityRequest:
+    properties:
+      action:
+        type: string
+      category:
+        type: string
+      detail:
+        type: string
+      ref_id:
+        type: string
+      resource_type:
+        type: string
+      status:
+        type: string
+      target:
         type: string
     type: object
   dto.CheckinFormRequest:
@@ -148,6 +250,105 @@ definitions:
         $ref: '#/definitions/dto.TriggerDTO'
       utm:
         $ref: '#/definitions/dto.UTMDOT'
+    type: object
+  entity.ActivityLog:
+    properties:
+      action:
+        type: string
+      actor:
+        type: string
+      actor_type:
+        type: string
+      category:
+        type: string
+      detail:
+        type: string
+      id:
+        type: integer
+      occurred_at:
+        type: string
+      ref_id:
+        type: string
+      resource_type:
+        type: string
+      status:
+        type: string
+      target:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  entity.ApprovalRequest:
+    properties:
+      applied_at:
+        type: string
+      checker_at:
+        type: string
+      checker_email:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      expires_at:
+        type: string
+      id:
+        type: string
+      maker_at:
+        type: string
+      maker_email:
+        type: string
+      payload:
+        additionalProperties: {}
+        type: object
+      rejection_reason:
+        type: string
+      request_type:
+        type: string
+      status:
+        type: string
+      updated_at:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  entity.BackgroundJob:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: string
+      entity_type:
+        type: string
+      errors:
+        items:
+          $ref: '#/definitions/entity.JobRowError'
+        type: array
+      failed:
+        type: integer
+      filename:
+        type: string
+      job_id:
+        type: string
+      job_type:
+        type: string
+      metadata:
+        additionalProperties: {}
+        type: object
+      processed:
+        type: integer
+      skipped:
+        type: integer
+      status:
+        type: string
+      success:
+        type: integer
+      total_rows:
+        type: integer
+      updated_at:
+        type: string
+      workspace_id:
+        type: string
     type: object
   entity.Client:
     properties:
@@ -270,6 +471,45 @@ definitions:
       workspace_id:
         type: string
     type: object
+  entity.CustomFieldDefinition:
+    properties:
+      column_width:
+        type: integer
+      created_at:
+        type: string
+      default_value:
+        type: string
+      description:
+        type: string
+      field_key:
+        type: string
+      field_label:
+        type: string
+      field_type:
+        type: string
+      id:
+        type: string
+      is_required:
+        type: boolean
+      max_value:
+        type: number
+      min_value:
+        type: number
+      options:
+        type: object
+      placeholder:
+        type: string
+      regex_pattern:
+        type: string
+      sort_order:
+        type: integer
+      updated_at:
+        type: string
+      visible_in_table:
+        type: boolean
+      workspace_id:
+        type: string
+    type: object
   entity.Escalation:
     properties:
       company_id:
@@ -332,6 +572,198 @@ definitions:
       workspace_id:
         type: string
     type: object
+  entity.JobRowError:
+    properties:
+      reason:
+        type: string
+      ref_id:
+        type: string
+      row:
+        type: integer
+    type: object
+  entity.MasterData:
+    properties:
+      blacklisted:
+        type: boolean
+      bot_active:
+        type: boolean
+      company_id:
+        type: string
+      company_name:
+        type: string
+      contract_end:
+        type: string
+      contract_months:
+        type: integer
+      contract_start:
+        type: string
+      created_at:
+        type: string
+      custom_fields:
+        additionalProperties: {}
+        type: object
+      days_to_expiry:
+        type: integer
+      final_price:
+        type: integer
+      id:
+        type: string
+      last_interaction_date:
+        type: string
+      last_payment_date:
+        type: string
+      notes:
+        type: string
+      owner_name:
+        type: string
+      owner_telegram_id:
+        type: string
+      owner_wa:
+        type: string
+      payment_status:
+        type: string
+      payment_terms:
+        type: string
+      pic_email:
+        type: string
+      pic_name:
+        type: string
+      pic_nickname:
+        type: string
+      pic_role:
+        type: string
+      pic_wa:
+        type: string
+      renewed:
+        type: boolean
+      risk_flag:
+        type: string
+      sequence_status:
+        type: string
+      snooze_reason:
+        type: string
+      snooze_until:
+        type: string
+      stage:
+        type: string
+      updated_at:
+        type: string
+      workspace_id:
+        type: string
+      workspace_name:
+        description: WorkspaceName is populated for holding workspace queries only.
+        type: string
+    type: object
+  entity.Notification:
+    properties:
+      created_at:
+        type: string
+      email_sent:
+        type: boolean
+      href:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      message:
+        type: string
+      read:
+        type: boolean
+      read_at:
+        type: string
+      recipient_email:
+        type: string
+      source_feature:
+        type: string
+      source_id:
+        type: string
+      telegram_sent:
+        type: boolean
+      type:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  entity.SystemConfig:
+    properties:
+      description:
+        type: string
+      key:
+        type: string
+      updated_at:
+        type: string
+      updated_by:
+        type: string
+      value:
+        type: string
+    type: object
+  entity.Template:
+    properties:
+      active:
+        type: boolean
+      channel:
+        type: string
+      created_at:
+        type: string
+      email_body_html:
+        type: string
+      email_body_text:
+        type: string
+      email_subject:
+        type: string
+      language:
+        type: string
+      template_category:
+        type: string
+      template_id:
+        type: string
+      template_name:
+        type: string
+      updated_at:
+        type: string
+      wa_content:
+        type: string
+    type: object
+  entity.TriggerRule:
+    properties:
+      action_type:
+        type: string
+      active:
+        type: boolean
+      condition:
+        type: object
+      created_at:
+        type: string
+      description:
+        type: string
+      esc_priority:
+        type: string
+      esc_reason:
+        type: string
+      escalation_id:
+        type: string
+      extra_flags:
+        type: object
+      flag_key:
+        type: string
+      priority:
+        type: integer
+      rule_group:
+        type: string
+      rule_id:
+        type: string
+      stop_on_fire:
+        type: boolean
+      sub_priority:
+        type: integer
+      template_id:
+        type: string
+      updated_at:
+        type: string
+      workspace_id:
+        type: string
+    type: object
   entity.Workspace:
     properties:
       color:
@@ -340,6 +772,8 @@ definitions:
         type: string
       id:
         type: string
+      is_active:
+        type: boolean
       is_holding:
         type: boolean
       logo:
@@ -352,7 +786,63 @@ definitions:
         type: string
       plan:
         type: string
+      settings:
+        additionalProperties: true
+        type: object
       slug:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  entity.WorkspaceInvitation:
+    properties:
+      accepted_at:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      expires_at:
+        type: string
+      id:
+        type: string
+      invite_token:
+        type: string
+      invited_by:
+        type: string
+      role:
+        type: string
+      status:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  entity.WorkspaceMember:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      invited_at:
+        type: string
+      invited_by:
+        type: string
+      is_active:
+        type: boolean
+      joined_at:
+        type: string
+      permissions:
+        additionalProperties: true
+        type: object
+      role:
+        type: string
+      updated_at:
+        type: string
+      user_email:
+        type: string
+      user_name:
+        type: string
+      workspace_id:
         type: string
     type: object
   internal_delivery_http_payment.VerifyPaymentRequest:
@@ -365,6 +855,183 @@ definitions:
         type: string
       verified_by:
         type: string
+    type: object
+  master_data.CreateRequest:
+    properties:
+      blacklisted:
+        type: boolean
+      bot_active:
+        type: boolean
+      company_id:
+        type: string
+      company_name:
+        type: string
+      contract_end:
+        type: string
+      contract_months:
+        type: integer
+      contract_start:
+        type: string
+      custom_fields:
+        additionalProperties: {}
+        type: object
+      final_price:
+        type: integer
+      notes:
+        type: string
+      owner_name:
+        type: string
+      owner_telegram_id:
+        type: string
+      owner_wa:
+        type: string
+      payment_status:
+        type: string
+      payment_terms:
+        type: string
+      pic_email:
+        type: string
+      pic_name:
+        type: string
+      pic_nickname:
+        type: string
+      pic_role:
+        type: string
+      pic_wa:
+        type: string
+      risk_flag:
+        type: string
+      sequence_status:
+        type: string
+      stage:
+        type: string
+    type: object
+  master_data.PatchRequest:
+    properties:
+      blacklisted:
+        type: boolean
+      bot_active:
+        type: boolean
+      company_name:
+        type: string
+      contract_end:
+        type: string
+      contract_months:
+        type: integer
+      contract_start:
+        type: string
+      custom_fields:
+        additionalProperties: {}
+        type: object
+      final_price:
+        type: integer
+      last_payment_date:
+        type: string
+      notes:
+        type: string
+      owner_name:
+        type: string
+      owner_telegram_id:
+        type: string
+      owner_wa:
+        type: string
+      payment_status:
+        type: string
+      payment_terms:
+        type: string
+      pic_email:
+        type: string
+      pic_name:
+        type: string
+      pic_nickname:
+        type: string
+      pic_role:
+        type: string
+      pic_wa:
+        type: string
+      renewed:
+        type: boolean
+      risk_flag:
+        type: string
+      sequence_status:
+        type: string
+      stage:
+        type: string
+    type: object
+  master_data.TransitionRequest:
+    properties:
+      custom_field_updates:
+        additionalProperties: {}
+        type: object
+      new_stage:
+        type: string
+      reason:
+        type: string
+      trigger_id:
+        type: string
+      updates:
+        $ref: '#/definitions/master_data.PatchRequest'
+    type: object
+  master_data.TransitionResult:
+    properties:
+      data:
+        $ref: '#/definitions/entity.MasterData'
+      previous_stage:
+        type: string
+    type: object
+  notification.CreateRequest:
+    properties:
+      href:
+        type: string
+      icon:
+        type: string
+      message:
+        type: string
+      recipient_email:
+        type: string
+      source_feature:
+        type: string
+      source_id:
+        type: string
+      type:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  repository.MasterDataStats:
+    properties:
+      bot_active:
+        type: integer
+      by_stage:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      expiring_30d:
+        type: integer
+      high_risk:
+        type: integer
+      overdue_payment:
+        type: integer
+      total:
+        type: integer
+      total_revenue:
+        type: integer
+    type: object
+  repository.QueryCondition:
+    properties:
+      field:
+        type: string
+      op:
+        type: string
+      value: {}
+    type: object
+  repository.ReorderItem:
+    properties:
+      id:
+        type: string
+      sort_order:
+        type: integer
     type: object
   response.StandardResponse:
     properties:
@@ -387,6 +1054,127 @@ definitions:
           $ref: '#/definitions/apperror.FieldError'
         type: array
     type: object
+  response.StandardResponseWithMeta:
+    properties:
+      data: {}
+      errorCode:
+        type: string
+      message:
+        type: string
+      meta: {}
+      requestId:
+        type: string
+      stackTrace:
+        type: string
+      status:
+        description: '"success" or "error"'
+        type: string
+      traceId:
+        type: string
+      validationErrors:
+        items:
+          $ref: '#/definitions/apperror.FieldError'
+        type: array
+    type: object
+  template.VariableInfo:
+    properties:
+      channels:
+        items:
+          type: string
+        type: array
+      description:
+        type: string
+      display_name:
+        type: string
+      sample_value:
+        type: string
+      source:
+        type: string
+      syntax:
+        type: string
+      var_key:
+        type: string
+    type: object
+  workspace.CreateRequest:
+    properties:
+      color:
+        type: string
+      logo:
+        type: string
+      name:
+        type: string
+      plan:
+        type: string
+      settings:
+        additionalProperties: true
+        type: object
+      slug:
+        type: string
+    type: object
+  workspace.InviteRequest:
+    properties:
+      email:
+        type: string
+      role:
+        type: string
+    type: object
+  workspace.SwitchResponse:
+    properties:
+      last_active_at:
+        type: string
+      user_role:
+        type: string
+      workspace:
+        $ref: '#/definitions/entity.Workspace'
+    type: object
+  workspace.UpdateRequest:
+    properties:
+      color:
+        type: string
+      logo:
+        type: string
+      name:
+        type: string
+      plan:
+        type: string
+      settings:
+        additionalProperties: true
+        type: object
+    type: object
+  workspace.WorkspaceDetail:
+    properties:
+      color:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      is_holding:
+        type: boolean
+      logo:
+        type: string
+      member_ids:
+        items:
+          type: string
+        type: array
+      members:
+        items:
+          $ref: '#/definitions/entity.WorkspaceMember'
+        type: array
+      name:
+        type: string
+      plan:
+        type: string
+      settings:
+        additionalProperties: true
+        type: object
+      slug:
+        type: string
+      updated_at:
+        type: string
+    type: object
 host: api-dev.sejutacita.id
 info:
   contact:
@@ -397,42 +1185,14 @@ info:
   version: "1.0"
 paths:
   /api/dashboard/clients:
-    get:
-      description: Returns all clients for a given workspace. Use "holding" to aggregate
-        across member workspaces. Defaults to "dealls" if omitted.
-      parameters:
-      - default: dealls
-        description: Workspace slug
-        in: query
-        name: workspace
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/response.StandardResponse'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/entity.Client'
-                  type: array
-              type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/response.StandardResponse'
-      summary: List clients
-      tags:
-      - Dashboard
     post:
-      description: Creates a new client in the specified workspace. Defaults to "dealls"
-        workspace if omitted.
+      description: Creates a new client in the workspace specified in the X-Workspace-ID
+        header.
       parameters:
-      - default: dealls
-        description: Workspace slug
-        in: query
-        name: workspace
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
         type: string
       - description: Client payload
         in: body
@@ -463,7 +1223,7 @@ paths:
       - Dashboard
   /api/dashboard/clients/{company_id}:
     delete:
-      description: Soft-deletes a client by company_id (sets blacklisted=true, bot_active=false).
+      description: Soft-deletes a client by company_id (sets blacklisted=true).
       parameters:
       - description: Company ID
         in: path
@@ -512,8 +1272,7 @@ paths:
       tags:
       - Dashboard
     put:
-      description: Partially updates a client by company_id. Accepts a JSON object
-        with fields to update.
+      description: Partially updates a client by company_id.
       parameters:
       - description: Company ID
         in: path
@@ -543,21 +1302,287 @@ paths:
       summary: Update client
       tags:
       - Dashboard
-  /api/dashboard/clients/{company_id}/escalations:
+  /api/dashboard/data-master/activity-logs:
     get:
-      description: Returns all escalation records for a given client.
+      description: Returns paginated activity log entries across all categories (bot,
+        data, team).
       parameters:
-      - description: Company ID
-        in: path
-        name: company_id
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
         required: true
+        type: string
+      - description: 'Category filter: bot | data | team (default: all)'
+        in: query
+        name: category
+        type: string
+      - description: 'Resource type filter: client | invoice | template | trigger_rule
+          | bot | team'
+        in: query
+        name: resource_type
+        type: string
+      - description: Filter by record ID (company_id, template_id, rule_id, invoice_id)
+        in: query
+        name: ref_id
+        type: string
+      - description: Pagination offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      - description: Max entries to return (default 10, max 100)
+        in: query
+        name: limit
+        type: integer
+      - description: ISO 8601 timestamp — return entries after this time
+        in: query
+        name: since
         type: string
       responses:
         "200":
           description: OK
           schema:
             allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.ActivityLog'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: List activity logs
+      tags:
+      - Dashboard
+    post:
+      description: Records a data or team activity pushed by the dashboard.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Activity payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dashboard.recordActivityRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
             - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ActivityLog'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Record an activity
+      tags:
+      - Dashboard
+  /api/dashboard/data-master/clients:
+    get:
+      description: Returns paginated clients for the workspace specified in the X-Workspace-ID
+        header.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Search across company_id, company_name, etc.
+        in: query
+        name: search
+        type: string
+      - description: Filter by segment
+        in: query
+        name: segment
+        type: string
+      - description: Filter by payment status
+        in: query
+        name: payment_status
+        type: string
+      - description: Filter by CS sequence
+        in: query
+        name: sequence_cs
+        type: string
+      - description: Filter by plan type
+        in: query
+        name: plan_type
+        type: string
+      - description: Filter by bot active status
+        in: query
+        name: bot_active
+        type: boolean
+      - description: Pagination offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      - description: Limit per page (default 10, max 100)
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.Client'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: List clients
+      tags:
+      - Dashboard
+  /api/dashboard/data-master/clients/export:
+    post:
+      description: Starts a background export job for the workspace. Poll /jobs/{job_id}
+        for status, then download via /jobs/{job_id}/download.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Search term
+        in: query
+        name: search
+        type: string
+      - description: Segment filter
+        in: query
+        name: segment
+        type: string
+      - description: Payment status filter
+        in: query
+        name: payment_status
+        type: string
+      - description: Sequence CS filter
+        in: query
+        name: sequence_cs
+        type: string
+      - description: Plan type filter
+        in: query
+        name: plan_type
+        type: string
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.BackgroundJob'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Export clients to XLSX
+      tags:
+      - Background Jobs
+  /api/dashboard/data-master/clients/import:
+    post:
+      description: Accepts a multipart XLSX file (Template Import sheet), creates
+        a background import job, and returns immediately with the job ID.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: XLSX file (max 5 MB)
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Update existing clients (default false)
+        in: query
+        name: update_existing
+        type: boolean
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.BackgroundJob'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Import clients from XLSX
+      tags:
+      - Background Jobs
+  /api/dashboard/data-master/escalations:
+    get:
+      description: Returns paginated escalations for the workspace specified in the
+        X-Workspace-ID header.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Filter by company ID
+        in: query
+        name: company_id
+        type: string
+      - description: Filter by status (Open/Resolved)
+        in: query
+        name: status
+        type: string
+      - description: Filter by priority
+        in: query
+        name: priority
+        type: string
+      - description: Search across company_id, reason, esc_id, notes
+        in: query
+        name: search
+        type: string
+      - description: Pagination offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      - description: Limit per page (default 10, max 100)
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
             - properties:
                 data:
                   items:
@@ -568,16 +1593,565 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.StandardResponse'
-      summary: Get client escalations
+      summary: List escalations
       tags:
       - Dashboard
-  /api/dashboard/clients/{company_id}/invoices:
+  /api/dashboard/data-master/invoices:
     get:
-      description: Returns all invoices for a given client.
+      description: Returns paginated invoices for the workspace specified in the X-Workspace-ID
+        header.
       parameters:
-      - description: Company ID
-        in: path
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Filter by company ID
+        in: query
         name: company_id
+        type: string
+      - description: Filter by payment status
+        in: query
+        name: status
+        type: string
+      - description: Pagination offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      - description: Limit per page (default 10, max 100)
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.Invoice'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: List invoices
+      tags:
+      - Dashboard
+  /api/dashboard/data-master/jobs:
+    get:
+      description: Returns paginated background jobs for the workspace, optionally
+        filtered by job_type and entity_type.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: 'Filter by job type: import|export'
+        in: query
+        name: job_type
+        type: string
+      - description: 'Filter by entity type: client'
+        in: query
+        name: entity_type
+        type: string
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      - description: Page size
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.BackgroundJob'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: List background jobs
+      tags:
+      - Background Jobs
+  /api/dashboard/data-master/jobs/{job_id}:
+    get:
+      description: Returns the current status and progress of any background job (import
+        or export).
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Job ID
+        in: path
+        name: job_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.BackgroundJob'
+              type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Get background job status
+      tags:
+      - Background Jobs
+  /api/dashboard/data-master/jobs/{job_id}/download:
+    get:
+      description: Streams the XLSX file for a completed export job. Returns 409 if
+        the job is not yet done.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Job ID
+        in: path
+        name: job_id
+        required: true
+        type: string
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Download export file
+      tags:
+      - Background Jobs
+  /api/dashboard/invoices/{invoice_id}:
+    get:
+      description: Returns a single invoice by invoice_id.
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: invoice_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Invoice'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Get invoice by ID
+      tags:
+      - Dashboard
+    put:
+      description: Partially updates an invoice (safe fields only).
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: invoice_id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Update invoice
+      tags:
+      - Dashboard
+  /api/dashboard/master-data/attention:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Limit
+        in: query
+        name: limit
+        type: integer
+      - description: Search company_name/pic_name
+        in: query
+        name: search
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponseWithMeta'
+      security:
+      - BearerAuth: []
+      summary: Attention tab — high-risk / overdue / expiring
+      tags:
+      - MasterData
+  /api/dashboard/master-data/clients:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      - description: Limit (max 200)
+        in: query
+        name: limit
+        type: integer
+      - description: Comma-separated stages
+        in: query
+        name: stage
+        type: string
+      - description: Search company_name/pic_name/company_id
+        in: query
+        name: search
+        type: string
+      - description: High|Mid|Low|None
+        in: query
+        name: risk_flag
+        type: string
+      - description: Filter by bot_active
+        in: query
+        name: bot_active
+        type: boolean
+      - description: Exact match
+        in: query
+        name: payment_status
+        type: string
+      - description: Days to expiry upper bound
+        in: query
+        name: expiry_within
+        type: integer
+      - description: updated_at|company_name|stage|created_at|contract_end|final_price
+        in: query
+        name: sort_by
+        type: string
+      - description: asc|desc
+        in: query
+        name: sort_dir
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.MasterData'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List master data records
+      tags:
+      - MasterData
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Create request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/master_data.CreateRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.MasterData'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new master data record
+      tags:
+      - MasterData
+  /api/dashboard/master-data/clients/{id}:
+    delete:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Master data UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ApprovalRequest'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Request deletion of a master data record (creates approval)
+      tags:
+      - MasterData
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Master data UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.MasterData'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get a single master data record by id
+      tags:
+      - MasterData
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Master data UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Patch request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/master_data.PatchRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.MasterData'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Patch a master data record (partial)
+      tags:
+      - MasterData
+  /api/dashboard/master-data/clients/{id}/transition:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Master data UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Transition payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/master_data.TransitionRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/master_data.TransitionResult'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Transition stage atomically
+      tags:
+      - MasterData
+  /api/dashboard/master-data/clients/export:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      security:
+      - BearerAuth: []
+      summary: Export master data as XLSX
+      tags:
+      - MasterData
+  /api/dashboard/master-data/clients/import:
+    post:
+      consumes:
+      - multipart/form-data
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Excel file
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: add_new|update_existing
+        in: formData
+        name: mode
+        required: true
+        type: string
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ApprovalRequest'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Bulk import (creates approval)
+      tags:
+      - MasterData
+  /api/dashboard/master-data/clients/template:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      security:
+      - BearerAuth: []
+      summary: Download import template
+      tags:
+      - MasterData
+  /api/dashboard/master-data/field-definitions:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
         required: true
         type: string
       responses:
@@ -589,20 +2163,439 @@ paths:
             - properties:
                 data:
                   items:
-                    $ref: '#/definitions/entity.Invoice'
+                    $ref: '#/definitions/entity.CustomFieldDefinition'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List custom field definitions
+      tags:
+      - CustomField
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Create payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/custom_field.CreateRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.CustomFieldDefinition'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create a custom field definition
+      tags:
+      - CustomField
+  /api/dashboard/master-data/field-definitions/{id}:
+    delete:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Field definition UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Delete a custom field definition
+      tags:
+      - CustomField
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Field definition UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Update payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/custom_field.UpdateRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.CustomFieldDefinition'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update a custom field definition (field_key immutable)
+      tags:
+      - CustomField
+  /api/dashboard/master-data/field-definitions/reorder:
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Reorder payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dashboard.ReorderRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Reorder custom field definitions in a single transaction
+      tags:
+      - CustomField
+  /api/dashboard/master-data/mutations:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: RFC3339 lower bound
+        in: query
+        name: since
+        type: string
+      - description: Limit (max 500)
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Master Data mutation log
+      tags:
+      - MasterData
+  /api/dashboard/master-data/query:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Query request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dashboard.QueryRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponseWithMeta'
+      security:
+      - BearerAuth: []
+      summary: Flexible workflow query (whitelisted ops)
+      tags:
+      - MasterData
+  /api/dashboard/master-data/stats:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/repository.MasterDataStats'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Master Data summary cards
+      tags:
+      - MasterData
+  /api/dashboard/message-template:
+    get:
+      description: Returns paginated message templates with optional filters.
+      parameters:
+      - description: Filter by template category
+        in: query
+        name: category
+        type: string
+      - description: Filter by language
+        in: query
+        name: language
+        type: string
+      - description: Filter by active status (true/false)
+        in: query
+        name: active
+        type: string
+      - description: Pagination offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      - description: Limit per page (default 10, max 100)
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.Template'
                   type: array
               type: object
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.StandardResponse'
-      summary: Get client invoices
+      summary: List message templates
       tags:
       - Dashboard
+  /api/dashboard/message-template/{template_id}:
+    get:
+      description: Returns a single message template by template_id.
+      parameters:
+      - description: Template ID
+        in: path
+        name: template_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Template'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Get message template by ID
+      tags:
+      - Dashboard
+    put:
+      description: Partially updates a message template (safe fields only).
+      parameters:
+      - description: Template ID
+        in: path
+        name: template_id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Update message template
+      tags:
+      - Dashboard
+  /api/dashboard/notifications:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Filter to unread only
+        in: query
+        name: unread_only
+        type: boolean
+      - description: Filter by notification type
+        in: query
+        name: type
+        type: string
+      - description: Max items (default 50, max 200)
+        in: query
+        name: limit
+        type: integer
+      - description: Offset
+        in: query
+        name: offset
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.Notification'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List notifications for the caller in this workspace
+      tags:
+      - Notification
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Notification payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/notification.CreateRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Notification'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Publish a notification (internal)
+      tags:
+      - Notification
+  /api/dashboard/notifications/{id}/read:
+    put:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Notification ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Mark a notification as read
+      tags:
+      - Notification
+  /api/dashboard/notifications/count:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Count unread notifications
+      tags:
+      - Notification
+  /api/dashboard/notifications/read-all:
+    put:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Mark all notifications as read
+      tags:
+      - Notification
   /api/dashboard/workspaces:
     get:
-      description: Returns all workspaces. Holding workspace aggregates data from
-        member workspaces.
       responses:
         "200":
           description: OK
@@ -615,11 +2608,482 @@ paths:
                     $ref: '#/definitions/entity.Workspace'
                   type: array
               type: object
-        "500":
-          description: Internal Server Error
+        "401":
+          description: Unauthorized
           schema:
             $ref: '#/definitions/response.StandardResponse'
-      summary: List workspaces
+      security:
+      - BearerAuth: []
+      summary: List workspaces visible to the caller
+      tags:
+      - Workspace
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/workspace.CreateRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Workspace'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Create a new workspace
+      tags:
+      - Workspace
+  /api/dashboard/workspaces/{id}:
+    delete:
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Soft-delete a workspace
+      tags:
+      - Workspace
+    get:
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/workspace.WorkspaceDetail'
+              type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Get workspace details
+      tags:
+      - Workspace
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Partial update
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/workspace.UpdateRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Workspace'
+              type: object
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Update a workspace (partial)
+      tags:
+      - Workspace
+  /api/dashboard/workspaces/{id}/members:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.WorkspaceMember'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List members of a workspace
+      tags:
+      - Workspace
+  /api/dashboard/workspaces/{id}/members/{member_id}:
+    delete:
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Member ID
+        in: path
+        name: member_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove member from workspace
+      tags:
+      - Workspace
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Member ID
+        in: path
+        name: member_id
+        required: true
+        type: string
+      - description: Role payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dashboard.UpdateRoleRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.WorkspaceMember'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update workspace member role
+      tags:
+      - Workspace
+  /api/dashboard/workspaces/{id}/members/invite:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Invitation payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/workspace.InviteRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.WorkspaceInvitation'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Invite user to workspace
+      tags:
+      - Workspace
+  /api/dashboard/workspaces/{id}/switch:
+    post:
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/workspace.SwitchResponse'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Switch active workspace (audit)
+      tags:
+      - Workspace
+  /api/dashboard/workspaces/invitations/{token}/accept:
+    post:
+      parameters:
+      - description: Invitation token
+        in: path
+        name: token
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.WorkspaceMember'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Accept a workspace invitation
+      tags:
+      - Workspace
+  /api/data-master/system-config:
+    get:
+      description: Returns all system_config entries. Sensitive values (tokens) are
+        masked.
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.SystemConfig'
+                  type: array
+              type: object
+      summary: List all system config entries
+      tags:
+      - Dashboard
+  /api/data-master/system-config/{key}:
+    put:
+      description: Updates the value of a single system_config key.
+      parameters:
+      - description: Config key (e.g. HALOAI_API_URL)
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: '{ \'
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Update a system config entry
+      tags:
+      - Dashboard
+  /api/data-master/template-variables:
+    get:
+      parameters:
+      - description: Filter by channel (wa, email)
+        in: query
+        name: channel
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/template.VariableInfo'
+                  type: array
+              type: object
+      summary: List available template variables
+      tags:
+      - Dashboard
+  /api/data-master/trigger-rules:
+    get:
+      parameters:
+      - description: Filter by rule group
+        in: query
+        name: rule_group
+        type: string
+      - description: Filter by action type
+        in: query
+        name: action_type
+        type: string
+      - description: Filter by active status
+        in: query
+        name: active
+        type: string
+      - description: Search by rule_id, group, description
+        in: query
+        name: search
+        type: string
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      - description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.TriggerRule'
+                  type: array
+              type: object
+      summary: List trigger rules
+      tags:
+      - Dashboard
+    post:
+      parameters:
+      - description: Trigger rule
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.TriggerRule'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Create trigger rule
+      tags:
+      - Dashboard
+  /api/data-master/trigger-rules/{rule_id}:
+    delete:
+      parameters:
+      - description: Rule ID
+        in: path
+        name: rule_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Delete trigger rule (soft delete)
+      tags:
+      - Dashboard
+    get:
+      parameters:
+      - description: Rule ID
+        in: path
+        name: rule_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.TriggerRule'
+              type: object
+      summary: Get trigger rule by ID
+      tags:
+      - Dashboard
+    put:
+      parameters:
+      - description: Rule ID
+        in: path
+        name: rule_id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Update trigger rule
+      tags:
+      - Dashboard
+  /api/data-master/trigger-rules/cache/invalidate:
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Invalidate trigger rule cache
       tags:
       - Dashboard
   /api/handoff/new-client:
@@ -696,12 +3160,13 @@ paths:
       - api
   /cron/run:
     get:
-      description: Manually triggers the bot's cron job to process all clients and
-        send scheduled WhatsApp messages. Requires GCP Cloud Scheduler OIDC token
-        authentication.
+      description: Triggers the bot's cron job. Creates one background job per workspace
+        and returns immediately. Requires GCP Cloud Scheduler OIDC token authentication.
+      produces:
+      - application/json
       responses:
-        "200":
-          description: Cron run completed successfully
+        "202":
+          description: Cron jobs accepted - processing in background
           schema:
             $ref: '#/definitions/response.StandardResponse'
         "401":
@@ -709,7 +3174,7 @@ paths:
           schema:
             $ref: '#/definitions/response.StandardResponse'
         "500":
-          description: Internal server error - cron run failed
+          description: Internal server error - failed to start cron run
           schema:
             $ref: '#/definitions/response.StandardResponse'
       security:
