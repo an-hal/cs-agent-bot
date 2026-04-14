@@ -85,6 +85,9 @@ type AppConfig struct {
 	// Dynamic Rule Engine
 	UseDynamicRules bool
 
+	// Workflow Engine
+	UseWorkflowEngine bool
+
 	// Background Jobs
 	ExportStoragePath string
 
@@ -181,6 +184,9 @@ func LoadConfig() *AppConfig {
 
 		// Dynamic Rule Engine
 		UseDynamicRules: getEnvBool("USE_DYNAMIC_RULES", false),
+
+		// Workflow Engine
+		UseWorkflowEngine: getEnvBool("USE_WORKFLOW_ENGINE", false),
 
 		// Background Jobs
 		ExportStoragePath: getEnv("EXPORT_STORAGE_PATH", "./tmp/exports"),
