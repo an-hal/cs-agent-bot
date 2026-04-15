@@ -6,6 +6,7 @@ package cron_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -121,6 +122,19 @@ func (r *stubFullInvoiceRepo) UpdateFields(_ context.Context, _ string, _ map[st
 	return nil
 }
 func (r *stubFullInvoiceRepo) CreateInvoice(_ context.Context, _ entity.Invoice) error { return nil }
+func (r *stubFullInvoiceRepo) Create(_ context.Context, _ *sql.Tx, _ entity.Invoice) error {
+	return nil
+}
+func (r *stubFullInvoiceRepo) Delete(_ context.Context, _ string) error { return nil }
+func (r *stubFullInvoiceRepo) ListOverdue(_ context.Context, _ time.Time) ([]entity.Invoice, error) {
+	return nil, nil
+}
+func (r *stubFullInvoiceRepo) Stats(_ context.Context, _ []string) (*entity.InvoiceStats, error) {
+	return &entity.InvoiceStats{}, nil
+}
+func (r *stubFullInvoiceRepo) UpdateStatusBulk(_ context.Context, _ []string, _ string) error {
+	return nil
+}
 func (r *stubFullInvoiceRepo) UpdateFlags(_ context.Context, _ string, _ map[string]bool) error {
 	return nil
 }
