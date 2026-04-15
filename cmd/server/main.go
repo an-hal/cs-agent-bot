@@ -39,14 +39,17 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/escalation"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai"
 	masterdatauc "github.com/Sejutacita/cs-agent-bot/internal/usecase/master_data"
+	automationrule "github.com/Sejutacita/cs-agent-bot/internal/usecase/automation_rule"
 	messaginguc "github.com/Sejutacita/cs-agent-bot/internal/usecase/messaging"
 	notificationuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/notification"
+	pipelineview "github.com/Sejutacita/cs-agent-bot/internal/usecase/pipeline_view"
 	teamuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/team"
 	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/telegram"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/template"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/trigger"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/webhook"
+	workflowuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/workflow"
 	workspaceuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/workspace"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
@@ -290,6 +293,22 @@ func main() {
 		logger,
 	)
 
+	// Workflow engine (feat/06) — gated by USE_WORKFLOW_ENGINE.
+	workflowRepo := repository.NewWorkflowRepo(db, queryTimeout, tracerInstance, logger)
+	automationRuleRepo := repository.NewAutomationRuleRepo(db, queryTimeout, tracerInstance, logger)
+	pipelineViewRepo := repository.NewPipelineViewRepo(db, queryTimeout, tracerInstance, logger)
+
+	workflowUsecase := workflowuc.New(workflowRepo, logger)
+	automationRuleUsecase := automationrule.New(automationRuleRepo, approvalRequestRepo, logger)
+	pipelineViewUsecase := pipelineview.New(pipelineViewRepo, logger)
+
+	// Attach workflow runner to cron runner when USE_WORKFLOW_ENGINE is enabled.
+	if cfg.UseWorkflowEngine {
+		workflowRunner := cron.NewWorkflowRunner(workflowUsecase, automationRuleUsecase, true, logger)
+		_ = workflowRunner // integrated via direct call in future cron phase
+		logger.Info().Msg("Workflow engine enabled (USE_WORKFLOW_ENGINE=true)")
+	}
+
 	validate := pkgValidator.New()
 
 	exceptionHandler := response.NewHTTPExceptionHandler(logger, cfg.EnableStackTrace)
@@ -317,6 +336,9 @@ func main() {
 		CustomFieldUC:    customFieldUsecase,
 		TeamUC:           teamUsecase,
 		MessagingUC:      messagingUsecase,
+		WorkflowUC:       workflowUsecase,
+		AutomationRuleUC: automationRuleUsecase,
+		PipelineViewUC:   pipelineViewUsecase,
 	})
 
 	server := &http.Server{
