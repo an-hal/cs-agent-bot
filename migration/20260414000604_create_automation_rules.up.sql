@@ -21,7 +21,7 @@ CREATE TABLE automation_rules (
   status          VARCHAR(20) NOT NULL DEFAULT 'active',
 
   -- Legacy trigger_rules FK (nullable — set during backfill migration 000610)
-  legacy_trigger_rule_id UUID REFERENCES trigger_rules(rule_id) ON DELETE SET NULL,
+  legacy_trigger_rule_id VARCHAR(50) REFERENCES trigger_rules(rule_id) ON DELETE SET NULL,
 
   updated_at      TIMESTAMPTZ,
   updated_by      VARCHAR(255),
