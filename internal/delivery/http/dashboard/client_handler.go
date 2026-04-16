@@ -54,7 +54,7 @@ func NewClientHandler(uc dashboard.DashboardUsecase, logger zerolog.Logger, tr t
 // @Success      200  {object}  response.StandardResponseWithMeta{data=[]entity.Client}
 // @Failure      400  {object}  response.StandardResponse
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/data-master/clients [get]
+// @Router       /api/data-master/clients [get]
 func (h *ClientHandler) List(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ClientList")
 	defer span.End()
@@ -104,7 +104,7 @@ func (h *ClientHandler) List(w http.ResponseWriter, r *http.Request) error {
 // @Success      200  {object}  response.StandardResponse{data=entity.Client}
 // @Failure      404  {object}  response.StandardResponse
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/clients/{company_id} [get]
+// @Router       /api/clients/{company_id} [get]
 func (h *ClientHandler) Get(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ClientGet")
 	defer span.End()
@@ -136,7 +136,7 @@ func (h *ClientHandler) Get(w http.ResponseWriter, r *http.Request) error {
 // @Success      201  {object}  response.StandardResponse{data=entity.Client}
 // @Failure      400  {object}  response.StandardResponse
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/clients [post]
+// @Router       /api/clients [post]
 func (h *ClientHandler) Create(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ClientCreate")
 	defer span.End()
@@ -204,7 +204,7 @@ type CreateClientRequest struct {
 // @Success      200  {object}  response.StandardResponse
 // @Failure      400  {object}  response.StandardResponse
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/clients/{company_id} [put]
+// @Router       /api/clients/{company_id} [put]
 func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ClientUpdate")
 	defer span.End()
@@ -255,7 +255,7 @@ func (h *ClientHandler) Update(w http.ResponseWriter, r *http.Request) error {
 // @Param        company_id  path      string  true  "Company ID"
 // @Success      200  {object}  response.StandardResponse
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/clients/{company_id} [delete]
+// @Router       /api/clients/{company_id} [delete]
 func (h *ClientHandler) Delete(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ClientDelete")
 	defer span.End()
@@ -287,4 +287,3 @@ func (h *ClientHandler) Delete(w http.ResponseWriter, r *http.Request) error {
 
 	return response.StandardSuccess(w, r, http.StatusOK, "Client deleted", nil)
 }
-
