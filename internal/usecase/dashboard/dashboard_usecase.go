@@ -3,6 +3,7 @@ package dashboard
 import (
 	"context"
 	"io"
+	"time"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/apperror"
@@ -29,9 +30,15 @@ type DashboardUsecase interface {
 	DeleteClient(ctx context.Context, companyID string) error
 	RecordActivity(ctx context.Context, entry entity.ActivityLog) error
 	GetActivityLogs(ctx context.Context, filter entity.ActivityFilter) ([]entity.ActivityLog, int, error)
+	GetActivityStats(ctx context.Context, workspaceID string) (entity.ActivityStats, error)
+	GetRecentActivities(ctx context.Context, workspaceID string, since time.Time, limit int) ([]entity.ActivityLog, error)
+	GetCompanySummary(ctx context.Context, workspaceID, companyID string) (*entity.CompanySummary, error)
 
 	// Escalations (standalone)
 	GetEscalations(ctx context.Context, filter entity.EscalationFilter, p pagination.Params) ([]entity.Escalation, int64, error)
+	GetEscalation(ctx context.Context, id string) (*entity.Escalation, error)
+	ResolveEscalation(ctx context.Context, id, resolvedBy, resolutionNote string) error
+	GetEscalationsByCompany(ctx context.Context, workspaceID, companyID string, p pagination.Params) ([]entity.Escalation, int64, error)
 
 	// Invoices (standalone)
 	GetInvoices(ctx context.Context, filter entity.InvoiceFilter, p pagination.Params) ([]entity.Invoice, int64, error)
@@ -385,4 +392,113 @@ func (u *dashboardUsecase) UpdateTemplate(ctx context.Context, templateID string
 		return apperror.WrapInternal(logger, err, "Failed to update template")
 	}
 	return nil
+}
+
+// ─── Activity Stats / Recent / Summary ──────────────────────────────────────
+
+func (u *dashboardUsecase) GetActivityStats(ctx context.Context, workspaceID string) (entity.ActivityStats, error) {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetActivityStats")
+	defer span.End()
+
+	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
+
+	wsIDs, err := u.resolveWorkspaceIDs(ctx, workspaceID)
+	if err != nil {
+		return entity.ActivityStats{}, apperror.WrapInternal(logger, err, "Failed to resolve workspace IDs")
+	}
+
+	stats, err := u.logRepo.GetActivityStats(ctx, wsIDs)
+	if err != nil {
+		return entity.ActivityStats{}, apperror.WrapInternal(logger, err, "Failed to fetch activity stats")
+	}
+	return stats, nil
+}
+
+func (u *dashboardUsecase) GetRecentActivities(ctx context.Context, workspaceID string, since time.Time, limit int) ([]entity.ActivityLog, error) {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetRecentActivities")
+	defer span.End()
+
+	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
+
+	wsIDs, err := u.resolveWorkspaceIDs(ctx, workspaceID)
+	if err != nil {
+		return nil, apperror.WrapInternal(logger, err, "Failed to resolve workspace IDs")
+	}
+
+	logs, err := u.logRepo.GetRecentActivities(ctx, wsIDs, since, limit)
+	if err != nil {
+		return nil, apperror.WrapInternal(logger, err, "Failed to fetch recent activities")
+	}
+	return logs, nil
+}
+
+func (u *dashboardUsecase) GetCompanySummary(ctx context.Context, workspaceID, companyID string) (*entity.CompanySummary, error) {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetCompanySummary")
+	defer span.End()
+
+	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
+
+	wsIDs, err := u.resolveWorkspaceIDs(ctx, workspaceID)
+	if err != nil {
+		return nil, apperror.WrapInternal(logger, err, "Failed to resolve workspace IDs")
+	}
+
+	summary, err := u.logRepo.GetCompanySummary(ctx, wsIDs, companyID)
+	if err != nil {
+		return nil, apperror.WrapInternal(logger, err, "Failed to fetch company summary")
+	}
+	return summary, nil
+}
+
+// ─── Escalation: Get / Resolve / ListByCompany ─────────────────────────────
+
+func (u *dashboardUsecase) GetEscalation(ctx context.Context, id string) (*entity.Escalation, error) {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetEscalation")
+	defer span.End()
+
+	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
+
+	esc, err := u.escalationRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, apperror.WrapInternal(logger, err, "Failed to get escalation")
+	}
+	if esc == nil {
+		return nil, apperror.NotFound("escalation", "Escalation not found")
+	}
+	return esc, nil
+}
+
+func (u *dashboardUsecase) ResolveEscalation(ctx context.Context, id, resolvedBy, resolutionNote string) error {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.ResolveEscalation")
+	defer span.End()
+
+	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
+
+	if err := u.escalationRepo.Resolve(ctx, id, resolvedBy, resolutionNote); err != nil {
+		return apperror.WrapInternal(logger, err, "Failed to resolve escalation")
+	}
+	return nil
+}
+
+func (u *dashboardUsecase) GetEscalationsByCompany(ctx context.Context, workspaceID, companyID string, p pagination.Params) ([]entity.Escalation, int64, error) {
+	ctx, span := u.tracer.Start(ctx, "dashboard.usecase.GetEscalationsByCompany")
+	defer span.End()
+
+	logger := ctxutil.LoggerWithRequestID(ctx, u.logger)
+
+	wsIDs, err := u.resolveWorkspaceIDs(ctx, workspaceID)
+	if err != nil {
+		return nil, 0, apperror.WrapInternal(logger, err, "Failed to resolve workspace IDs")
+	}
+
+	filter := entity.EscalationFilter{
+		WorkspaceIDs: wsIDs,
+		CompanyID:    companyID,
+	}
+
+	escalations, total, err := u.escalationRepo.GetAllPaginated(ctx, filter, p)
+	if err != nil {
+		return nil, 0, apperror.WrapInternal(logger, err, "Failed to fetch company escalations")
+	}
+	return escalations, total, nil
 }

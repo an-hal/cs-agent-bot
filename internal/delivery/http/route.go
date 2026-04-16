@@ -98,6 +98,9 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	api.Handle(http.MethodPut, "/notifications/read-all", wsRequired(jwtAuth(notificationH.MarkAllRead)))
 	api.Handle(http.MethodGet, "/activity-logs", wsRequired(jwtAuth(activityH.List)))
 	api.Handle(http.MethodPost, "/activity-logs", wsRequired(jwtAuth(activityH.Record)))
+	api.Handle(http.MethodGet, "/activity-logs/recent", wsRequired(jwtAuth(activityH.Recent)))
+	api.Handle(http.MethodGet, "/activity-logs/stats", wsRequired(jwtAuth(activityH.Stats)))
+	api.Handle(http.MethodGet, "/activity-logs/companies/{company_id}/summary", wsRequired(jwtAuth(activityH.CompanySummary)))
 	api.Handle(http.MethodGet, "/jobs", wsRequired(jwtAuth(bgJobH.ListJobs)))
 	api.Handle(http.MethodGet, "/jobs/{job_id}", wsRequired(jwtAuth(bgJobH.GetJob)))
 	api.Handle(http.MethodGet, "/jobs/{job_id}/download", wsRequired(jwtAuth(bgJobH.DownloadJobFile)))
@@ -110,10 +113,13 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	dataMaster.Handle(http.MethodPost, "/clients", wsRequired(jwtAuth(dashboardH.Create)))
 	dataMaster.Handle(http.MethodPut, "/clients/{company_id}", wsRequired(jwtAuth(dashboardH.Update)))
 	dataMaster.Handle(http.MethodDelete, "/clients/{company_id}", wsRequired(jwtAuth(dashboardH.Delete)))
+	dataMaster.Handle(http.MethodGet, "/clients/{company_id}/escalations", wsRequired(jwtAuth(escalationH.ListByCompany)))
 	dataMaster.Handle(http.MethodGet, "/invoices", wsRequired(jwtAuth(invoiceH.List)))
 	dataMaster.Handle(http.MethodGet, "/invoices/{invoice_id}", wsRequired(jwtAuth(invoiceH.Get)))
 	dataMaster.Handle(http.MethodPut, "/invoices/{invoice_id}", wsRequired(jwtAuth(invoiceH.Update)))
 	dataMaster.Handle(http.MethodGet, "/escalations", wsRequired(jwtAuth(escalationH.List)))
+	dataMaster.Handle(http.MethodGet, "/escalations/{id}", wsRequired(jwtAuth(escalationH.Get)))
+	dataMaster.Handle(http.MethodPut, "/escalations/{id}/resolve", wsRequired(jwtAuth(escalationH.Resolve)))
 
 	// Full-featured invoice routes.
 	invoices := api.Group("/invoices")

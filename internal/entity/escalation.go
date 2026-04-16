@@ -16,6 +16,14 @@ type Escalation struct {
 	ResolvedBy          string     `json:"resolved_by"`
 	EscNotes            string     `json:"notes"`
 	WorkspaceID         string     `json:"workspace_id"`
+
+	// feat/08 extensions
+	Severity       string     `json:"severity,omitempty"`
+	AssignedTo     string     `json:"assigned_to,omitempty"`
+	ResolutionNote string     `json:"resolution_note,omitempty"`
+	NotifiedVia    string     `json:"notified_via,omitempty"`
+	NotifiedAt     *time.Time `json:"notified_at,omitempty"`
+	MasterDataID   string     `json:"master_data_id,omitempty"`
 }
 
 // EscalationFilter holds optional filters for listing escalations.
@@ -25,6 +33,7 @@ type EscalationFilter struct {
 	Search       string // ILIKE across company_id, reason, esc_id, notes
 	Status       string // exact match
 	Priority     string // exact match
+	Severity     string // exact match (feat/08)
 }
 
 const (
@@ -46,4 +55,10 @@ const (
 	EscPriorityP0Emergency = "P0 Emergency"
 	EscPriorityP1Critical  = "P1 Critical"
 	EscPriorityP2High      = "P2 High"
+)
+
+const (
+	EscSeverityCritical = "critical"
+	EscSeverityHigh     = "high"
+	EscSeverityMedium   = "medium"
 )

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/middleware"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/router"
@@ -64,11 +65,25 @@ type mockUsecase struct {
 	getEscalationsErr    error
 
 	// Activity
-	recordActivityErr error
-	recordEntry       entity.ActivityLog
-	getLogsResult     []entity.ActivityLog
-	getLogsTotal      int
-	getLogsErr        error
+	recordActivityErr      error
+	recordEntry            entity.ActivityLog
+	getLogsResult          []entity.ActivityLog
+	getLogsTotal           int
+	getLogsErr             error
+	getStatsResult         entity.ActivityStats
+	getStatsErr            error
+	getRecentResult        []entity.ActivityLog
+	getRecentErr           error
+	getCompanySummResult   *entity.CompanySummary
+	getCompanySummErr      error
+
+	// Escalation detail
+	getEscalationResult      *entity.Escalation
+	getEscalationErr         error
+	resolveEscalationErr     error
+	getEscByCompanyResult    []entity.Escalation
+	getEscByCompanyTotal     int64
+	getEscByCompanyErr       error
 
 	// Invoices (standalone)
 	getStandaloneInvoicesResult []entity.Invoice
@@ -120,8 +135,32 @@ func (m *mockUsecase) GetActivityLogs(_ context.Context, _ entity.ActivityFilter
 	return m.getLogsResult, m.getLogsTotal, m.getLogsErr
 }
 
+func (m *mockUsecase) GetActivityStats(_ context.Context, _ string) (entity.ActivityStats, error) {
+	return m.getStatsResult, m.getStatsErr
+}
+
+func (m *mockUsecase) GetRecentActivities(_ context.Context, _ string, _ time.Time, _ int) ([]entity.ActivityLog, error) {
+	return m.getRecentResult, m.getRecentErr
+}
+
+func (m *mockUsecase) GetCompanySummary(_ context.Context, _, _ string) (*entity.CompanySummary, error) {
+	return m.getCompanySummResult, m.getCompanySummErr
+}
+
 func (m *mockUsecase) GetEscalations(_ context.Context, _ entity.EscalationFilter, _ pagination.Params) ([]entity.Escalation, int64, error) {
 	return m.getEscalationsResult, m.getEscalationsTotal, m.getEscalationsErr
+}
+
+func (m *mockUsecase) GetEscalation(_ context.Context, _ string) (*entity.Escalation, error) {
+	return m.getEscalationResult, m.getEscalationErr
+}
+
+func (m *mockUsecase) ResolveEscalation(_ context.Context, _, _, _ string) error {
+	return m.resolveEscalationErr
+}
+
+func (m *mockUsecase) GetEscalationsByCompany(_ context.Context, _, _ string, _ pagination.Params) ([]entity.Escalation, int64, error) {
+	return m.getEscByCompanyResult, m.getEscByCompanyTotal, m.getEscByCompanyErr
 }
 
 func (m *mockUsecase) GetInvoices(_ context.Context, _ entity.InvoiceFilter, _ pagination.Params) ([]entity.Invoice, int64, error) {
