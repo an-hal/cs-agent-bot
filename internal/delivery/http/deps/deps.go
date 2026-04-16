@@ -6,6 +6,7 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/validator"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
+	analyticsuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/analytics"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/auth"
 	automationrule "github.com/Sejutacita/cs-agent-bot/internal/usecase/automation_rule"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
@@ -17,6 +18,7 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/notification"
 	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
 	pipelineview "github.com/Sejutacita/cs-agent-bot/internal/usecase/pipeline_view"
+	reportsuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/reports"
 	teamuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/team"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/trigger"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/webhook"
@@ -54,4 +56,11 @@ type Deps struct {
 	InvoiceUC        invoice.Usecase
 	InvoiceCron      invoice.CronInvoice
 	PaperIDSvc       invoice.PaperIDService
+
+	// Analytics & Reports (feat/09)
+	AnalyticsUC         analyticsuc.Usecase
+	ReportsUC           reportsuc.Usecase
+	RevenueTargetRepo   repository.RevenueTargetRepository
+	RevenueSnapshotRepo repository.RevenueSnapshotRepository
+	WorkspaceRepo       repository.WorkspaceRepository
 }

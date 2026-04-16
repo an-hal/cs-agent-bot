@@ -38,7 +38,9 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/escalation"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai"
+	analyticsuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/analytics"
 	invoiceuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/invoice"
+	reportsuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/reports"
 	masterdatauc "github.com/Sejutacita/cs-agent-bot/internal/usecase/master_data"
 	automationrule "github.com/Sejutacita/cs-agent-bot/internal/usecase/automation_rule"
 	messaginguc "github.com/Sejutacita/cs-agent-bot/internal/usecase/messaging"
@@ -322,6 +324,13 @@ func main() {
 	invoicePaperIDSvc := invoiceuc.NewPaperIDService(invoiceUsecase)
 	invoiceCron := invoiceuc.NewCronInvoice(invoiceUsecase)
 
+	// Analytics & Reports (feat/09).
+	analyticsRepo := repository.NewAnalyticsRepo(db, queryTimeout, tracerInstance, logger)
+	revenueTargetRepo := repository.NewRevenueTargetRepo(db, queryTimeout, tracerInstance, logger)
+	revenueSnapshotRepo := repository.NewRevenueSnapshotRepo(db, queryTimeout, tracerInstance, logger)
+	analyticsUsecase := analyticsuc.New(analyticsRepo, revenueTargetRepo, revenueSnapshotRepo, workspaceRepo, logger)
+	reportsUsecase := reportsuc.New(analyticsRepo, revenueTargetRepo, workspaceRepo, logger)
+
 	// Attach workflow runner to cron runner when USE_WORKFLOW_ENGINE is enabled.
 	if cfg.UseWorkflowEngine {
 		workflowRunner := cron.NewWorkflowRunner(workflowUsecase, automationRuleUsecase, true, logger)
@@ -360,8 +369,13 @@ func main() {
 		AutomationRuleUC: automationRuleUsecase,
 		PipelineViewUC:   pipelineViewUsecase,
 		InvoiceUC:        invoiceUsecase,
-		InvoiceCron:      invoiceCron,
-		PaperIDSvc:       invoicePaperIDSvc,
+		InvoiceCron:         invoiceCron,
+		PaperIDSvc:          invoicePaperIDSvc,
+		AnalyticsUC:         analyticsUsecase,
+		ReportsUC:           reportsUsecase,
+		RevenueTargetRepo:   revenueTargetRepo,
+		RevenueSnapshotRepo: revenueSnapshotRepo,
+		WorkspaceRepo:       workspaceRepo,
 	})
 
 	server := &http.Server{

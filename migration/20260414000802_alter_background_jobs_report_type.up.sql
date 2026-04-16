@@ -1,0 +1,1 @@
+ALTER TABLE background_jobs ADD COLUMN IF NOT EXISTS report_type VARCHAR(50) DEFAULT '';
