@@ -11,6 +11,7 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
 	customfield "github.com/Sejutacita/cs-agent-bot/internal/usecase/custom_field"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/invoice"
 	masterdata "github.com/Sejutacita/cs-agent-bot/internal/usecase/master_data"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/messaging"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/notification"
@@ -50,4 +51,7 @@ type Deps struct {
 	WorkflowUC       workflowuc.Usecase
 	AutomationRuleUC automationrule.Usecase
 	PipelineViewUC   pipelineview.Usecase
+	InvoiceUC        invoice.Usecase
+	InvoiceCron      invoice.CronInvoice
+	PaperIDSvc       invoice.PaperIDService
 }

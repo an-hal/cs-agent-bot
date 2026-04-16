@@ -38,6 +38,7 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/escalation"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai"
+	invoiceuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/invoice"
 	masterdatauc "github.com/Sejutacita/cs-agent-bot/internal/usecase/master_data"
 	automationrule "github.com/Sejutacita/cs-agent-bot/internal/usecase/automation_rule"
 	messaginguc "github.com/Sejutacita/cs-agent-bot/internal/usecase/messaging"
@@ -117,6 +118,9 @@ func main() {
 
 	clientRepo := repository.NewClientRepo(db, queryTimeout, tracerInstance, logger)
 	invoiceRepo := repository.NewInvoiceRepo(db, queryTimeout, tracerInstance, logger)
+	invoiceLineItemRepo := repository.NewInvoiceLineItemRepo(db, queryTimeout, tracerInstance, logger)
+	paymentLogRepo := repository.NewPaymentLogRepo(db, queryTimeout, tracerInstance, logger)
+	invoiceSeqRepo := repository.NewInvoiceSequenceRepo(db, queryTimeout, tracerInstance, logger)
 	flagsRepo := repository.NewFlagsRepo(db, queryTimeout, tracerInstance, logger)
 	convStateRepo := repository.NewConversationStateRepo(db, queryTimeout, tracerInstance, logger)
 	logRepo := repository.NewLogRepo(db, queryTimeout, tracerInstance, logger)
@@ -302,6 +306,22 @@ func main() {
 	automationRuleUsecase := automationrule.New(automationRuleRepo, approvalRequestRepo, logger)
 	pipelineViewUsecase := pipelineview.New(pipelineViewRepo, logger)
 
+	// Invoice billing (feat/07).
+	invoiceUsecase := invoiceuc.New(
+		db,
+		invoiceRepo,
+		invoiceLineItemRepo,
+		paymentLogRepo,
+		invoiceSeqRepo,
+		approvalRequestRepo,
+		workspaceRepo,
+		nil, // paperidSvc wired after invoiceUsecase (circular dep avoidance).
+		tracerInstance,
+		logger,
+	)
+	invoicePaperIDSvc := invoiceuc.NewPaperIDService(invoiceUsecase)
+	invoiceCron := invoiceuc.NewCronInvoice(invoiceUsecase)
+
 	// Attach workflow runner to cron runner when USE_WORKFLOW_ENGINE is enabled.
 	if cfg.UseWorkflowEngine {
 		workflowRunner := cron.NewWorkflowRunner(workflowUsecase, automationRuleUsecase, true, logger)
@@ -339,6 +359,9 @@ func main() {
 		WorkflowUC:       workflowUsecase,
 		AutomationRuleUC: automationRuleUsecase,
 		PipelineViewUC:   pipelineViewUsecase,
+		InvoiceUC:        invoiceUsecase,
+		InvoiceCron:      invoiceCron,
+		PaperIDSvc:       invoicePaperIDSvc,
 	})
 
 	server := &http.Server{

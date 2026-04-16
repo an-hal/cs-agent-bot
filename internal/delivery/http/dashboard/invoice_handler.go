@@ -12,17 +12,21 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/pagination"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/invoice"
 	"github.com/rs/zerolog"
 )
 
+// InvoiceHandler serves both legacy /data-master/invoices routes (via dashboard.Usecase)
+// and the full-featured /invoices routes (via invoice.Usecase).
 type InvoiceHandler struct {
-	uc     dashboard.DashboardUsecase
-	logger zerolog.Logger
-	tracer tracer.Tracer
+	uc        dashboard.DashboardUsecase
+	invoiceUC invoice.Usecase
+	logger    zerolog.Logger
+	tracer    tracer.Tracer
 }
 
-func NewInvoiceHandler(uc dashboard.DashboardUsecase, logger zerolog.Logger, tr tracer.Tracer) *InvoiceHandler {
-	return &InvoiceHandler{uc: uc, logger: logger, tracer: tr}
+func NewInvoiceHandler(uc dashboard.DashboardUsecase, invoiceUC invoice.Usecase, logger zerolog.Logger, tr tracer.Tracer) *InvoiceHandler {
+	return &InvoiceHandler{uc: uc, invoiceUC: invoiceUC, logger: logger, tracer: tr}
 }
 
 // List godoc
@@ -52,6 +56,8 @@ func (h *InvoiceHandler) List(w http.ResponseWriter, r *http.Request) error {
 		Status:          q.Get("status"),
 		Search:          q.Get("search"),
 		CollectionStage: q.Get("collection_stage"),
+		SortBy:          q.Get("sort_by"),
+		SortDir:         q.Get("sort_dir"),
 	}
 
 	logger.Info().Str("workspace_id", wsID).Str("status", filter.Status).Msg("Incoming list invoices request")
@@ -70,11 +76,11 @@ func (h *InvoiceHandler) List(w http.ResponseWriter, r *http.Request) error {
 }
 
 // Get godoc
-// @Summary      Get invoice by ID
-// @Description  Returns a single invoice by invoice_id.
+// @Summary      Get invoice detail
+// @Description  Returns a single invoice with its line items and payment logs.
 // @Tags         Dashboard
 // @Param        invoice_id  path      string  true  "Invoice ID"
-// @Success      200  {object}  response.StandardResponse{data=entity.Invoice}
+// @Success      200  {object}  response.StandardResponse{data=entity.InvoiceDetail}
 // @Failure      404  {object}  response.StandardResponse
 // @Failure      500  {object}  response.StandardResponse
 // @Router       /api/invoices/{invoice_id} [get]
@@ -87,6 +93,16 @@ func (h *InvoiceHandler) Get(w http.ResponseWriter, r *http.Request) error {
 
 	logger.Info().Str("invoice_id", invoiceID).Msg("Incoming get invoice request")
 
+	// When the full invoice usecase is wired, prefer the rich detail.
+	if h.invoiceUC != nil {
+		detail, err := h.invoiceUC.Get(ctx, invoiceID)
+		if err != nil {
+			return err
+		}
+		return response.StandardSuccess(w, r, http.StatusOK, "Invoice", detail)
+	}
+
+	// Fallback: legacy dashboard usecase.
 	inv, err := h.uc.GetInvoice(ctx, invoiceID)
 	if err != nil {
 		return err
@@ -94,15 +110,12 @@ func (h *InvoiceHandler) Get(w http.ResponseWriter, r *http.Request) error {
 	if inv == nil {
 		return apperror.NotFound("invoice", "Invoice not found")
 	}
-
-	logger.Info().Str("invoice_id", invoiceID).Msg("Successfully fetched invoice")
-
 	return response.StandardSuccess(w, r, http.StatusOK, "Invoice", inv)
 }
 
 // Update godoc
 // @Summary      Update invoice
-// @Description  Partially updates an invoice (safe fields only).
+// @Description  Partially updates an invoice (safe fields only — payment_status is rejected).
 // @Tags         Dashboard
 // @Param        invoice_id  path      string                  true  "Invoice ID"
 // @Param        body        body      map[string]interface{}  true  "Fields to update"
@@ -124,8 +137,14 @@ func (h *InvoiceHandler) Update(w http.ResponseWriter, r *http.Request) error {
 		return apperror.ValidationError("Invalid request body")
 	}
 
-	if err := h.uc.UpdateInvoice(ctx, invoiceID, patch); err != nil {
-		return err
+	if h.invoiceUC != nil {
+		if err := h.invoiceUC.Update(ctx, invoiceID, patch); err != nil {
+			return err
+		}
+	} else {
+		if err := h.uc.UpdateInvoice(ctx, invoiceID, patch); err != nil {
+			return err
+		}
 	}
 
 	if err := h.uc.RecordActivity(ctx, entity.ActivityLog{
@@ -144,4 +163,176 @@ func (h *InvoiceHandler) Update(w http.ResponseWriter, r *http.Request) error {
 	logger.Info().Str("invoice_id", invoiceID).Msg("Successfully updated invoice")
 
 	return response.StandardSuccess(w, r, http.StatusOK, "Invoice updated", nil)
+}
+
+// Create godoc
+// @Summary      Create invoice (creates approval)
+// @Description  Queues an approval request for a new invoice. Returns 202 with the approval request.
+// @Tags         Dashboard
+// @Param        X-Workspace-ID  header   string                    true  "Workspace ID"
+// @Param        body            body     entity.CreateInvoiceReq   true  "Invoice create request"
+// @Success      202  {object}  response.StandardResponse{data=entity.ApprovalRequest}
+// @Failure      400  {object}  response.StandardResponse
+// @Failure      500  {object}  response.StandardResponse
+// @Router       /api/invoices [post]
+func (h *InvoiceHandler) Create(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.InvoiceCreate")
+	defer span.End()
+
+	logger := ctxutil.LoggerWithRequestID(ctx, h.logger)
+
+	var req entity.CreateInvoiceReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return apperror.ValidationError("Invalid request body")
+	}
+	if req.CreatedBy == "" {
+		req.CreatedBy = actorFromCtx(r)
+	}
+
+	ar, err := h.invoiceUC.Create(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	logger.Info().Str("approval_id", ar.ID).Str("company_id", req.CompanyID).Msg("Invoice create approval requested")
+	return response.StandardSuccess(w, r, http.StatusAccepted, "Invoice create approval requested", ar)
+}
+
+// Delete godoc
+// @Summary      Delete invoice
+// @Description  Deletes an invoice. Only invoices with status "Belum bayar" may be deleted.
+// @Tags         Dashboard
+// @Param        invoice_id  path      string  true  "Invoice ID"
+// @Success      204  "No Content"
+// @Failure      400  {object}  response.StandardResponse
+// @Failure      404  {object}  response.StandardResponse
+// @Router       /api/invoices/{invoice_id} [delete]
+func (h *InvoiceHandler) Delete(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.InvoiceDelete")
+	defer span.End()
+
+	invoiceID := router.GetParam(r, "invoice_id")
+	if err := h.invoiceUC.Delete(ctx, invoiceID); err != nil {
+		return err
+	}
+	return response.StandardSuccess(w, r, http.StatusOK, "Invoice deleted", nil)
+}
+
+// MarkPaid godoc
+// @Summary      Mark invoice as paid (creates approval)
+// @Description  Queues an approval request to mark an invoice as paid. Returns 202 with the approval request.
+// @Tags         Dashboard
+// @Param        invoice_id  path   string              true  "Invoice ID"
+// @Param        body        body   entity.MarkPaidReq  true  "Mark-paid request"
+// @Success      202  {object}  response.StandardResponse{data=entity.ApprovalRequest}
+// @Failure      400  {object}  response.StandardResponse
+// @Router       /api/invoices/{invoice_id}/mark-paid [post]
+func (h *InvoiceHandler) MarkPaid(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.InvoiceMarkPaid")
+	defer span.End()
+
+	invoiceID := router.GetParam(r, "invoice_id")
+
+	var req entity.MarkPaidReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return apperror.ValidationError("Invalid request body")
+	}
+	if req.Actor == "" {
+		req.Actor = actorFromCtx(r)
+	}
+
+	ar, err := h.invoiceUC.MarkPaid(ctx, invoiceID, req)
+	if err != nil {
+		return err
+	}
+	return response.StandardSuccess(w, r, http.StatusAccepted, "Mark-paid approval requested", ar)
+}
+
+// SendReminder godoc
+// @Summary      Send payment reminder
+// @Description  Sends a payment reminder for an invoice, records the reminder log.
+// @Tags         Dashboard
+// @Param        invoice_id  path   string                   true  "Invoice ID"
+// @Param        body        body   entity.SendReminderReq   true  "Reminder request"
+// @Success      200  {object}  response.StandardResponse
+// @Failure      400  {object}  response.StandardResponse
+// @Router       /api/invoices/{invoice_id}/send-reminder [post]
+func (h *InvoiceHandler) SendReminder(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.InvoiceSendReminder")
+	defer span.End()
+
+	invoiceID := router.GetParam(r, "invoice_id")
+
+	var req entity.SendReminderReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return apperror.ValidationError("Invalid request body")
+	}
+	if req.Actor == "" {
+		req.Actor = actorFromCtx(r)
+	}
+
+	if err := h.invoiceUC.SendReminder(ctx, invoiceID, req); err != nil {
+		return err
+	}
+	return response.StandardSuccess(w, r, http.StatusOK, "Reminder sent", nil)
+}
+
+// Stats godoc
+// @Summary      Invoice stats
+// @Description  Returns aggregated invoice stats for the workspace.
+// @Tags         Dashboard
+// @Param        X-Workspace-ID  header  string  true  "Workspace ID"
+// @Success      200  {object}  response.StandardResponse{data=entity.InvoiceStats}
+// @Router       /api/invoices/stats [get]
+func (h *InvoiceHandler) Stats(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.InvoiceStats")
+	defer span.End()
+
+	wsID := ctxutil.GetWorkspaceID(ctx)
+	stats, err := h.invoiceUC.Stats(ctx, []string{wsID})
+	if err != nil {
+		return err
+	}
+	return response.StandardSuccess(w, r, http.StatusOK, "Invoice stats", stats)
+}
+
+// ByStage godoc
+// @Summary      Invoice counts by collection stage
+// @Description  Returns map of collection_stage → count for the workspace.
+// @Tags         Dashboard
+// @Param        X-Workspace-ID  header  string  true  "Workspace ID"
+// @Success      200  {object}  response.StandardResponse{data=map[string]int64}
+// @Router       /api/invoices/by-stage [get]
+func (h *InvoiceHandler) ByStage(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.InvoiceByStage")
+	defer span.End()
+
+	wsID := ctxutil.GetWorkspaceID(ctx)
+	data, err := h.invoiceUC.ByStage(ctx, []string{wsID})
+	if err != nil {
+		return err
+	}
+	return response.StandardSuccess(w, r, http.StatusOK, "Invoices by stage", data)
+}
+
+// PaymentLogs godoc
+// @Summary      List payment logs for an invoice
+// @Description  Returns recent payment log entries for a single invoice.
+// @Tags         Dashboard
+// @Param        invoice_id  path  string  true  "Invoice ID"
+// @Success      200  {object}  response.StandardResponse{data=[]entity.PaymentLog}
+// @Router       /api/invoices/{invoice_id}/payment-logs [get]
+func (h *InvoiceHandler) PaymentLogs(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.InvoicePaymentLogs")
+	defer span.End()
+
+	invoiceID := router.GetParam(r, "invoice_id")
+	logs, err := h.invoiceUC.PaymentLogs(ctx, invoiceID)
+	if err != nil {
+		return err
+	}
+	if logs == nil {
+		logs = []entity.PaymentLog{}
+	}
+	return response.StandardSuccess(w, r, http.StatusOK, "Payment logs", logs)
 }
