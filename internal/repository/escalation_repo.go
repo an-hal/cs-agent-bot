@@ -21,6 +21,8 @@ type EscalationRepository interface {
 	GetByCompanyID(ctx context.Context, companyID string) ([]entity.Escalation, error)
 	GetAllPaginated(ctx context.Context, filter entity.EscalationFilter, p pagination.Params) ([]entity.Escalation, int64, error)
 	OpenEscalation(ctx context.Context, esc entity.Escalation) error
+	GetByID(ctx context.Context, id string) (*entity.Escalation, error)
+	Resolve(ctx context.Context, id, resolvedBy, resolutionNote string) error
 }
 
 type escalationRepo struct {
@@ -260,4 +262,71 @@ func (r *escalationRepo) GetAllPaginated(ctx context.Context, filter entity.Esca
 		escalations = append(escalations, esc)
 	}
 	return escalations, total, rows.Err()
+}
+
+// GetByID returns a single escalation by its primary key (id column).
+func (r *escalationRepo) GetByID(ctx context.Context, id string) (*entity.Escalation, error) {
+	ctx, span := r.tracer.Start(ctx, "escalation.repository.GetByID")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query, args, err := database.PSQL.
+		Select(escalationColumns).
+		From("escalations").
+		Where(sq.Eq{"id": id}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build query GetByID: %w", err)
+	}
+
+	var esc entity.Escalation
+	err = r.db.QueryRowContext(ctx, query, args...).Scan(
+		&esc.EscalationID, &esc.EscID, &esc.CompanyID, &esc.Status, &esc.CreatedAt,
+		&esc.Priority, &esc.Reason, &esc.NotifiedParty, &esc.TelegramMessageSent,
+		&esc.ResolvedAt, &esc.ResolvedBy, &esc.EscNotes, &esc.WorkspaceID,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query GetByID: %w", err)
+	}
+
+	return &esc, nil
+}
+
+// Resolve sets escalation status to Resolved and records who resolved it and why.
+func (r *escalationRepo) Resolve(ctx context.Context, id, resolvedBy, resolutionNote string) error {
+	ctx, span := r.tracer.Start(ctx, "escalation.repository.Resolve")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	now := time.Now()
+	query, args, err := database.PSQL.
+		Update("escalations").
+		Set("status", entity.EscalationStatusResolved).
+		Set("resolved_by", resolvedBy).
+		Set("resolved_at", now).
+		Set("resolution_note", resolutionNote).
+		Where(sq.Eq{"id": id}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("build query Resolve: %w", err)
+	}
+
+	result, err := r.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("exec Resolve: %w", err)
+	}
+
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("escalation %s not found", id)
+	}
+
+	return nil
 }
