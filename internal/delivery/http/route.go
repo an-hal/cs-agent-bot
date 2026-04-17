@@ -40,6 +40,10 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	automationRuleH := dashboard.NewAutomationRuleHandler(deps.AutomationRuleUC, deps.Logger, deps.Tracer)
 	escalationH := dashboard.NewEscalationHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 	bgJobH := dashboard.NewBackgroundJobHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
+	analyticsH := dashboard.NewAnalyticsHandler(deps.AnalyticsUC, deps.Logger, deps.Tracer)
+	reportsH := dashboard.NewReportsHandler(deps.ReportsUC, deps.Logger, deps.Tracer)
+	revenueTargetH := dashboard.NewRevenueTargetHandler(deps.RevenueTargetRepo, deps.Logger, deps.Tracer)
+	snapshotCronH := dashboard.NewSnapshotCronHandler(deps.WorkspaceRepo, deps.RevenueSnapshotRepo, deps.Logger, deps.Tracer)
 	triggerRuleH := dashboard.NewTriggerRuleHandler(deps.TriggerRuleRepo, deps.LogRepo, deps.RuleEngine, deps.Logger, deps.Tracer)
 	systemConfigH := dashboard.NewSystemConfigHandler(deps.SystemConfigRepo, deps.LogRepo, deps.Logger, deps.Tracer)
 	masterDataH := dashboard.NewMasterDataHandler(deps.MasterDataUC, deps.Logger, deps.Tracer)
@@ -239,6 +243,33 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	ar.Handle(http.MethodGet, "/{id}", wsRequired(jwtAuth(automationRuleH.Get)))
 	ar.Handle(http.MethodPut, "/{id}", wsRequired(jwtAuth(automationRuleH.Update)))
 	ar.Handle(http.MethodDelete, "/{id}", wsRequired(jwtAuth(automationRuleH.Delete)))
+
+	// Dashboard overview stats (feat/09)
+	api.Handle(http.MethodGet, "/dashboard/stats", wsRequired(jwtAuth(analyticsH.Stats)))
+
+	// Analytics (feat/09)
+	an := api.Group("/analytics")
+	an.Handle(http.MethodGet, "/kpi", wsRequired(jwtAuth(analyticsH.KPI)))
+	an.Handle(http.MethodGet, "/distributions", wsRequired(jwtAuth(analyticsH.Distributions)))
+	an.Handle(http.MethodGet, "/engagement", wsRequired(jwtAuth(analyticsH.Engagement)))
+	an.Handle(http.MethodGet, "/revenue-trend", wsRequired(jwtAuth(analyticsH.RevenueTrend)))
+	an.Handle(http.MethodGet, "/forecast-accuracy", wsRequired(jwtAuth(analyticsH.ForecastAccuracy)))
+
+	// Reports (feat/09)
+	rep := api.Group("/reports")
+	rep.Handle(http.MethodGet, "/executive-summary", wsRequired(jwtAuth(reportsH.ExecutiveSummary)))
+	rep.Handle(http.MethodGet, "/revenue-contracts", wsRequired(jwtAuth(reportsH.RevenueContracts)))
+	rep.Handle(http.MethodGet, "/client-health", wsRequired(jwtAuth(reportsH.ClientHealth)))
+	rep.Handle(http.MethodGet, "/engagement-retention", wsRequired(jwtAuth(reportsH.EngagementRetention)))
+	rep.Handle(http.MethodGet, "/workspace-comparison", wsRequired(jwtAuth(reportsH.WorkspaceComparison)))
+	rep.Handle(http.MethodPost, "/export", wsRequired(jwtAuth(reportsH.Export)))
+
+	// Revenue targets (feat/09)
+	api.Handle(http.MethodGet, "/revenue-targets", wsRequired(jwtAuth(revenueTargetH.List)))
+	api.Handle(http.MethodPut, "/revenue-targets", wsRequired(jwtAuth(revenueTargetH.Upsert)))
+
+	// Cron — snapshot rebuild (feat/09)
+	api.Handle(http.MethodGet, "/cron/analytics/rebuild-snapshots", oidcAuth(snapshotCronH.Rebuild))
 
 	// Swagger
 	r.HandlePrefix(http.MethodGet, "/swagger", httpSwagger.WrapHandler)
