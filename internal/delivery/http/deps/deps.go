@@ -9,6 +9,7 @@ import (
 	analyticsuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/analytics"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/auth"
 	automationrule "github.com/Sejutacita/cs-agent-bot/internal/usecase/automation_rule"
+	collectionuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/collection"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
 	customfield "github.com/Sejutacita/cs-agent-bot/internal/usecase/custom_field"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
@@ -63,4 +64,7 @@ type Deps struct {
 	RevenueTargetRepo   repository.RevenueTargetRepository
 	RevenueSnapshotRepo repository.RevenueSnapshotRepository
 	WorkspaceRepo       repository.WorkspaceRepository
+
+	// Collections (feat/10)
+	CollectionUC collectionuc.Usecase
 }
