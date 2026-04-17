@@ -29,7 +29,7 @@ SELECT
   tr.rule_id,                               -- rule_code = existing rule_id
   tr.rule_id,                               -- trigger_id = same
   tr.template_id,
-  COALESCE(LOWER(SPLIT_PART(tr.rule_group, '-', 1)), 'ae'),  -- derive role from group prefix
+  LEFT(COALESCE(LOWER(SPLIT_PART(tr.rule_group, '-', 1)), 'ae'), 10),  -- derive role from group prefix, truncated to fit VARCHAR(10)
   COALESCE(UPPER(tr.rule_group), 'P0'),
   'Migrated',
   COALESCE(tr.condition::text, 'true'),

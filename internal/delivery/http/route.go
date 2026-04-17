@@ -30,7 +30,9 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	workspaceH := dashboard.NewWorkspaceHandler(deps.WorkspaceUC, deps.Logger, deps.Tracer)
 	notificationH := dashboard.NewNotificationHandler(deps.NotificationUC, deps.Logger, deps.Tracer)
 	activityH := dashboard.NewActivityHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
-	invoiceH := dashboard.NewInvoiceHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
+	invoiceH := dashboard.NewInvoiceHandler(deps.DashboardUsecase, deps.InvoiceUC, deps.Logger, deps.Tracer)
+	invoiceCronH := dashboard.NewInvoiceCronHandler(deps.InvoiceCron, deps.Logger, deps.Tracer)
+	paperidH := webhookHandler.NewPaperIDWebhookHandler(deps.PaperIDSvc, deps.Logger)
 	templateH := dashboard.NewTemplateHandler(deps.DashboardUsecase, deps.Logger, deps.Tracer)
 	messagingH := dashboard.NewMessagingHandler(deps.MessagingUC, deps.Logger, deps.Tracer)
 	workflowH := dashboard.NewWorkflowHandler(deps.WorkflowUC, deps.Logger, deps.Tracer)
@@ -112,6 +114,26 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	dataMaster.Handle(http.MethodGet, "/invoices/{invoice_id}", wsRequired(jwtAuth(invoiceH.Get)))
 	dataMaster.Handle(http.MethodPut, "/invoices/{invoice_id}", wsRequired(jwtAuth(invoiceH.Update)))
 	dataMaster.Handle(http.MethodGet, "/escalations", wsRequired(jwtAuth(escalationH.List)))
+
+	// Full-featured invoice routes.
+	invoices := api.Group("/invoices")
+	invoices.Handle(http.MethodGet, "", wsRequired(jwtAuth(invoiceH.List)))
+	invoices.Handle(http.MethodPost, "", wsRequired(jwtAuth(invoiceH.Create)))
+	invoices.Handle(http.MethodGet, "/stats", wsRequired(jwtAuth(invoiceH.Stats)))
+	invoices.Handle(http.MethodGet, "/by-stage", wsRequired(jwtAuth(invoiceH.ByStage)))
+	invoices.Handle(http.MethodGet, "/{invoice_id}", wsRequired(jwtAuth(invoiceH.Get)))
+	invoices.Handle(http.MethodPut, "/{invoice_id}", wsRequired(jwtAuth(invoiceH.Update)))
+	invoices.Handle(http.MethodDelete, "/{invoice_id}", wsRequired(jwtAuth(invoiceH.Delete)))
+	invoices.Handle(http.MethodPost, "/{invoice_id}/mark-paid", wsRequired(jwtAuth(invoiceH.MarkPaid)))
+	invoices.Handle(http.MethodPost, "/{invoice_id}/send-reminder", wsRequired(jwtAuth(invoiceH.SendReminder)))
+	invoices.Handle(http.MethodGet, "/{invoice_id}/payment-logs", wsRequired(jwtAuth(invoiceH.PaymentLogs)))
+
+	// Paper.id webhook (HMAC verified inside the usecase — no JWT).
+	api.Handle(http.MethodPost, "/webhook/paperid/{workspace_id}", paperidH.Handle)
+
+	// Invoice cron endpoints.
+	api.Handle(http.MethodGet, "/cron/invoices/overdue", oidcAuth(invoiceCronH.UpdateOverdue))
+	api.Handle(http.MethodGet, "/cron/invoices/escalate", oidcAuth(invoiceCronH.EscalateStages))
 	dataMaster.Handle(http.MethodGet, "/message-templates", wsRequired(jwtAuth(templateH.List)))
 	dataMaster.Handle(http.MethodGet, "/message-templates/{template_id}", wsRequired(jwtAuth(templateH.Get)))
 	dataMaster.Handle(http.MethodPut, "/message-templates/{template_id}", wsRequired(jwtAuth(templateH.Update)))
