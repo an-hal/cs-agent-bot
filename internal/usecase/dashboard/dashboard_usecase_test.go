@@ -46,6 +46,19 @@ func (m *mockWorkspaceRepo) GetAll(context.Context) ([]entity.Workspace, error) 
 func (m *mockWorkspaceRepo) GetByID(_ context.Context, _ string) (*entity.Workspace, error) {
 	return m.getByIDResult, m.getByIDErr
 }
+func (m *mockWorkspaceRepo) GetBySlug(context.Context, string) (*entity.Workspace, error) {
+	return nil, nil
+}
+func (m *mockWorkspaceRepo) ListForUser(context.Context, string) ([]entity.Workspace, error) {
+	return nil, nil
+}
+func (m *mockWorkspaceRepo) Create(context.Context, *entity.Workspace) (*entity.Workspace, error) {
+	return nil, nil
+}
+func (m *mockWorkspaceRepo) Update(context.Context, string, repository.WorkspacePatch) (*entity.Workspace, error) {
+	return nil, nil
+}
+func (m *mockWorkspaceRepo) SoftDelete(context.Context, string) error { return nil }
 
 // mockClientRepo
 type mockClientRepo struct {

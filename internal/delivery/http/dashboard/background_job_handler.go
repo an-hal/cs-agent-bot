@@ -38,7 +38,7 @@ func NewBackgroundJobHandler(uc dashboard.DashboardUsecase, logger zerolog.Logge
 // @Success      202  {object}  response.StandardResponse{data=entity.BackgroundJob}
 // @Failure      400  {object}  response.StandardResponse
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/data-master/clients/import [post]
+// @Router       /api/data-master/clients/import [post]
 func (h *BackgroundJobHandler) ImportClients(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ImportClients")
 	defer span.End()
@@ -83,7 +83,7 @@ func (h *BackgroundJobHandler) ImportClients(w http.ResponseWriter, r *http.Requ
 // @Param        plan_type       query   string  false  "Plan type filter"
 // @Success      202  {object}  response.StandardResponse{data=entity.BackgroundJob}
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/data-master/clients/export [post]
+// @Router       /api/data-master/clients/export [post]
 func (h *BackgroundJobHandler) ExportClients(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ExportClients")
 	defer span.End()
@@ -123,7 +123,7 @@ func (h *BackgroundJobHandler) ExportClients(w http.ResponseWriter, r *http.Requ
 // @Success      200  {object}  response.StandardResponse{data=entity.BackgroundJob}
 // @Failure      403  {object}  response.StandardResponse
 // @Failure      404  {object}  response.StandardResponse
-// @Router       /api/dashboard/data-master/jobs/{job_id} [get]
+// @Router       /api/data-master/jobs/{job_id} [get]
 func (h *BackgroundJobHandler) GetJob(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.GetJob")
 	defer span.End()
@@ -159,7 +159,7 @@ func (h *BackgroundJobHandler) GetJob(w http.ResponseWriter, r *http.Request) er
 // @Param        limit           query   int     false  "Page size"
 // @Success      200  {object}  response.StandardResponseWithMeta{data=[]entity.BackgroundJob}
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/data-master/jobs [get]
+// @Router       /api/data-master/jobs [get]
 func (h *BackgroundJobHandler) ListJobs(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ListJobs")
 	defer span.End()
@@ -190,7 +190,7 @@ func (h *BackgroundJobHandler) ListJobs(w http.ResponseWriter, r *http.Request) 
 // @Failure      403  {object}  response.StandardResponse
 // @Failure      404  {object}  response.StandardResponse
 // @Failure      409  {object}  response.StandardResponse
-// @Router       /api/dashboard/data-master/jobs/{job_id}/download [get]
+// @Router       /api/data-master/jobs/{job_id}/download [get]
 func (h *BackgroundJobHandler) DownloadJobFile(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.DownloadJobFile")
 	defer span.End()

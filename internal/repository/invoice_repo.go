@@ -23,6 +23,13 @@ type InvoiceRepository interface {
 	UpdateFields(ctx context.Context, invoiceID string, fields map[string]interface{}) error
 	CreateInvoice(ctx context.Context, inv entity.Invoice) error
 	UpdateFlags(ctx context.Context, invoiceID string, flags map[string]bool) error
+
+	// Full-featured methods used by the invoice usecase package.
+	Create(ctx context.Context, tx *sql.Tx, inv entity.Invoice) error
+	Delete(ctx context.Context, invoiceID string) error
+	ListOverdue(ctx context.Context, cutoff time.Time) ([]entity.Invoice, error)
+	Stats(ctx context.Context, wsIDs []string) (*entity.InvoiceStats, error)
+	UpdateStatusBulk(ctx context.Context, invoiceIDs []string, newStatus string) error
 }
 
 type invoiceRepo struct {
@@ -60,7 +67,7 @@ func (r *invoiceRepo) GetActiveByCompanyID(ctx context.Context, companyID string
 		From("invoices").
 		Where(sq.And{
 			sq.Eq{"company_id": companyID},
-			sq.NotEq{"payment_status": entity.PaymentStatusPaid},
+			sq.NotEq{"payment_status": entity.PaymentStatusLunas},
 		}).
 		OrderBy("due_date DESC").
 		Limit(1).
@@ -303,4 +310,204 @@ func (r *invoiceRepo) GetAllByCompanyID(ctx context.Context, companyID string) (
 		invoices = append(invoices, inv)
 	}
 	return invoices, rows.Err()
+}
+
+// Create inserts a full invoice record within an optional transaction.
+func (r *invoiceRepo) Create(ctx context.Context, tx *sql.Tx, inv entity.Invoice) error {
+	ctx, span := r.tracer.Start(ctx, "invoice.repository.Create")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query, args, err := database.PSQL.
+		Insert("invoices").
+		Columns(
+			"invoice_id", "company_id", "issue_date", "due_date", "amount",
+			"payment_status", "collection_stage", "notes", "link_invoice",
+			"workspace_id", "payment_terms", "created_by", "updated_at",
+		).
+		Values(
+			inv.InvoiceID, inv.CompanyID, inv.IssueDate, inv.DueDate, inv.Amount,
+			inv.PaymentStatus, inv.CollectionStage, inv.Notes, inv.LinkInvoice,
+			inv.WorkspaceID, inv.PaymentTerms, inv.CreatedBy, time.Now().UTC(),
+		).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("build query: %w", err)
+	}
+
+	execFunc := func(q string, a ...interface{}) (sql.Result, error) {
+		if tx != nil {
+			return tx.ExecContext(ctx, q, a...)
+		}
+		return r.DB.ExecContext(ctx, q, a...)
+	}
+
+	if _, err = execFunc(query, args...); err != nil {
+		return fmt.Errorf("insert invoice: %w", err)
+	}
+	return nil
+}
+
+// Delete removes an invoice. Only invoices with status 'Belum bayar' may be deleted.
+func (r *invoiceRepo) Delete(ctx context.Context, invoiceID string) error {
+	ctx, span := r.tracer.Start(ctx, "invoice.repository.Delete")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query, args, err := database.PSQL.
+		Delete("invoices").
+		Where(sq.And{
+			sq.Eq{"invoice_id": invoiceID},
+			sq.Eq{"payment_status": entity.PaymentStatusBelumBayar},
+		}).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("build query: %w", err)
+	}
+
+	res, err := r.DB.ExecContext(ctx, query, args...)
+	if err != nil {
+		return fmt.Errorf("delete invoice: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if n == 0 {
+		return fmt.Errorf("invoice not found or status is not %q", entity.PaymentStatusBelumBayar)
+	}
+	return nil
+}
+
+// ListOverdue returns all invoices that are past due_date and not yet paid/overdue.
+func (r *invoiceRepo) ListOverdue(ctx context.Context, cutoff time.Time) ([]entity.Invoice, error) {
+	ctx, span := r.tracer.Start(ctx, "invoice.repository.ListOverdue")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query, args, err := database.PSQL.
+		Select(
+			"invoice_id", "company_id", "workspace_id", "due_date",
+			"payment_status", "collection_stage", "days_overdue",
+		).
+		From("invoices").
+		Where(sq.And{
+			sq.LtOrEq{"due_date": cutoff},
+			sq.Expr("payment_status NOT IN (?, ?)", entity.PaymentStatusLunas, entity.PaymentStatusTerlambat),
+		}).
+		ToSql()
+	if err != nil {
+		return nil, fmt.Errorf("build query: %w", err)
+	}
+
+	rows, err := r.DB.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("query overdue: %w", err)
+	}
+	defer rows.Close()
+
+	var invoices []entity.Invoice
+	for rows.Next() {
+		var inv entity.Invoice
+		if err := rows.Scan(
+			&inv.InvoiceID, &inv.CompanyID, &inv.WorkspaceID, &inv.DueDate,
+			&inv.PaymentStatus, &inv.CollectionStage, &inv.DaysOverdue,
+		); err != nil {
+			return nil, fmt.Errorf("scan overdue invoice: %w", err)
+		}
+		invoices = append(invoices, inv)
+	}
+	return invoices, rows.Err()
+}
+
+// Stats returns aggregated invoice statistics for a set of workspaces.
+func (r *invoiceRepo) Stats(ctx context.Context, wsIDs []string) (*entity.InvoiceStats, error) {
+	ctx, span := r.tracer.Start(ctx, "invoice.repository.Stats")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	stats := &entity.InvoiceStats{
+		ByStatus:          make(map[string]int64),
+		AmountByStatus:    make(map[string]int64),
+		ByCollectionStage: make(map[string]int64),
+	}
+
+	// Overall totals.
+	_ = r.DB.QueryRowContext(ctx,
+		"SELECT COUNT(*), COALESCE(SUM(amount::bigint),0) FROM invoices WHERE workspace_id::text = ANY($1)",
+		pq.Array(wsIDs),
+	).Scan(&stats.Total, &stats.TotalAmount)
+
+	// Per payment_status.
+	statusRows, err := r.DB.QueryContext(ctx,
+		"SELECT payment_status, COUNT(*), COALESCE(SUM(amount::bigint),0) FROM invoices WHERE workspace_id::text = ANY($1) GROUP BY payment_status",
+		pq.Array(wsIDs),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("stats by status: %w", err)
+	}
+	defer statusRows.Close()
+	for statusRows.Next() {
+		var status string
+		var cnt, amt int64
+		if err := statusRows.Scan(&status, &cnt, &amt); err != nil {
+			return nil, fmt.Errorf("scan status row: %w", err)
+		}
+		stats.ByStatus[status] = cnt
+		stats.AmountByStatus[status] = amt
+	}
+	if err := statusRows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Per collection_stage.
+	stageRows, err := r.DB.QueryContext(ctx,
+		"SELECT COALESCE(collection_stage,'') AS stage, COUNT(*) FROM invoices WHERE workspace_id::text = ANY($1) GROUP BY stage",
+		pq.Array(wsIDs),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("stats by stage: %w", err)
+	}
+	defer stageRows.Close()
+	for stageRows.Next() {
+		var stage string
+		var cnt int64
+		if err := stageRows.Scan(&stage, &cnt); err != nil {
+			return nil, fmt.Errorf("scan stage row: %w", err)
+		}
+		stats.ByCollectionStage[stage] = cnt
+	}
+	return stats, stageRows.Err()
+}
+
+// UpdateStatusBulk sets payment_status for a list of invoices in one statement.
+func (r *invoiceRepo) UpdateStatusBulk(ctx context.Context, invoiceIDs []string, newStatus string) error {
+	ctx, span := r.tracer.Start(ctx, "invoice.repository.UpdateStatusBulk")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query, args, err := database.PSQL.
+		Update("invoices").
+		Set("payment_status", newStatus).
+		Set("updated_at", time.Now().UTC()).
+		Where(sq.Expr("invoice_id = ANY(?)", pq.Array(invoiceIDs))).
+		ToSql()
+	if err != nil {
+		return fmt.Errorf("build query: %w", err)
+	}
+
+	if _, err = r.DB.ExecContext(ctx, query, args...); err != nil {
+		return fmt.Errorf("bulk update status: %w", err)
+	}
+	return nil
 }

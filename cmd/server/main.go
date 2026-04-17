@@ -31,16 +31,27 @@ import (
 	pkgValidator "github.com/Sejutacita/cs-agent-bot/internal/pkg/validator"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
 	appTracer "github.com/Sejutacita/cs-agent-bot/internal/tracer"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/auth"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/classifier"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
+	customfielduc "github.com/Sejutacita/cs-agent-bot/internal/usecase/custom_field"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/escalation"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai"
+	invoiceuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/invoice"
+	masterdatauc "github.com/Sejutacita/cs-agent-bot/internal/usecase/master_data"
+	automationrule "github.com/Sejutacita/cs-agent-bot/internal/usecase/automation_rule"
+	messaginguc "github.com/Sejutacita/cs-agent-bot/internal/usecase/messaging"
+	notificationuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/notification"
+	pipelineview "github.com/Sejutacita/cs-agent-bot/internal/usecase/pipeline_view"
+	teamuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/team"
 	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/telegram"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/template"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/trigger"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/webhook"
+	workflowuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/workflow"
+	workspaceuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/workspace"
 	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
@@ -107,14 +118,33 @@ func main() {
 
 	clientRepo := repository.NewClientRepo(db, queryTimeout, tracerInstance, logger)
 	invoiceRepo := repository.NewInvoiceRepo(db, queryTimeout, tracerInstance, logger)
+	invoiceLineItemRepo := repository.NewInvoiceLineItemRepo(db, queryTimeout, tracerInstance, logger)
+	paymentLogRepo := repository.NewPaymentLogRepo(db, queryTimeout, tracerInstance, logger)
+	invoiceSeqRepo := repository.NewInvoiceSequenceRepo(db, queryTimeout, tracerInstance, logger)
 	flagsRepo := repository.NewFlagsRepo(db, queryTimeout, tracerInstance, logger)
 	convStateRepo := repository.NewConversationStateRepo(db, queryTimeout, tracerInstance, logger)
 	logRepo := repository.NewLogRepo(db, queryTimeout, tracerInstance, logger)
 	escalationRepo := repository.NewEscalationRepo(db, queryTimeout, tracerInstance, logger)
 	configRepo := repository.NewConfigRepo(db, queryTimeout, tracerInstance, logger)
 	workspaceRepo := repository.NewWorkspaceRepo(db, queryTimeout, tracerInstance, logger)
+	workspaceMemberRepo := repository.NewWorkspaceMemberRepo(db, queryTimeout, tracerInstance, logger)
+	workspaceInvitationRepo := repository.NewWorkspaceInvitationRepo(db, queryTimeout, tracerInstance, logger)
+	notificationRepo := repository.NewNotificationRepo(db, queryTimeout, tracerInstance, logger)
 	templateRepo := repository.NewTemplateRepo(db, queryTimeout, tracerInstance)
 	bgJobRepo := repository.NewBackgroundJobRepo(db, queryTimeout, tracerInstance, logger)
+	whitelistRepo := repository.NewWhitelistRepo(db, queryTimeout, tracerInstance, logger)
+	masterDataRepo := repository.NewMasterDataRepo(db, queryTimeout, tracerInstance, logger)
+	customFieldRepo := repository.NewCustomFieldDefinitionRepo(db, queryTimeout, tracerInstance, logger)
+	masterDataMutationRepo := repository.NewMasterDataMutationRepo(db, queryTimeout, tracerInstance, logger)
+	approvalRequestRepo := repository.NewApprovalRequestRepo(db, queryTimeout, tracerInstance, logger)
+	roleRepo := repository.NewRoleRepo(db, queryTimeout, tracerInstance, logger)
+	rolePermissionRepo := repository.NewRolePermissionRepo(db, queryTimeout, tracerInstance, logger)
+	teamMemberRepo := repository.NewTeamMemberRepo(db, queryTimeout, tracerInstance, logger)
+	memberWorkspaceAssignmentRepo := repository.NewMemberWorkspaceAssignmentRepo(db, queryTimeout, tracerInstance, logger)
+	messageTemplateRepo := repository.NewMessageTemplateRepo(db, queryTimeout, tracerInstance, logger)
+	emailTemplateRepo := repository.NewEmailTemplateRepo(db, queryTimeout, tracerInstance, logger)
+	templateVariableRepo := repository.NewTemplateVariableRepo(db, queryTimeout, tracerInstance, logger)
+	templateEditLogRepo := repository.NewTemplateEditLogRepo(db, queryTimeout, tracerInstance, logger)
 
 	fileStore, err := jobstore.NewLocalFileStore(cfg.ExportStoragePath)
 	if err != nil {
@@ -243,6 +273,62 @@ func main() {
 		logger,
 	)
 
+	authProxyClient := auth.NewAuthProxyClient(cfg.AuthProxyURL)
+	googleVerifier := auth.NewGoogleTokenVerifier(cfg.GoogleClientID)
+	authUsecase := auth.NewAuthUsecase(whitelistRepo, authProxyClient, googleVerifier, cfg.SessionSecret, logger)
+	workspaceUsecase := workspaceuc.New(workspaceRepo, workspaceMemberRepo, workspaceInvitationRepo, nil, nil)
+	notificationUsecase := notificationuc.New(notificationRepo)
+	masterDataUsecase := masterdatauc.New(masterDataRepo, customFieldRepo, masterDataMutationRepo, approvalRequestRepo)
+	customFieldUsecase := customfielduc.New(customFieldRepo)
+	teamUsecase := teamuc.New(
+		roleRepo,
+		rolePermissionRepo,
+		teamMemberRepo,
+		memberWorkspaceAssignmentRepo,
+		approvalRequestRepo,
+		whitelistRepo,
+		teamuc.Options{},
+	)
+	messagingUsecase := messaginguc.New(
+		messageTemplateRepo,
+		emailTemplateRepo,
+		templateVariableRepo,
+		templateEditLogRepo,
+		logger,
+	)
+
+	// Workflow engine (feat/06) — gated by USE_WORKFLOW_ENGINE.
+	workflowRepo := repository.NewWorkflowRepo(db, queryTimeout, tracerInstance, logger)
+	automationRuleRepo := repository.NewAutomationRuleRepo(db, queryTimeout, tracerInstance, logger)
+	pipelineViewRepo := repository.NewPipelineViewRepo(db, queryTimeout, tracerInstance, logger)
+
+	workflowUsecase := workflowuc.New(workflowRepo, logger)
+	automationRuleUsecase := automationrule.New(automationRuleRepo, approvalRequestRepo, logger)
+	pipelineViewUsecase := pipelineview.New(pipelineViewRepo, logger)
+
+	// Invoice billing (feat/07).
+	invoiceUsecase := invoiceuc.New(
+		db,
+		invoiceRepo,
+		invoiceLineItemRepo,
+		paymentLogRepo,
+		invoiceSeqRepo,
+		approvalRequestRepo,
+		workspaceRepo,
+		nil, // paperidSvc wired after invoiceUsecase (circular dep avoidance).
+		tracerInstance,
+		logger,
+	)
+	invoicePaperIDSvc := invoiceuc.NewPaperIDService(invoiceUsecase)
+	invoiceCron := invoiceuc.NewCronInvoice(invoiceUsecase)
+
+	// Attach workflow runner to cron runner when USE_WORKFLOW_ENGINE is enabled.
+	if cfg.UseWorkflowEngine {
+		workflowRunner := cron.NewWorkflowRunner(workflowUsecase, automationRuleUsecase, true, logger)
+		_ = workflowRunner // integrated via direct call in future cron phase
+		logger.Info().Msg("Workflow engine enabled (USE_WORKFLOW_ENGINE=true)")
+	}
+
 	validate := pkgValidator.New()
 
 	exceptionHandler := response.NewHTTPExceptionHandler(logger, cfg.EnableStackTrace)
@@ -263,6 +349,19 @@ func main() {
 		TriggerRuleRepo:  triggerRuleRepo,
 		SystemConfigRepo: systemConfigRepo,
 		RuleEngine:       ruleEngine,
+		AuthUsecase:      authUsecase,
+		WorkspaceUC:      workspaceUsecase,
+		NotificationUC:   notificationUsecase,
+		MasterDataUC:     masterDataUsecase,
+		CustomFieldUC:    customFieldUsecase,
+		TeamUC:           teamUsecase,
+		MessagingUC:      messagingUsecase,
+		WorkflowUC:       workflowUsecase,
+		AutomationRuleUC: automationRuleUsecase,
+		PipelineViewUC:   pipelineViewUsecase,
+		InvoiceUC:        invoiceUsecase,
+		InvoiceCron:      invoiceCron,
+		PaperIDSvc:       invoicePaperIDSvc,
 	})
 
 	server := &http.Server{

@@ -39,7 +39,7 @@ func NewEscalationHandler(uc dashboard.DashboardUsecase, logger zerolog.Logger, 
 // @Param        limit           query     int     false  "Limit per page (default 10, max 100)"
 // @Success      200  {object}  response.StandardResponseWithMeta{data=[]entity.Escalation}
 // @Failure      500  {object}  response.StandardResponse
-// @Router       /api/dashboard/data-master/escalations [get]
+// @Router       /api/data-master/escalations [get]
 func (h *EscalationHandler) List(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.EscalationList")
 	defer span.End()

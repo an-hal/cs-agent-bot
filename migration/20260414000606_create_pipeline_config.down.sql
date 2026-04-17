@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS pipeline_columns CASCADE;
+DROP TABLE IF EXISTS pipeline_stats CASCADE;
+DROP TABLE IF EXISTS pipeline_tabs CASCADE;
