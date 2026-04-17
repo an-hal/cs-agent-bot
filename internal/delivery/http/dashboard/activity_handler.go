@@ -3,9 +3,11 @@ package dashboard
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/middleware"
+	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/router"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/response"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/apperror"
@@ -158,4 +160,96 @@ func (h *ActivityHandler) Record(w http.ResponseWriter, r *http.Request) error {
 	logger.Info().Str("category", req.Category).Str("action", req.Action).Msg("Successfully recorded activity")
 
 	return response.StandardSuccess(w, r, http.StatusCreated, "Activity recorded", entry)
+}
+
+// Stats godoc
+// @Summary      Activity log stats
+// @Description  Returns 7 stat counters (total, today, bot, human, data_mutations, team_actions, escalations).
+// @Tags         Dashboard
+// @Param        X-Workspace-ID  header  string  true  "Workspace ID"
+// @Success      200  {object}  response.StandardResponse{data=entity.ActivityStats}
+// @Failure      500  {object}  response.StandardResponse
+// @Router       /api/dashboard/activity-logs/stats [get]
+func (h *ActivityHandler) Stats(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ActivityStats")
+	defer span.End()
+
+	wsID := ctxutil.GetWorkspaceID(ctx)
+
+	stats, err := h.uc.GetActivityStats(ctx, wsID)
+	if err != nil {
+		return err
+	}
+
+	return response.StandardSuccess(w, r, http.StatusOK, "Activity stats", stats)
+}
+
+// Recent godoc
+// @Summary      Recent activity logs (polling)
+// @Description  Returns activity log entries since a given timestamp for polling.
+// @Tags         Dashboard
+// @Param        X-Workspace-ID  header  string  true   "Workspace ID"
+// @Param        since           query   string  false  "ISO 8601 timestamp (default: 24h ago)"
+// @Param        limit           query   int     false  "Max entries (default 50)"
+// @Success      200  {object}  response.StandardResponse{data=[]entity.ActivityLog}
+// @Failure      500  {object}  response.StandardResponse
+// @Router       /api/dashboard/activity-logs/recent [get]
+func (h *ActivityHandler) Recent(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.ActivityRecent")
+	defer span.End()
+
+	wsID := ctxutil.GetWorkspaceID(ctx)
+	q := r.URL.Query()
+
+	since := time.Now().Add(-24 * time.Hour)
+	if v := q.Get("since"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			since = t
+		}
+	}
+
+	limit := 50
+	if v := q.Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 200 {
+			limit = n
+		}
+	}
+
+	logs, err := h.uc.GetRecentActivities(ctx, wsID, since, limit)
+	if err != nil {
+		return err
+	}
+	if logs == nil {
+		logs = []entity.ActivityLog{}
+	}
+
+	return response.StandardSuccess(w, r, http.StatusOK, "Recent activities", logs)
+}
+
+// CompanySummary godoc
+// @Summary      Per-company activity summary
+// @Description  Returns aggregated stats for a single company: total_sent, reply_rate, last_sent_at, etc.
+// @Tags         Dashboard
+// @Param        X-Workspace-ID  header  string  true  "Workspace ID"
+// @Param        company_id      path    string  true  "Company ID"
+// @Success      200  {object}  response.StandardResponse{data=entity.CompanySummary}
+// @Failure      400  {object}  response.StandardResponse
+// @Failure      500  {object}  response.StandardResponse
+// @Router       /api/dashboard/activity-logs/companies/{company_id}/summary [get]
+func (h *ActivityHandler) CompanySummary(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.CompanySummary")
+	defer span.End()
+
+	wsID := ctxutil.GetWorkspaceID(ctx)
+	companyID := router.GetParam(r, "company_id")
+	if companyID == "" {
+		return apperror.BadRequest("company_id is required")
+	}
+
+	summary, err := h.uc.GetCompanySummary(ctx, wsID, companyID)
+	if err != nil {
+		return err
+	}
+
+	return response.StandardSuccess(w, r, http.StatusOK, "Company summary", summary)
 }
