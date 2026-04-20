@@ -33,6 +33,7 @@ import (
 	appTracer "github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/auth"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/classifier"
+	collectionuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/collection"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
 	customfielduc "github.com/Sejutacita/cs-agent-bot/internal/usecase/custom_field"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
@@ -331,6 +332,21 @@ func main() {
 	analyticsUsecase := analyticsuc.New(analyticsRepo, revenueTargetRepo, revenueSnapshotRepo, workspaceRepo, logger)
 	reportsUsecase := reportsuc.New(analyticsRepo, revenueTargetRepo, workspaceRepo, logger)
 
+	// Collections (feat/10) — user-defined generic tables.
+	collectionRepo := repository.NewCollectionRepo(db, queryTimeout, tracerInstance, logger)
+	collectionFieldRepo := repository.NewCollectionFieldRepo(db, queryTimeout, tracerInstance, logger)
+	collectionRecordRepo := repository.NewCollectionRecordRepo(db, queryTimeout, tracerInstance, logger)
+	collectionUsecase := collectionuc.New(
+		collectionRepo,
+		collectionFieldRepo,
+		collectionRecordRepo,
+		approvalRequestRepo,
+		logRepo,
+		masterDataRepo,
+		tracerInstance,
+		logger,
+	)
+
 	// Attach workflow runner to cron runner when USE_WORKFLOW_ENGINE is enabled.
 	if cfg.UseWorkflowEngine {
 		workflowRunner := cron.NewWorkflowRunner(workflowUsecase, automationRuleUsecase, true, logger)
@@ -376,6 +392,7 @@ func main() {
 		RevenueTargetRepo:   revenueTargetRepo,
 		RevenueSnapshotRepo: revenueSnapshotRepo,
 		WorkspaceRepo:       workspaceRepo,
+		CollectionUC:        collectionUsecase,
 	})
 
 	server := &http.Server{
