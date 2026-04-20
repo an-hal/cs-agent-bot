@@ -44,6 +44,8 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	reportsH := dashboard.NewReportsHandler(deps.ReportsUC, deps.Logger, deps.Tracer)
 	revenueTargetH := dashboard.NewRevenueTargetHandler(deps.RevenueTargetRepo, deps.Logger, deps.Tracer)
 	snapshotCronH := dashboard.NewSnapshotCronHandler(deps.WorkspaceRepo, deps.RevenueSnapshotRepo, deps.Logger, deps.Tracer)
+	collectionH := dashboard.NewCollectionHandler(deps.CollectionUC, deps.Logger, deps.Tracer)
+	collectionRecordH := dashboard.NewCollectionRecordHandler(deps.CollectionUC, deps.Logger, deps.Tracer)
 	triggerRuleH := dashboard.NewTriggerRuleHandler(deps.TriggerRuleRepo, deps.LogRepo, deps.RuleEngine, deps.Logger, deps.Tracer)
 	systemConfigH := dashboard.NewSystemConfigHandler(deps.SystemConfigRepo, deps.LogRepo, deps.Logger, deps.Tracer)
 	masterDataH := dashboard.NewMasterDataHandler(deps.MasterDataUC, deps.Logger, deps.Tracer)
@@ -270,6 +272,24 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 
 	// Cron — snapshot rebuild (feat/09)
 	api.Handle(http.MethodGet, "/cron/analytics/rebuild-snapshots", oidcAuth(snapshotCronH.Rebuild))
+
+	// Collections (feat/10) — user-defined tables
+	col := api.Group("/collections")
+	col.Handle(http.MethodGet, "", wsRequired(jwtAuth(collectionH.List)))
+	col.Handle(http.MethodPost, "", wsRequired(jwtAuth(collectionH.Create)))
+	col.Handle(http.MethodGet, "/{id}", wsRequired(jwtAuth(collectionH.Get)))
+	col.Handle(http.MethodPatch, "/{id}", wsRequired(jwtAuth(collectionH.Update)))
+	col.Handle(http.MethodDelete, "/{id}", wsRequired(jwtAuth(collectionH.Delete)))
+	col.Handle(http.MethodPost, "/{id}/fields", wsRequired(jwtAuth(collectionH.AddField)))
+	col.Handle(http.MethodPatch, "/{id}/fields/{field_id}", wsRequired(jwtAuth(collectionH.UpdateField)))
+	col.Handle(http.MethodDelete, "/{id}/fields/{field_id}", wsRequired(jwtAuth(collectionH.DeleteField)))
+	col.Handle(http.MethodPost, "/approvals/{approval_id}/approve", wsRequired(jwtAuth(collectionH.ApplyApproval)))
+	col.Handle(http.MethodGet, "/{id}/records", wsRequired(jwtAuth(collectionRecordH.List)))
+	col.Handle(http.MethodGet, "/{id}/records/distinct", wsRequired(jwtAuth(collectionRecordH.Distinct)))
+	col.Handle(http.MethodPost, "/{id}/records", wsRequired(jwtAuth(collectionRecordH.Create)))
+	col.Handle(http.MethodPatch, "/{id}/records/{record_id}", wsRequired(jwtAuth(collectionRecordH.Update)))
+	col.Handle(http.MethodDelete, "/{id}/records/{record_id}", wsRequired(jwtAuth(collectionRecordH.Delete)))
+	col.Handle(http.MethodPost, "/{id}/records/bulk", wsRequired(jwtAuth(collectionRecordH.Bulk)))
 
 	// Swagger
 	r.HandlePrefix(http.MethodGet, "/swagger", httpSwagger.WrapHandler)
