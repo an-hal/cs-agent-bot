@@ -27,6 +27,9 @@ type MasterDataRepository interface {
 	Attention(ctx context.Context, workspaceID, search string, offset, limit int) ([]entity.MasterData, int64, error)
 	Query(ctx context.Context, workspaceID string, conds []QueryCondition, limit int) ([]entity.MasterData, int64, error)
 	Transition(ctx context.Context, workspaceID, id string, newStage string, coreUpdates MasterDataPatch, customUpdates map[string]any) (*entity.MasterData, *entity.MasterData, error)
+	MergeCustomFields(ctx context.Context, workspaceID, id string, updates map[string]any) error
+	BulkUpdateDaysToExpiry(ctx context.Context, workspaceID string) (int64, error)
+	BulkMarkOverdue(ctx context.Context, workspaceID string) (int64, error)
 }
 
 // MasterDataPatch carries optional core column updates.
@@ -674,6 +677,60 @@ func (r *masterDataRepo) Transition(
 		return prev, nil, err
 	}
 	return prev, curr, nil
+}
+
+func (r *masterDataRepo) MergeCustomFields(ctx context.Context, workspaceID, id string, updates map[string]any) error {
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	raw, err := json.Marshal(updates)
+	if err != nil {
+		return fmt.Errorf("marshal custom_fields: %w", err)
+	}
+	_, err = r.db.ExecContext(ctx,
+		"UPDATE clients SET custom_fields = COALESCE(custom_fields,'{}'::jsonb) || $1::jsonb WHERE workspace_id::text = $2 AND master_id::text = $3",
+		string(raw), workspaceID, id,
+	)
+	if err != nil {
+		return fmt.Errorf("merge custom_fields: %w", err)
+	}
+	return nil
+}
+
+func (r *masterDataRepo) BulkUpdateDaysToExpiry(ctx context.Context, workspaceID string) (int64, error) {
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE clients SET days_to_expiry = GREATEST(EXTRACT(DAY FROM (contract_end - NOW()))::int, 0)
+		 WHERE workspace_id::text = $1 AND stage = 'CLIENT' AND contract_end IS NOT NULL`,
+		workspaceID,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("bulk update days_to_expiry: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return n, nil
+}
+
+func (r *masterDataRepo) BulkMarkOverdue(ctx context.Context, workspaceID string) (int64, error) {
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	res, err := r.db.ExecContext(ctx,
+		`UPDATE clients SET payment_status = 'Overdue'
+		 WHERE workspace_id::text = $1
+		   AND stage = 'CLIENT'
+		   AND payment_status IN ('Pending','Menunggu')
+		   AND contract_end IS NOT NULL
+		   AND contract_end < NOW()`,
+		workspaceID,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("bulk mark overdue: %w", err)
+	}
+	n, _ := res.RowsAffected()
+	return n, nil
 }
 
 // buildConditionClause sanitizes and converts one QueryCondition.
