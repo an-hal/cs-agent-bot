@@ -12,6 +12,466 @@
     "host": "api-dev.sejutacita.id",
     "basePath": "/v1/cs-agent-bot",
     "paths": {
+        "/analytics/distributions": {
+            "get": {
+                "description": "Distribution data for charts (donut, horizontal bars).",
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Distribution data for charts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.DistributionData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/analytics/engagement": {
+            "get": {
+                "description": "Bot/NPS/checkin/cross-sell/renewed counts.",
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Engagement metrics",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.EngagementData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/analytics/forecast-accuracy": {
+            "get": {
+                "description": "Last month's forecast vs actual difference.",
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Forecast accuracy",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/analytics/kpi": {
+            "get": {
+                "description": "Comprehensive KPI data for the Analytics page.",
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Full KPI data",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.KPIData"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/analytics/revenue-trend": {
+            "get": {
+                "description": "Monthly revenue data with OLS linear regression forecast.",
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Monthly revenue data with forecast",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Total months (default 16 — 10 actual + 6 forecast)",
+                        "name": "months",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.RevenueTrendResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/automation-rules": {
+            "get": {
+                "tags": [
+                    "AutomationRules"
+                ],
+                "summary": "List automation rules",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "sdr | bd | ae | cs",
+                        "name": "role",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "active | paused | disabled",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Phase filter (P0, P1, ...)",
+                        "name": "phase",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search trigger_id, template_id, condition, rule_code",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.AutomationRule"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "AutomationRules"
+                ],
+                "summary": "Create automation rule",
+                "parameters": [
+                    {
+                        "description": "Rule data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entity.AutomationRule"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.AutomationRule"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Duplicate rule_code",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/automation-rules/change-logs": {
+            "get": {
+                "tags": [
+                    "AutomationRules"
+                ],
+                "summary": "Get automation rule change log feed",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Max number of entries (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.RuleChangeLogWithCode"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/automation-rules/{id}": {
+            "get": {
+                "description": "Returns rule with change logs.",
+                "tags": [
+                    "AutomationRules"
+                ],
+                "summary": "Get automation rule by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Updates rule fields and automatically appends change log entries.",
+                "tags": [
+                    "AutomationRules"
+                ],
+                "summary": "Update automation rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "AutomationRules"
+                ],
+                "summary": "Delete automation rule",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rule ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/clients": {
             "post": {
                 "description": "Creates a new client in the workspace specified in the X-Workspace-ID header.",
@@ -184,6 +644,1219 @@
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/collections": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Collections"
+                ],
+                "summary": "List collections",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.Collection"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Collections"
+                ],
+                "summary": "Create collection (requires approval)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Create payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/collection.CreateCollectionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ApprovalRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/collections/approvals/{approval_id}/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Checker-maker: executes the pending schema change atomically",
+                "tags": [
+                    "Collections"
+                ],
+                "summary": "Apply a pending collection_schema_change approval",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Approval request UUID",
+                        "name": "approval_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ApprovalRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/collections/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Collections"
+                ],
+                "summary": "Get collection by id",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Collection UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.Collection"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Collections"
+                ],
+                "summary": "Delete collection (requires approval)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Collection UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ApprovalRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Collections"
+                ],
+                "summary": "Update collection meta (no schema change)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Collection UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Meta",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/collection.UpdateCollectionMetaRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.Collection"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/collections/{id}/fields": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Collections"
+                ],
+                "summary": "Add field to collection (requires approval)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Collection UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Field",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/collection.FieldInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ApprovalRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/collections/{id}/fields/{field_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Collections"
+                ],
+                "summary": "Delete field (requires approval)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Collection UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Field UUID",
+                        "name": "field_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ApprovalRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Collections"
+                ],
+                "summary": "Update field meta (label, required, order, options — no type change)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Collection UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Field UUID",
+                        "name": "field_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Field meta",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/collection.UpdateFieldMetaRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.CollectionField"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/collections/{id}/records": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Collections"
+                ],
+                "summary": "List records with filter/sort/pagination",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Collection UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "page size (default 50, max 500)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "offset (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "e.g. created_at:desc, data.title:asc",
+                        "name": "sort",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter DSL, e.g. data.category in [\\",
+                        "name": "filter",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "full-text search",
+                        "name": "search",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Collections"
+                ],
+                "summary": "Create record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Collection UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Record data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.CollectionRecord"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/collections/{id}/records/bulk": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Collections"
+                ],
+                "summary": "Bulk records op (delete or update)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Collection UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Bulk payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/collection.BulkRecordsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/collection.BulkRecordsResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/collections/{id}/records/distinct": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Collections"
+                ],
+                "summary": "Distinct values for a field",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Collection UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "field key",
+                        "name": "field",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "max values to return (default 100, hard cap 500)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "filter DSL",
+                        "name": "filter",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.DistinctResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/collections/{id}/records/{record_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Collections"
+                ],
+                "summary": "Soft-delete record",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Collection UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Record UUID",
+                        "name": "record_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Collections"
+                ],
+                "summary": "Update record (PATCH merge)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Collection UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Record UUID",
+                        "name": "record_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Partial record data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.CollectionRecord"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/cron/invoices/escalate": {
+            "get": {
+                "description": "Promotes collection_stage of overdue invoices based on days_overdue thresholds.",
+                "tags": [
+                    "Cron"
+                ],
+                "summary": "Cron: auto-escalate collection stages",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/cron/invoices/overdue": {
+            "get": {
+                "description": "Marks invoices past due_date as Terlambat and writes status_change payment logs.",
+                "tags": [
+                    "Cron"
+                ],
+                "summary": "Cron: mark overdue invoices",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/activity-logs/companies/{company_id}/summary": {
+            "get": {
+                "description": "Returns aggregated stats for a single company: total_sent, reply_rate, last_sent_at, etc.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Per-company activity summary",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Company ID",
+                        "name": "company_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.CompanySummary"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/activity-logs/recent": {
+            "get": {
+                "description": "Returns activity log entries since a given timestamp for polling.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Recent activity logs (polling)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ISO 8601 timestamp (default: 24h ago)",
+                        "name": "since",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max entries (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.ActivityLog"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/activity-logs/stats": {
+            "get": {
+                "description": "Returns 7 stat counters (total, today, bot, human, data_mutations, team_actions, escalations).",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Activity log stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ActivityStats"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/clients/{company_id}/escalations": {
+            "get": {
+                "description": "Returns paginated escalations for a specific company.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "List escalations for a company",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Company ID",
+                        "name": "company_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Limit per page",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.Escalation"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/data-master/escalations/{id}": {
+            "get": {
+                "description": "Returns a single escalation.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Get escalation by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Escalation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.Escalation"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/dashboard/data-master/escalations/{id}/resolve": {
+            "put": {
+                "description": "Sets escalation status to Resolved with an optional resolution note.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Resolve escalation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Escalation ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Resolution payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.resolveEscalationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
@@ -1271,13 +2944,152 @@
                 }
             }
         },
-        "/api/invoices/{invoice_id}": {
-            "get": {
-                "description": "Returns a single invoice by invoice_id.",
+        "/api/invoices": {
+            "post": {
+                "description": "Queues an approval request for a new invoice. Returns 202 with the approval request.",
                 "tags": [
                     "Dashboard"
                 ],
-                "summary": "Get invoice by ID",
+                "summary": "Create invoice (creates approval)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Invoice create request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entity.CreateInvoiceReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ApprovalRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/invoices/by-stage": {
+            "get": {
+                "description": "Returns map of collection_stage → count for the workspace.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Invoice counts by collection stage",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "integer",
+                                                "format": "int64"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/invoices/stats": {
+            "get": {
+                "description": "Returns aggregated invoice stats for the workspace.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Invoice stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.InvoiceStats"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/invoices/{invoice_id}": {
+            "get": {
+                "description": "Returns a single invoice with its line items and payment logs.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Get invoice detail",
                 "parameters": [
                     {
                         "type": "string",
@@ -1299,7 +3111,7 @@
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/entity.Invoice"
+                                            "$ref": "#/definitions/entity.InvoiceDetail"
                                         }
                                     }
                                 }
@@ -1321,7 +3133,7 @@
                 }
             },
             "put": {
-                "description": "Partially updates an invoice (safe fields only).",
+                "description": "Partially updates an invoice (safe fields only — payment_status is rejected).",
                 "tags": [
                     "Dashboard"
                 ],
@@ -1360,6 +3172,174 @@
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Deletes an invoice. Only invoices with status \"Belum bayar\" may be deleted.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Delete invoice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invoice ID",
+                        "name": "invoice_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/invoices/{invoice_id}/mark-paid": {
+            "post": {
+                "description": "Queues an approval request to mark an invoice as paid. Returns 202 with the approval request.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Mark invoice as paid (creates approval)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invoice ID",
+                        "name": "invoice_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Mark-paid request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entity.MarkPaidReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ApprovalRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/invoices/{invoice_id}/payment-logs": {
+            "get": {
+                "description": "Returns recent payment log entries for a single invoice.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "List payment logs for an invoice",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invoice ID",
+                        "name": "invoice_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.PaymentLog"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/invoices/{invoice_id}/send-reminder": {
+            "post": {
+                "description": "Sends a payment reminder for an invoice, records the reminder log.",
+                "tags": [
+                    "Dashboard"
+                ],
+                "summary": "Send payment reminder",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invoice ID",
+                        "name": "invoice_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reminder request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entity.SendReminderReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
@@ -4206,6 +6186,667 @@
                 }
             }
         },
+        "/api/workflows": {
+            "get": {
+                "description": "List all workflows for the current workspace.",
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "List workflows",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filter: active | draft | disabled",
+                        "name": "status",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.WorkflowListItem"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Create workflow",
+                "parameters": [
+                    {
+                        "description": "Workflow data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entity.Workflow"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.Workflow"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workflows/by-slug/{slug}": {
+            "get": {
+                "description": "Returns full workflow by slug (used by /pipeline/{slug} frontend route).",
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Get workflow by slug",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow slug",
+                        "name": "slug",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.WorkflowFull"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workflows/{id}": {
+            "get": {
+                "description": "Returns full workflow with nodes, edges, steps, tabs, stats, columns.",
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Get workflow by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.WorkflowFull"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Update workflow metadata",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Delete workflow",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workflows/{id}/canvas": {
+            "put": {
+                "description": "Replaces all nodes and edges for a workflow in a single transaction.",
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Save canvas (bulk replace nodes + edges)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Canvas data",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.saveCanvasRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/workflow.CanvasSaveResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workflows/{id}/columns": {
+            "put": {
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Bulk save column config",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Columns",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.saveColumnsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workflows/{id}/config": {
+            "get": {
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Get pipeline config (tabs + stats + columns)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.WorkflowFull"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workflows/{id}/data": {
+            "get": {
+                "description": "Returns master_data records filtered by workflow stage_filter and tab DSL.",
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Get pipeline data",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Tab key (from workflow tabs config)",
+                        "name": "tab",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search company_name, pic_name, company_id",
+                        "name": "search",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Pagination offset",
+                        "name": "offset",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 20, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Sort column (updated_at, contract_end, final_price, ...)",
+                        "name": "sort_by",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "asc | desc (default desc)",
+                        "name": "sort_dir",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponseWithMeta"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workflows/{id}/stats": {
+            "put": {
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Bulk save stat cards",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Stats",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.saveStatsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workflows/{id}/steps": {
+            "get": {
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "List pipeline steps for a workflow",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.WorkflowStep"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Bulk save pipeline steps",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Steps",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.saveStepsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workflows/{id}/steps/{stepKey}": {
+            "get": {
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Get a single pipeline step by key",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Step key",
+                        "name": "stepKey",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.WorkflowStep"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Update a single pipeline step",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Step key",
+                        "name": "stepKey",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Fields to update",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/workflows/{id}/tabs": {
+            "put": {
+                "tags": [
+                    "Workflows"
+                ],
+                "summary": "Bulk save pipeline tabs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workflow ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Tabs",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.saveTabsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/workspaces": {
             "get": {
                 "security": [
@@ -4730,6 +7371,29 @@
                 }
             }
         },
+        "/cron/analytics/rebuild-snapshots": {
+            "get": {
+                "description": "Recomputes revenue_snapshots from invoices for all workspaces. Run nightly via Cloud Scheduler.",
+                "tags": [
+                    "Cron"
+                ],
+                "summary": "Rebuild revenue snapshots",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/cron/run": {
             "get": {
                 "security": [
@@ -4767,6 +7431,50 @@
                 }
             }
         },
+        "/dashboard/stats": {
+            "get": {
+                "description": "Quick stats for the dashboard overview page (lightweight — used on page load).",
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Dashboard overview stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.DashboardStats"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/readiness": {
             "get": {
                 "description": "Health check for service",
@@ -4777,6 +7485,357 @@
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/reports/client-health": {
+            "get": {
+                "description": "Risk, payment, NPS, usage distributions + payment issue clients.",
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Client health report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.HealthReportResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/reports/engagement-retention": {
+            "get": {
+                "description": "Bot activity, NPS reply, checkin reply, cross-sell, renewal stats.",
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Engagement \u0026 retention report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.EngagementReportResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/reports/executive-summary": {
+            "get": {
+                "description": "KPI summary + auto-generated highlights.",
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Executive summary report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ExecutiveSummaryResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/reports/export": {
+            "post": {
+                "description": "Export report as XLSX. Creates a background job.",
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Export report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Report tab: executive | revenue | health | engagement | comparison",
+                        "name": "tab",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Export format: xlsx (default)",
+                        "name": "format",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/reports/revenue-contracts": {
+            "get": {
+                "description": "Total contract value, plan type revenue, top clients, contract expiry, payment breakdown.",
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Revenue \u0026 contracts report",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.RevenueReportResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/reports/workspace-comparison": {
+            "get": {
+                "description": "Per-workspace stats + combined totals. Only available for holding workspace.",
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Workspace comparison report (holding only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.WorkspaceComparisonResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/revenue-targets": {
+            "get": {
+                "description": "Get all revenue targets for a workspace.",
+                "tags": [
+                    "Revenue Targets"
+                ],
+                "summary": "List revenue targets",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.RevenueTarget"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "Create or update a revenue target for a workspace.",
+                "tags": [
+                    "Revenue Targets"
+                ],
+                "summary": "Upsert revenue target",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Revenue target",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.upsertTargetRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
@@ -4830,6 +7889,60 @@
                 }
             }
         },
+        "/webhook/paperid/{workspace_id}": {
+            "post": {
+                "description": "Receives payment-status updates from Paper.id. HMAC-SHA256 verified via X-Paper-Signature header.",
+                "tags": [
+                    "webhook"
+                ],
+                "summary": "Paper.id payment webhook",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "workspace_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Hex-encoded HMAC-SHA256 of raw body",
+                        "name": "X-Paper-Signature",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Paper.id event payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/invoice.PaperIDWebhookPayload"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid signature",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/webhook/wa": {
             "post": {
                 "description": "Receives incoming WhatsApp message events from HaloAI. Returns HTTP 200 immediately, then processes the message asynchronously in a background goroutine.",
@@ -4874,6 +7987,122 @@
                 },
                 "message": {
                     "type": "string"
+                }
+            }
+        },
+        "collection.BulkRecordsRequest": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "for update",
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "op": {
+                    "description": "delete | update",
+                    "type": "string"
+                }
+            }
+        },
+        "collection.BulkRecordsResult": {
+            "type": "object",
+            "properties": {
+                "affected": {
+                    "type": "integer"
+                }
+            }
+        },
+        "collection.CreateCollectionRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/collection.FieldInput"
+                    }
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "collection.FieldInput": {
+            "type": "object",
+            "properties": {
+                "default_value": {},
+                "key": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "required": {
+                    "type": "boolean"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "collection.UpdateCollectionMetaRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "object",
+                    "additionalProperties": {}
+                }
+            }
+        },
+        "collection.UpdateFieldMetaRequest": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "required": {
+                    "type": "boolean"
                 }
             }
         },
@@ -5074,6 +8303,89 @@
                 }
             }
         },
+        "dashboard.resolveEscalationRequest": {
+            "type": "object",
+            "properties": {
+                "resolution_note": {
+                    "type": "string"
+                }
+            }
+        },
+        "dashboard.saveCanvasRequest": {
+            "type": "object",
+            "properties": {
+                "edges": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.WorkflowEdge"
+                    }
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.WorkflowNode"
+                    }
+                }
+            }
+        },
+        "dashboard.saveColumnsRequest": {
+            "type": "object",
+            "properties": {
+                "columns": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.PipelineColumn"
+                    }
+                }
+            }
+        },
+        "dashboard.saveStatsRequest": {
+            "type": "object",
+            "properties": {
+                "stats": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.PipelineStat"
+                    }
+                }
+            }
+        },
+        "dashboard.saveStepsRequest": {
+            "type": "object",
+            "properties": {
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.WorkflowStep"
+                    }
+                }
+            }
+        },
+        "dashboard.saveTabsRequest": {
+            "type": "object",
+            "properties": {
+                "tabs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.PipelineTab"
+                    }
+                }
+            }
+        },
+        "dashboard.upsertTargetRequest": {
+            "type": "object",
+            "properties": {
+                "month": {
+                    "type": "integer"
+                },
+                "target_amount": {
+                    "type": "integer"
+                },
+                "year": {
+                    "type": "integer"
+                }
+            }
+        },
         "dto.CheckinFormRequest": {
             "type": "object",
             "required": [
@@ -5248,10 +8560,36 @@
                 "actor": {
                     "type": "string"
                 },
+                "actor_email": {
+                    "type": "string"
+                },
+                "actor_name": {
+                    "description": "Actor identity (feat/08)",
+                    "type": "string"
+                },
                 "actor_type": {
                     "type": "string"
                 },
+                "bulk_count": {
+                    "type": "integer"
+                },
                 "category": {
+                    "type": "string"
+                },
+                "changed_fields": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "channel": {
+                    "type": "string"
+                },
+                "company_id": {
+                    "description": "Data-mutation category fields (feat/08)",
+                    "type": "string"
+                },
+                "company_name": {
                     "type": "string"
                 },
                 "detail": {
@@ -5260,10 +8598,30 @@
                 "id": {
                     "type": "integer"
                 },
+                "new_values": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "note": {
+                    "type": "string"
+                },
                 "occurred_at": {
                     "type": "string"
                 },
+                "phase": {
+                    "type": "string"
+                },
+                "previous_values": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
                 "ref_id": {
+                    "type": "string"
+                },
+                "replied": {
+                    "type": "boolean"
+                },
+                "reply_text": {
                     "type": "string"
                 },
                 "resource_type": {
@@ -5275,8 +8633,51 @@
                 "target": {
                     "type": "string"
                 },
+                "target_email": {
+                    "type": "string"
+                },
+                "target_id": {
+                    "type": "string"
+                },
+                "target_name": {
+                    "description": "Team-category fields (feat/08)",
+                    "type": "string"
+                },
+                "template_id": {
+                    "type": "string"
+                },
+                "trigger_id": {
+                    "description": "Bot-category trace fields (feat/08)",
+                    "type": "string"
+                },
                 "workspace_id": {
                     "type": "string"
+                }
+            }
+        },
+        "entity.ActivityStats": {
+            "type": "object",
+            "properties": {
+                "bot": {
+                    "type": "integer"
+                },
+                "data_mutations": {
+                    "type": "integer"
+                },
+                "escalations": {
+                    "type": "integer"
+                },
+                "human": {
+                    "type": "integer"
+                },
+                "team_actions": {
+                    "type": "integer"
+                },
+                "today": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
@@ -5324,6 +8725,65 @@
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.AutomationRule": {
+            "type": "object",
+            "properties": {
+                "channel": {
+                    "$ref": "#/definitions/entity.RuleChannel"
+                },
+                "condition": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "phase": {
+                    "type": "string"
+                },
+                "phase_label": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "role": {
+                    "$ref": "#/definitions/entity.RuleRole"
+                },
+                "rule_code": {
+                    "type": "string"
+                },
+                "sent_flag": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/entity.RuleStatus"
+                },
+                "stop_if": {
+                    "type": "string"
+                },
+                "template_id": {
+                    "type": "string"
+                },
+                "timing": {
+                    "type": "string"
+                },
+                "trigger_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
                     "type": "string"
                 },
                 "workspace_id": {
@@ -5569,6 +9029,202 @@
                 }
             }
         },
+        "entity.Collection": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "field_count": {
+                    "type": "integer"
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.CollectionField"
+                    }
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "permissions": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "record_count": {
+                    "type": "integer"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.CollectionField": {
+            "type": "object",
+            "properties": {
+                "collection_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "default_value": {},
+                "id": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "options": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "order": {
+                    "type": "integer"
+                },
+                "required": {
+                    "type": "boolean"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.CollectionRecord": {
+            "type": "object",
+            "properties": {
+                "collection_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "data": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.CompanySummary": {
+            "type": "object",
+            "properties": {
+                "company_id": {
+                    "type": "string"
+                },
+                "company_name": {
+                    "type": "string"
+                },
+                "current_phase": {
+                    "type": "string"
+                },
+                "has_active_escalation": {
+                    "type": "boolean"
+                },
+                "last_sent_at": {
+                    "type": "string"
+                },
+                "last_status": {
+                    "type": "string"
+                },
+                "last_trigger_id": {
+                    "type": "string"
+                },
+                "reply_rate": {
+                    "type": "number"
+                },
+                "total_replied": {
+                    "type": "integer"
+                },
+                "total_sent": {
+                    "type": "integer"
+                }
+            }
+        },
+        "entity.CreateInvoiceReq": {
+            "type": "object",
+            "properties": {
+                "company_id": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "issue_date": {
+                    "type": "string"
+                },
+                "line_items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.InvoiceLineItem"
+                    }
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "payment_terms": {
+                    "type": "integer"
+                }
+            }
+        },
+        "entity.CrossSellClient": {
+            "type": "object",
+            "properties": {
+                "company_id": {
+                    "type": "string"
+                },
+                "company_name": {
+                    "type": "string"
+                },
+                "current_plan": {
+                    "type": "string"
+                },
+                "interested_in": {
+                    "type": "string"
+                }
+            }
+        },
         "entity.CustomFieldDefinition": {
             "type": "object",
             "properties": {
@@ -5628,6 +9284,224 @@
                 }
             }
         },
+        "entity.DashboardStats": {
+            "type": "object",
+            "properties": {
+                "ae": {
+                    "type": "object",
+                    "properties": {
+                        "avg_sales_cycle": {
+                            "type": "integer"
+                        },
+                        "deals_lost": {
+                            "type": "integer"
+                        },
+                        "deals_won": {
+                            "type": "integer"
+                        },
+                        "forecast_accuracy": {
+                            "type": "number"
+                        },
+                        "quota_attainment": {
+                            "type": "number"
+                        },
+                        "win_rate": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "clients": {
+                    "type": "object",
+                    "properties": {
+                        "active": {
+                            "type": "integer"
+                        },
+                        "snoozed": {
+                            "type": "integer"
+                        },
+                        "total": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "contracts": {
+                    "type": "object",
+                    "properties": {
+                        "expired": {
+                            "type": "integer"
+                        },
+                        "expiring_30d": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "revenue": {
+                    "type": "object",
+                    "properties": {
+                        "achieved": {
+                            "type": "integer"
+                        },
+                        "pct": {
+                            "type": "number"
+                        },
+                        "target": {
+                            "type": "integer"
+                        },
+                        "upsell": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "risk": {
+                    "type": "object",
+                    "properties": {
+                        "high": {
+                            "type": "integer"
+                        },
+                        "low": {
+                            "type": "integer"
+                        },
+                        "mid": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "top_accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.TopAccount"
+                    }
+                }
+            }
+        },
+        "entity.DistinctResult": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "truncated": {
+                    "type": "boolean"
+                },
+                "values": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "entity.DistributionData": {
+            "type": "object",
+            "properties": {
+                "contract_expiry": {
+                    "type": "object",
+                    "properties": {
+                        "0_30d": {
+                            "type": "integer"
+                        },
+                        "31_60d": {
+                            "type": "integer"
+                        },
+                        "61_90d": {
+                            "type": "integer"
+                        },
+                        "90d_plus": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "engagement": {
+                    "$ref": "#/definitions/entity.EngagementData"
+                },
+                "hc_size_breakdown": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.HCSizeCount"
+                    }
+                },
+                "industry_breakdown": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.IndustryCount"
+                    }
+                },
+                "nps_distribution": {
+                    "type": "object",
+                    "properties": {
+                        "detractor": {
+                            "type": "integer"
+                        },
+                        "passive": {
+                            "type": "integer"
+                        },
+                        "promoter": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "payment_status": {
+                    "type": "object",
+                    "properties": {
+                        "lunas": {
+                            "type": "integer"
+                        },
+                        "menunggu": {
+                            "type": "integer"
+                        },
+                        "terlambat": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "plan_type_revenue": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.PlanRevenue"
+                    }
+                },
+                "risk": {
+                    "type": "object",
+                    "properties": {
+                        "high": {
+                            "type": "integer"
+                        },
+                        "low": {
+                            "type": "integer"
+                        },
+                        "mid": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "usage_score": {
+                    "type": "object",
+                    "properties": {
+                        "0_25": {
+                            "type": "integer"
+                        },
+                        "26_50": {
+                            "type": "integer"
+                        },
+                        "51_75": {
+                            "type": "integer"
+                        },
+                        "76_100": {
+                            "type": "integer"
+                        },
+                        "average": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "value_tier_breakdown": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.ValueTierCount"
+                    }
+                }
+            }
+        },
         "entity.EmailTemplate": {
             "type": "object",
             "properties": {
@@ -5672,9 +9546,82 @@
                 }
             }
         },
+        "entity.EngagementData": {
+            "type": "object",
+            "properties": {
+                "bot_active": {
+                    "type": "integer"
+                },
+                "bot_inactive": {
+                    "type": "integer"
+                },
+                "checkin_replied": {
+                    "type": "integer"
+                },
+                "cross_sell_interested": {
+                    "type": "integer"
+                },
+                "cross_sell_rejected": {
+                    "type": "integer"
+                },
+                "nps_replied": {
+                    "type": "integer"
+                },
+                "renewed": {
+                    "type": "integer"
+                }
+            }
+        },
+        "entity.EngagementReportResponse": {
+            "type": "object",
+            "properties": {
+                "bot_active": {
+                    "type": "integer"
+                },
+                "bot_inactive": {
+                    "type": "integer"
+                },
+                "checkin_not_replied": {
+                    "type": "integer"
+                },
+                "checkin_replied": {
+                    "type": "integer"
+                },
+                "cross_sell_clients": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.CrossSellClient"
+                    }
+                },
+                "cross_sell_interested": {
+                    "type": "integer"
+                },
+                "cross_sell_pending": {
+                    "type": "integer"
+                },
+                "cross_sell_rejected": {
+                    "type": "integer"
+                },
+                "not_renewed": {
+                    "type": "integer"
+                },
+                "nps_not_replied": {
+                    "type": "integer"
+                },
+                "nps_replied": {
+                    "type": "integer"
+                },
+                "renewed": {
+                    "type": "integer"
+                }
+            }
+        },
         "entity.Escalation": {
             "type": "object",
             "properties": {
+                "assigned_to": {
+                    "type": "string"
+                },
                 "company_id": {
                     "type": "string"
                 },
@@ -5687,10 +9634,19 @@
                 "escalation_id": {
                     "type": "string"
                 },
+                "master_data_id": {
+                    "type": "string"
+                },
                 "notes": {
                     "type": "string"
                 },
+                "notified_at": {
+                    "type": "string"
+                },
                 "notified_party": {
+                    "type": "string"
+                },
+                "notified_via": {
                     "type": "string"
                 },
                 "priority": {
@@ -5699,10 +9655,17 @@
                 "reason": {
                     "type": "string"
                 },
+                "resolution_note": {
+                    "type": "string"
+                },
                 "resolved_at": {
                     "type": "string"
                 },
                 "resolved_by": {
+                    "type": "string"
+                },
+                "severity": {
+                    "description": "feat/08 extensions",
                     "type": "string"
                 },
                 "status": {
@@ -5712,6 +9675,99 @@
                     "type": "string"
                 },
                 "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.ExecutiveSummaryResponse": {
+            "type": "object",
+            "properties": {
+                "highlights_negative": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "highlights_positive": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "kpi": {
+                    "type": "object",
+                    "additionalProperties": true
+                }
+            }
+        },
+        "entity.HCSizeCount": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "range": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.HealthReportResponse": {
+            "type": "object",
+            "properties": {
+                "nps_by_industry": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.IndustryNPS"
+                    }
+                },
+                "nps_distribution": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "payment_distribution": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "payment_issue_clients": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.ReportClient"
+                    }
+                },
+                "risk_distribution": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "usage_distribution": {
+                    "type": "object",
+                    "additionalProperties": {}
+                }
+            }
+        },
+        "entity.IndustryCount": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "industry": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.IndustryNPS": {
+            "type": "object",
+            "properties": {
+                "avg_nps": {
+                    "type": "number"
+                },
+                "industry": {
                     "type": "string"
                 }
             }
@@ -5734,6 +9790,12 @@
                 "created_at": {
                     "type": "string"
                 },
+                "created_by": {
+                    "type": "string"
+                },
+                "days_overdue": {
+                    "type": "integer"
+                },
                 "due_date": {
                     "type": "string"
                 },
@@ -5755,14 +9817,187 @@
                 "paid_at": {
                     "type": "string"
                 },
+                "paper_id_ref": {
+                    "type": "string"
+                },
+                "paper_id_url": {
+                    "type": "string"
+                },
+                "payment_date": {
+                    "type": "string"
+                },
+                "payment_method": {
+                    "type": "string"
+                },
                 "payment_status": {
                     "type": "string"
+                },
+                "payment_terms": {
+                    "description": "Fields added in migration 000609.",
+                    "type": "integer"
                 },
                 "reminder_count": {
                     "type": "integer"
                 },
+                "updated_at": {
+                    "type": "string"
+                },
                 "workspace_id": {
                     "type": "string"
+                }
+            }
+        },
+        "entity.InvoiceDetail": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "number"
+                },
+                "amount_paid": {
+                    "type": "number"
+                },
+                "collection_stage": {
+                    "type": "string"
+                },
+                "company_id": {
+                    "type": "string"
+                },
+                "company_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "days_overdue": {
+                    "type": "integer"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "invoice_id": {
+                    "type": "string"
+                },
+                "issue_date": {
+                    "type": "string"
+                },
+                "last_reminder_date": {
+                    "type": "string"
+                },
+                "line_items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.InvoiceLineItem"
+                    }
+                },
+                "link_invoice": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "paid_at": {
+                    "type": "string"
+                },
+                "paper_id_ref": {
+                    "type": "string"
+                },
+                "paper_id_url": {
+                    "type": "string"
+                },
+                "payment_date": {
+                    "type": "string"
+                },
+                "payment_logs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.PaymentLog"
+                    }
+                },
+                "payment_method": {
+                    "type": "string"
+                },
+                "payment_status": {
+                    "type": "string"
+                },
+                "payment_terms": {
+                    "description": "Fields added in migration 000609.",
+                    "type": "integer"
+                },
+                "reminder_count": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.InvoiceLineItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "invoice_id": {
+                    "type": "string"
+                },
+                "qty": {
+                    "type": "integer"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "subtotal": {
+                    "type": "integer"
+                },
+                "unit_price": {
+                    "type": "integer"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.InvoiceStats": {
+            "type": "object",
+            "properties": {
+                "amount_by_status": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "by_collection_stage": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "by_status": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer",
+                        "format": "int64"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "total_amount": {
+                    "type": "integer"
                 }
             }
         },
@@ -5777,6 +10012,125 @@
                 },
                 "row": {
                     "type": "integer"
+                }
+            }
+        },
+        "entity.KPIData": {
+            "type": "object",
+            "properties": {
+                "ae": {
+                    "type": "object",
+                    "properties": {
+                        "avg_sales_cycle": {
+                            "type": "integer"
+                        },
+                        "deals_lost": {
+                            "type": "integer"
+                        },
+                        "deals_won": {
+                            "type": "integer"
+                        },
+                        "forecast_accuracy": {
+                            "type": "number"
+                        },
+                        "quota_attainment": {
+                            "type": "number"
+                        },
+                        "upsell_revenue": {
+                            "type": "integer"
+                        },
+                        "win_rate": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "attention": {
+                    "type": "object",
+                    "properties": {
+                        "expiring_30d": {
+                            "type": "integer"
+                        },
+                        "high_risk": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "clients": {
+                    "type": "object",
+                    "properties": {
+                        "active": {
+                            "type": "integer"
+                        },
+                        "snoozed": {
+                            "type": "integer"
+                        },
+                        "total": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "nps": {
+                    "type": "object",
+                    "properties": {
+                        "average": {
+                            "type": "number"
+                        },
+                        "detractor": {
+                            "type": "integer"
+                        },
+                        "passive": {
+                            "type": "integer"
+                        },
+                        "promoter": {
+                            "type": "integer"
+                        },
+                        "respondents": {
+                            "type": "integer"
+                        },
+                        "score": {
+                            "type": "integer"
+                        },
+                        "total_clients": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "revenue": {
+                    "type": "object",
+                    "properties": {
+                        "achieved": {
+                            "type": "integer"
+                        },
+                        "pct": {
+                            "type": "number"
+                        },
+                        "target": {
+                            "type": "integer"
+                        },
+                        "upsell": {
+                            "type": "integer"
+                        }
+                    }
+                }
+            }
+        },
+        "entity.MarkPaidReq": {
+            "type": "object",
+            "properties": {
+                "actor": {
+                    "type": "string"
+                },
+                "amount_paid": {
+                    "type": "integer"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "payment_date": {
+                    "type": "string"
+                },
+                "payment_method": {
+                    "type": "string"
                 }
             }
         },
@@ -6001,6 +10355,343 @@
                 }
             }
         },
+        "entity.PaymentLog": {
+            "type": "object",
+            "properties": {
+                "actor": {
+                    "type": "string"
+                },
+                "amount_paid": {
+                    "type": "integer"
+                },
+                "event_type": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "invoice_id": {
+                    "type": "string"
+                },
+                "new_stage": {
+                    "type": "string"
+                },
+                "new_status": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "old_stage": {
+                    "type": "string"
+                },
+                "old_status": {
+                    "type": "string"
+                },
+                "payment_channel": {
+                    "type": "string"
+                },
+                "payment_method": {
+                    "type": "string"
+                },
+                "payment_ref": {
+                    "type": "string"
+                },
+                "raw_payload": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.PipelineColumn": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "visible": {
+                    "type": "boolean"
+                },
+                "width": {
+                    "type": "integer"
+                },
+                "workflow_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.PipelineStat": {
+            "type": "object",
+            "properties": {
+                "border": {
+                    "type": "string"
+                },
+                "color": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "metric": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "workflow_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.PipelineTab": {
+            "type": "object",
+            "properties": {
+                "filter": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "workflow_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.PlanRevenue": {
+            "type": "object",
+            "properties": {
+                "plan": {
+                    "type": "string"
+                },
+                "revenue": {
+                    "type": "integer"
+                }
+            }
+        },
+        "entity.ReportClient": {
+            "type": "object",
+            "properties": {
+                "company_id": {
+                    "type": "string"
+                },
+                "company_name": {
+                    "type": "string"
+                },
+                "contract_end": {
+                    "type": "string"
+                },
+                "days_overdue": {
+                    "type": "integer"
+                },
+                "days_to_expiry": {
+                    "type": "integer"
+                },
+                "final_price": {
+                    "type": "integer"
+                },
+                "payment_status": {
+                    "type": "string"
+                },
+                "plan_type": {
+                    "type": "string"
+                },
+                "renewed": {
+                    "type": "boolean"
+                },
+                "risk_flag": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.RevenueDataPoint": {
+            "type": "object",
+            "properties": {
+                "actual": {
+                    "type": "number"
+                },
+                "date": {
+                    "type": "string"
+                },
+                "forecast": {
+                    "type": "number"
+                },
+                "forecast_high": {
+                    "type": "number"
+                },
+                "forecast_low": {
+                    "type": "number"
+                },
+                "is_forecast": {
+                    "type": "boolean"
+                },
+                "month": {
+                    "type": "string"
+                },
+                "target": {
+                    "type": "number"
+                }
+            }
+        },
+        "entity.RevenueReportResponse": {
+            "type": "object",
+            "properties": {
+                "at_risk_clients": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.ReportClient"
+                    }
+                },
+                "contract_expiry": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "expiring_soon": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.ReportClient"
+                    }
+                },
+                "overdue_value": {
+                    "type": "integer"
+                },
+                "payment_breakdown": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "plan_type_revenue": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.PlanRevenue"
+                    }
+                },
+                "top_clients": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.ReportClient"
+                    }
+                },
+                "total_contract_value": {
+                    "type": "integer"
+                }
+            }
+        },
+        "entity.RevenueTarget": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "month": {
+                    "type": "integer"
+                },
+                "target_amount": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                },
+                "year": {
+                    "type": "integer"
+                }
+            }
+        },
+        "entity.RevenueTrendResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.RevenueDataPoint"
+                    }
+                },
+                "regression": {
+                    "type": "object",
+                    "properties": {
+                        "intercept": {
+                            "type": "number"
+                        },
+                        "r_squared": {
+                            "type": "number"
+                        },
+                        "residual_std": {
+                            "type": "number"
+                        },
+                        "slope": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "summary": {
+                    "type": "object",
+                    "properties": {
+                        "forecast_end": {
+                            "type": "number"
+                        },
+                        "growth_pct": {
+                            "type": "number"
+                        },
+                        "last_actual": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "target": {
+                    "type": "number"
+                },
+                "workspace": {
+                    "type": "string"
+                }
+            }
+        },
         "entity.Role": {
             "type": "object",
             "properties": {
@@ -6026,6 +10717,93 @@
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.RuleChangeLogWithCode": {
+            "type": "object",
+            "properties": {
+                "edited_at": {
+                    "type": "string"
+                },
+                "edited_by": {
+                    "type": "string"
+                },
+                "field": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "new_value": {
+                    "type": "string"
+                },
+                "old_value": {
+                    "type": "string"
+                },
+                "rule_code": {
+                    "type": "string"
+                },
+                "rule_id": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.RuleChannel": {
+            "type": "string",
+            "enum": [
+                "whatsapp",
+                "email",
+                "telegram"
+            ],
+            "x-enum-varnames": [
+                "RuleChannelWhatsApp",
+                "RuleChannelEmail",
+                "RuleChannelTelegram"
+            ]
+        },
+        "entity.RuleRole": {
+            "type": "string",
+            "enum": [
+                "sdr",
+                "bd",
+                "ae",
+                "cs"
+            ],
+            "x-enum-varnames": [
+                "RuleRoleSDR",
+                "RuleRoleBD",
+                "RuleRoleAE",
+                "RuleRoleCS"
+            ]
+        },
+        "entity.RuleStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "paused",
+                "disabled"
+            ],
+            "x-enum-varnames": [
+                "RuleStatusActive",
+                "RuleStatusPaused",
+                "RuleStatusDisabled"
+            ]
+        },
+        "entity.SendReminderReq": {
+            "type": "object",
+            "properties": {
+                "actor": {
+                    "type": "string"
+                },
+                "channel": {
+                    "type": "string"
+                },
+                "template_id": {
                     "type": "string"
                 }
             }
@@ -6208,6 +10986,26 @@
                 }
             }
         },
+        "entity.TopAccount": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "last_contact": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "revenue": {
+                    "type": "integer"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
         "entity.TriggerRule": {
             "type": "object",
             "properties": {
@@ -6267,6 +11065,348 @@
                 }
             }
         },
+        "entity.ValueTierCount": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer"
+                },
+                "tier": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.Workflow": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "stage_filter": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "$ref": "#/definitions/entity.WorkflowStatus"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.WorkflowEdge": {
+            "type": "object",
+            "properties": {
+                "animated": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "edge_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "source": {
+                    "type": "string"
+                },
+                "sourceHandle": {
+                    "type": "string"
+                },
+                "style": {
+                    "type": "object"
+                },
+                "target": {
+                    "type": "string"
+                },
+                "targetHandle": {
+                    "type": "string"
+                },
+                "workflow_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.WorkflowFull": {
+            "type": "object",
+            "properties": {
+                "columns": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.PipelineColumn"
+                    }
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "edges": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.WorkflowEdge"
+                    }
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "nodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.WorkflowNode"
+                    }
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "stage_filter": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "stats": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.PipelineStat"
+                    }
+                },
+                "status": {
+                    "$ref": "#/definitions/entity.WorkflowStatus"
+                },
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.WorkflowStep"
+                    }
+                },
+                "tabs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.PipelineTab"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.WorkflowListItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "edge_count": {
+                    "type": "integer"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "node_count": {
+                    "type": "integer"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "stage_filter": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "status": {
+                    "$ref": "#/definitions/entity.WorkflowStatus"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.WorkflowNode": {
+            "type": "object",
+            "properties": {
+                "connectable": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "data": {
+                    "type": "object"
+                },
+                "draggable": {
+                    "type": "boolean"
+                },
+                "height": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "node_id": {
+                    "type": "string"
+                },
+                "node_type": {
+                    "type": "string"
+                },
+                "position_x": {
+                    "type": "number"
+                },
+                "position_y": {
+                    "type": "number"
+                },
+                "selectable": {
+                    "type": "boolean"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "width": {
+                    "type": "number"
+                },
+                "workflow_id": {
+                    "type": "string"
+                },
+                "z_index": {
+                    "type": "integer"
+                }
+            }
+        },
+        "entity.WorkflowStatus": {
+            "type": "string",
+            "enum": [
+                "active",
+                "draft",
+                "disabled"
+            ],
+            "x-enum-varnames": [
+                "WorkflowStatusActive",
+                "WorkflowStatusDraft",
+                "WorkflowStatusDisabled"
+            ]
+        },
+        "entity.WorkflowStep": {
+            "type": "object",
+            "properties": {
+                "condition": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "emailTemplateId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "key": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "messageTemplateId": {
+                    "type": "string"
+                },
+                "phase": {
+                    "type": "string"
+                },
+                "sentFlag": {
+                    "type": "string"
+                },
+                "sort_order": {
+                    "type": "integer"
+                },
+                "stopIf": {
+                    "type": "string"
+                },
+                "templateId": {
+                    "type": "string"
+                },
+                "timing": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "workflow_id": {
+                    "type": "string"
+                }
+            }
+        },
         "entity.Workspace": {
             "type": "object",
             "properties": {
@@ -6309,6 +11449,21 @@
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "entity.WorkspaceComparisonResponse": {
+            "type": "object",
+            "properties": {
+                "combined": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "workspaces": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.WorkspaceStats"
+                    }
                 }
             }
         },
@@ -6389,6 +11544,24 @@
                 }
             }
         },
+        "entity.WorkspaceStats": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "stats": {
+                    "type": "object",
+                    "additionalProperties": {}
+                }
+            }
+        },
         "internal_delivery_http_payment.VerifyPaymentRequest": {
             "type": "object",
             "properties": {
@@ -6402,6 +11575,36 @@
                     "type": "string"
                 },
                 "verified_by": {
+                    "type": "string"
+                }
+            }
+        },
+        "invoice.PaperIDWebhookPayload": {
+            "type": "object",
+            "properties": {
+                "_raw": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "amount_paid": {
+                    "type": "integer"
+                },
+                "external_id": {
+                    "type": "string"
+                },
+                "paid_at": {
+                    "type": "string"
+                },
+                "payment_channel": {
+                    "type": "string"
+                },
+                "payment_method": {
+                    "type": "string"
+                },
+                "payment_ref": {
+                    "type": "string"
+                },
+                "status": {
                     "type": "string"
                 }
             }
@@ -7166,6 +12369,23 @@
                     "type": "string"
                 },
                 "var_key": {
+                    "type": "string"
+                }
+            }
+        },
+        "workflow.CanvasSaveResult": {
+            "type": "object",
+            "properties": {
+                "edge_count": {
+                    "type": "integer"
+                },
+                "node_count": {
+                    "type": "integer"
+                },
+                "saved_at": {
+                    "type": "string"
+                },
+                "workflow_id": {
                     "type": "string"
                 }
             }

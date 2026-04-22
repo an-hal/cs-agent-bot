@@ -65,7 +65,7 @@ type WorkflowNode struct {
 	PositionY  float64   `db:"position_y"  json:"position_y"`
 	Width      *float64  `db:"width"       json:"width,omitempty"`
 	Height     *float64  `db:"height"      json:"height,omitempty"`
-	Data       json.RawMessage `db:"data"  json:"data"`
+	Data       json.RawMessage `db:"data"  json:"data" swaggertype:"object"`
 	Draggable  bool      `db:"draggable"   json:"draggable"`
 	Selectable bool      `db:"selectable"  json:"selectable"`
 	Connectable bool     `db:"connectable" json:"connectable"`
@@ -113,7 +113,7 @@ type WorkflowEdge struct {
 	TargetHandle *string         `db:"target_handle"  json:"targetHandle,omitempty"`
 	Label        *string         `db:"label"          json:"label,omitempty"`
 	Animated     bool            `db:"animated"       json:"animated"`
-	Style        json.RawMessage `db:"style"          json:"style,omitempty"`
+	Style        json.RawMessage `db:"style"          json:"style,omitempty" swaggertype:"object"`
 	CreatedAt    time.Time       `db:"created_at"     json:"created_at"`
 }
 
