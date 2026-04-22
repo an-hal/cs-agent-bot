@@ -28,6 +28,8 @@ import (
 	pkgDatabase "github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/jobstore"
 	pkgLogger "github.com/Sejutacita/cs-agent-bot/internal/pkg/logger"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/conditiondsl"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/workday"
 	pkgValidator "github.com/Sejutacita/cs-agent-bot/internal/pkg/validator"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
 	appTracer "github.com/Sejutacita/cs-agent-bot/internal/tracer"
@@ -348,11 +350,29 @@ func main() {
 	)
 
 	// Attach workflow runner to cron runner when USE_WORKFLOW_ENGINE is enabled.
+	actionLogWorkflowRepo := repository.NewActionLogWorkflowRepo(db, queryTimeout, tracerInstance, logger)
+	workdayProvider := workday.NewProvider(cfg.GoogleCalendarAPIKey)
+	conditionEvaluator := conditiondsl.NewEvaluator(workdayProvider)
+	stageHandler := cron.NewStageHandler(masterDataRepo, actionLogWorkflowRepo, logger)
+	actionDispatcher := cron.NewChannelDispatcher(stageHandler, logger)
+	workflowRunner := cron.NewWorkflowRunner(
+		workflowUsecase,
+		automationRuleUsecase,
+		conditionEvaluator,
+		actionLogWorkflowRepo,
+		masterDataRepo,
+		actionDispatcher,
+		stageHandler,
+		workdayProvider,
+		cfg.UseWorkflowEngine,
+		logger,
+	)
+	maintenanceRunner := cron.NewMaintenanceRunner(masterDataRepo, logger)
+	_ = maintenanceRunner // wired to HTTP endpoints below
 	if cfg.UseWorkflowEngine {
-		workflowRunner := cron.NewWorkflowRunner(workflowUsecase, automationRuleUsecase, true, logger)
-		_ = workflowRunner // integrated via direct call in future cron phase
 		logger.Info().Msg("Workflow engine enabled (USE_WORKFLOW_ENGINE=true)")
 	}
+	_ = workflowRunner
 
 	validate := pkgValidator.New()
 

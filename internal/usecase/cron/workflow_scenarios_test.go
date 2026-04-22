@@ -64,7 +64,7 @@ func TestWorkflowRunner_DisabledFlag_IsAlwaysNoOpRegardlessOfRecordState(t *test
 			wfUC := &stubWorkflowUC{wf: &entity.Workflow{ID: "wf-1", Slug: "ae-lifecycle"}}
 			wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{
 				rules: []entity.AutomationRule{activeRule("RULE-001", "any_trigger")},
-			}, false, zerolog.Nop())
+			}, nil, nil, nil, nil, nil, nil, false, zerolog.Nop())
 
 			matched, err := wr.RunForRecord(context.Background(), "ws-1", tc.md)
 			if err != nil {
@@ -91,7 +91,7 @@ func TestWorkflowRunner_NoWorkflowConfiguredForStage_SilentlySkips(t *testing.T)
 			wfUC := &stubWorkflowUC{wf: nil} // no workflow for any stage
 			wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{
 				rules: []entity.AutomationRule{activeRule("R1", "T1")},
-			}, true, zerolog.Nop())
+			}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 			matched, err := wr.RunForRecord(context.Background(), "ws-x", entity.MasterData{
 				ID: "md-1", Stage: stage,
@@ -120,7 +120,7 @@ func TestWorkflowRunner_UnknownSlugRole_SkipsWithoutError(t *testing.T) {
 			wfUC := &stubWorkflowUC{wf: newWorkflow("wf-1", slug, "CLIENT")}
 			wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{
 				rules: []entity.AutomationRule{activeRule("R1", "T1")},
-			}, true, zerolog.Nop())
+			}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 			matched, err := wr.RunForRecord(context.Background(), "ws-1", entity.MasterData{
 				ID: "md-1", Stage: entity.StageClient,
@@ -164,13 +164,13 @@ func TestWorkflowRunner_ResolveRole_KnownPrefixes_MatchRules(t *testing.T) {
 			}
 
 			wfUC := &stubWorkflowUC{wf: newWorkflow("wf-1", tc.slug, "CLIENT")}
-			wr := ucron.NewWorkflowRunner(wfUC, captureAU, true, zerolog.Nop())
+			wr := ucron.NewWorkflowRunner(wfUC, captureAU, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 			defer cancel()
 
 			_, err := wr.RunForRecord(ctx, "ws-1", entity.MasterData{
-				ID: "md-1", Stage: entity.StageClient,
+				ID: "md-1", Stage: entity.StageClient, BotActive: true,
 			})
 			if err != nil && !errors.Is(err, context.DeadlineExceeded) {
 				t.Fatalf("unexpected error: %v", err)
@@ -194,7 +194,7 @@ func TestWorkflowRunner_ActiveRule_ReturnsMatchedTrue(t *testing.T) {
 
 	wfUC := &stubWorkflowUC{wf: newWorkflow("wf-ae", "ae-lifecycle", "CLIENT")}
 	rules := []entity.AutomationRule{activeRule("RULE-AE-001", "Onboarding_Welcome")}
-	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -237,7 +237,7 @@ func TestWorkflowRunner_PausedAndDisabledRules_NeverMatched(t *testing.T) {
 				Role:      entity.RuleRoleAE,
 				Phase:     "P0",
 			}}
-			wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, true, zerolog.Nop())
+			wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 			matched, err := wr.RunForRecord(context.Background(), "ws-1", entity.MasterData{
 				ID: "md-1", Stage: entity.StageClient,
@@ -258,7 +258,7 @@ func TestWorkflowRunner_EmptyRulesList_NoMatch(t *testing.T) {
 	t.Parallel()
 
 	wfUC := &stubWorkflowUC{wf: newWorkflow("wf-1", "ae-lifecycle", "CLIENT")}
-	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: nil}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: nil}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	matched, err := wr.RunForRecord(context.Background(), "ws-1", entity.MasterData{
 		ID: "md-1", Stage: entity.StageClient,
@@ -278,7 +278,7 @@ func TestWorkflowRunner_RejectsWriteToPaymentStatus(t *testing.T) {
 
 	wfUC := &stubWorkflowUC{wf: newWorkflow("wf-1", "ae-lifecycle", "CLIENT")}
 	rules := []entity.AutomationRule{activeRule("RULE-PAY", "Payment_Status_Change")}
-	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	md := entity.MasterData{
 		ID:            "md-1",
@@ -304,7 +304,7 @@ func TestWorkflowRunner_RejectsWriteToRenewed(t *testing.T) {
 
 	wfUC := &stubWorkflowUC{wf: newWorkflow("wf-1", "ae-lifecycle", "CLIENT")}
 	rules := []entity.AutomationRule{activeRule("RULE-REN", "Renewal_Trigger")}
-	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	md := entity.MasterData{
 		ID:        "md-2",
@@ -332,7 +332,7 @@ func TestWorkflowRunner_RejectsWriteToRejected(t *testing.T) {
 
 	wfUC := &stubWorkflowUC{wf: newWorkflow("wf-1", "ae-lifecycle", "CLIENT")}
 	rules := []entity.AutomationRule{activeRule("RULE-REJ", "Rejection_Trigger")}
-	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	md := entity.MasterData{
 		ID:        "md-3",
@@ -369,7 +369,7 @@ func TestWorkflowRunner_IsAdditive_RecordUnchangedAfterRun(t *testing.T) {
 		activeRule("RULE-001", "HealthRisk_Check"),
 		activeRule("RULE-002", "Invoice_Due"),
 	}
-	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	md := entity.MasterData{
 		ID:            "md-additive",
@@ -411,7 +411,7 @@ func TestWorkflowRunner_GetActiveForStageError_PropagatesError(t *testing.T) {
 
 	sentinel := errors.New("db timeout")
 	wfUC := &stubWorkflowUCError{err: sentinel}
-	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	_, err := wr.RunForRecord(context.Background(), "ws-1", entity.MasterData{
 		ID: "md-1", Stage: entity.StageClient,
@@ -429,7 +429,7 @@ func TestWorkflowRunner_GetActiveByRoleError_PropagatesError(t *testing.T) {
 
 	sentinel := errors.New("role query failed")
 	wfUC := &stubWorkflowUC{wf: newWorkflow("wf-1", "ae-lifecycle", "CLIENT")}
-	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUCError{err: sentinel}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUCError{err: sentinel}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	_, err := wr.RunForRecord(context.Background(), "ws-1", entity.MasterData{
 		ID: "md-1", Stage: entity.StageClient,
@@ -453,7 +453,7 @@ func TestWorkflowRunner_ContextCancelled_ReturnsCtxError(t *testing.T) {
 		activeRule("R1", "T1"),
 		activeRule("R2", "T2"),
 	}
-	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 	defer cancel()
@@ -479,7 +479,7 @@ func TestWorkflowRunner_MultipleActiveRules_AllConsidered(t *testing.T) {
 		{ID: "r2", RuleCode: "R2", TriggerID: "T2", Status: entity.RuleStatusPaused, Role: entity.RuleRoleAE, Phase: "P0"},
 		activeRule("R3", "T3"),
 	}
-	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
@@ -504,7 +504,7 @@ func TestWorkflowRunner_WorkspaceIDPassedToWorkflowUC(t *testing.T) {
 	captureWF := &capturingWorkflowUC{
 		stubWorkflowUC: stubWorkflowUC{wf: nil},
 	}
-	wr := ucron.NewWorkflowRunner(captureWF, &stubAutomationUC{}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(captureWF, &stubAutomationUC{}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	targetWS := "ws-specific-123"
 	_, _ = wr.RunForRecord(context.Background(), targetWS, entity.MasterData{
@@ -528,7 +528,7 @@ func TestWorkflowRunner_StagePassedFromMasterData(t *testing.T) {
 	captureWF := &capturingWorkflowUC{
 		stubWorkflowUC: stubWorkflowUC{wf: nil},
 	}
-	wr := ucron.NewWorkflowRunner(captureWF, &stubAutomationUC{}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(captureWF, &stubAutomationUC{}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	stages := []string{entity.StageLead, entity.StageProspect, entity.StageClient, entity.StageDormant}
 	for _, stage := range stages {
@@ -556,7 +556,7 @@ func TestWorkflowRunner_MixedRules_OnlyActiveRulesCountAsMatch(t *testing.T) {
 		{ID: "r1", RuleCode: "R1", TriggerID: "T1", Status: entity.RuleStatusPaused, Role: entity.RuleRoleCS, Phase: "P0"},
 		{ID: "r2", RuleCode: "R2", TriggerID: "T2", Status: entity.RuleStatusDisabled, Role: entity.RuleRoleCS, Phase: "P0"},
 	}
-	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: allPaused}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: allPaused}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	matched, err := wr.RunForRecord(context.Background(), "ws-1", entity.MasterData{
 		ID: "md-1", Stage: entity.StageClient,
@@ -658,7 +658,7 @@ func TestWorkflowRunner_ForbiddenFields_TableDriven(t *testing.T) {
 				activeRule("RULE-PAYMENT-WRITE", "Payment_Status_Override"),
 				activeRule("RULE-RENEWED-WRITE", "Renewal_Flag_Override"),
 			}
-			wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, true, zerolog.Nop())
+			wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 			md := entity.MasterData{
 				ID:            "md-forbidden",
@@ -705,7 +705,7 @@ func TestWorkflowRunner_RoleRouting_SDRBDCSWorkflows(t *testing.T) {
 				stubAutomationUC: stubAutomationUC{rules: nil},
 			}
 			wfUC := &stubWorkflowUC{wf: newWorkflow("wf-1", tc.slug, entity.StageLead)}
-			wr := ucron.NewWorkflowRunner(wfUC, captureAU, true, zerolog.Nop())
+			wr := ucron.NewWorkflowRunner(wfUC, captureAU, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 			_, _ = wr.RunForRecord(context.Background(), "ws-1", entity.MasterData{
 				ID: "md-1", Stage: entity.StageLead,
