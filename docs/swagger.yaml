@@ -7,6 +7,84 @@ definitions:
       message:
         type: string
     type: object
+  collection.BulkRecordsRequest:
+    properties:
+      data:
+        additionalProperties: {}
+        description: for update
+        type: object
+      ids:
+        items:
+          type: string
+        type: array
+      op:
+        description: delete | update
+        type: string
+    type: object
+  collection.BulkRecordsResult:
+    properties:
+      affected:
+        type: integer
+    type: object
+  collection.CreateCollectionRequest:
+    properties:
+      description:
+        type: string
+      fields:
+        items:
+          $ref: '#/definitions/collection.FieldInput'
+        type: array
+      icon:
+        type: string
+      name:
+        type: string
+      permissions:
+        additionalProperties: {}
+        type: object
+      slug:
+        type: string
+    type: object
+  collection.FieldInput:
+    properties:
+      default_value: {}
+      key:
+        type: string
+      label:
+        type: string
+      options:
+        additionalProperties: {}
+        type: object
+      order:
+        type: integer
+      required:
+        type: boolean
+      type:
+        type: string
+    type: object
+  collection.UpdateCollectionMetaRequest:
+    properties:
+      description:
+        type: string
+      icon:
+        type: string
+      name:
+        type: string
+      permissions:
+        additionalProperties: {}
+        type: object
+    type: object
+  collection.UpdateFieldMetaRequest:
+    properties:
+      label:
+        type: string
+      options:
+        additionalProperties: {}
+        type: object
+      order:
+        type: integer
+      required:
+        type: boolean
+    type: object
   custom_field.CreateRequest:
     properties:
       column_width:
@@ -136,6 +214,59 @@ definitions:
       target:
         type: string
     type: object
+  dashboard.resolveEscalationRequest:
+    properties:
+      resolution_note:
+        type: string
+    type: object
+  dashboard.saveCanvasRequest:
+    properties:
+      edges:
+        items:
+          $ref: '#/definitions/entity.WorkflowEdge'
+        type: array
+      nodes:
+        items:
+          $ref: '#/definitions/entity.WorkflowNode'
+        type: array
+    type: object
+  dashboard.saveColumnsRequest:
+    properties:
+      columns:
+        items:
+          $ref: '#/definitions/entity.PipelineColumn'
+        type: array
+    type: object
+  dashboard.saveStatsRequest:
+    properties:
+      stats:
+        items:
+          $ref: '#/definitions/entity.PipelineStat'
+        type: array
+    type: object
+  dashboard.saveStepsRequest:
+    properties:
+      steps:
+        items:
+          $ref: '#/definitions/entity.WorkflowStep'
+        type: array
+    type: object
+  dashboard.saveTabsRequest:
+    properties:
+      tabs:
+        items:
+          $ref: '#/definitions/entity.PipelineTab'
+        type: array
+    type: object
+  dashboard.upsertTargetRequest:
+    properties:
+      month:
+        type: integer
+      target_amount:
+        type: integer
+      year:
+        type: integer
+    type: object
   dto.CheckinFormRequest:
     properties:
       company_id:
@@ -257,17 +388,49 @@ definitions:
         type: string
       actor:
         type: string
+      actor_email:
+        type: string
+      actor_name:
+        description: Actor identity (feat/08)
+        type: string
       actor_type:
         type: string
+      bulk_count:
+        type: integer
       category:
+        type: string
+      changed_fields:
+        items:
+          type: string
+        type: array
+      channel:
+        type: string
+      company_id:
+        description: Data-mutation category fields (feat/08)
+        type: string
+      company_name:
         type: string
       detail:
         type: string
       id:
         type: integer
+      new_values:
+        additionalProperties: {}
+        type: object
+      note:
+        type: string
       occurred_at:
         type: string
+      phase:
+        type: string
+      previous_values:
+        additionalProperties: {}
+        type: object
       ref_id:
+        type: string
+      replied:
+        type: boolean
+      reply_text:
         type: string
       resource_type:
         type: string
@@ -275,8 +438,37 @@ definitions:
         type: string
       target:
         type: string
+      target_email:
+        type: string
+      target_id:
+        type: string
+      target_name:
+        description: Team-category fields (feat/08)
+        type: string
+      template_id:
+        type: string
+      trigger_id:
+        description: Bot-category trace fields (feat/08)
+        type: string
       workspace_id:
         type: string
+    type: object
+  entity.ActivityStats:
+    properties:
+      bot:
+        type: integer
+      data_mutations:
+        type: integer
+      escalations:
+        type: integer
+      human:
+        type: integer
+      team_actions:
+        type: integer
+      today:
+        type: integer
+      total:
+        type: integer
     type: object
   entity.ApprovalRequest:
     properties:
@@ -308,6 +500,45 @@ definitions:
       status:
         type: string
       updated_at:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  entity.AutomationRule:
+    properties:
+      channel:
+        $ref: '#/definitions/entity.RuleChannel'
+      condition:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      phase:
+        type: string
+      phase_label:
+        type: string
+      priority:
+        type: string
+      role:
+        $ref: '#/definitions/entity.RuleRole'
+      rule_code:
+        type: string
+      sent_flag:
+        type: string
+      status:
+        $ref: '#/definitions/entity.RuleStatus'
+      stop_if:
+        type: string
+      template_id:
+        type: string
+      timing:
+        type: string
+      trigger_id:
+        type: string
+      updated_at:
+        type: string
+      updated_by:
         type: string
       workspace_id:
         type: string
@@ -471,6 +702,136 @@ definitions:
       workspace_id:
         type: string
     type: object
+  entity.Collection:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: string
+      deleted_at:
+        type: string
+      description:
+        type: string
+      field_count:
+        type: integer
+      fields:
+        items:
+          $ref: '#/definitions/entity.CollectionField'
+        type: array
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      permissions:
+        additionalProperties: {}
+        type: object
+      record_count:
+        type: integer
+      slug:
+        type: string
+      updated_at:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  entity.CollectionField:
+    properties:
+      collection_id:
+        type: string
+      created_at:
+        type: string
+      default_value: {}
+      id:
+        type: string
+      key:
+        type: string
+      label:
+        type: string
+      options:
+        additionalProperties: {}
+        type: object
+      order:
+        type: integer
+      required:
+        type: boolean
+      type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  entity.CollectionRecord:
+    properties:
+      collection_id:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      data:
+        additionalProperties: {}
+        type: object
+      deleted_at:
+        type: string
+      id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  entity.CompanySummary:
+    properties:
+      company_id:
+        type: string
+      company_name:
+        type: string
+      current_phase:
+        type: string
+      has_active_escalation:
+        type: boolean
+      last_sent_at:
+        type: string
+      last_status:
+        type: string
+      last_trigger_id:
+        type: string
+      reply_rate:
+        type: number
+      total_replied:
+        type: integer
+      total_sent:
+        type: integer
+    type: object
+  entity.CreateInvoiceReq:
+    properties:
+      company_id:
+        type: string
+      created_by:
+        type: string
+      due_date:
+        type: string
+      issue_date:
+        type: string
+      line_items:
+        items:
+          $ref: '#/definitions/entity.InvoiceLineItem'
+        type: array
+      notes:
+        type: string
+      payment_terms:
+        type: integer
+    type: object
+  entity.CrossSellClient:
+    properties:
+      company_id:
+        type: string
+      company_name:
+        type: string
+      current_plan:
+        type: string
+      interested_in:
+        type: string
+    type: object
   entity.CustomFieldDefinition:
     properties:
       column_width:
@@ -510,6 +871,147 @@ definitions:
       workspace_id:
         type: string
     type: object
+  entity.DashboardStats:
+    properties:
+      ae:
+        properties:
+          avg_sales_cycle:
+            type: integer
+          deals_lost:
+            type: integer
+          deals_won:
+            type: integer
+          forecast_accuracy:
+            type: number
+          quota_attainment:
+            type: number
+          win_rate:
+            type: number
+        type: object
+      clients:
+        properties:
+          active:
+            type: integer
+          snoozed:
+            type: integer
+          total:
+            type: integer
+        type: object
+      contracts:
+        properties:
+          expired:
+            type: integer
+          expiring_30d:
+            type: integer
+        type: object
+      revenue:
+        properties:
+          achieved:
+            type: integer
+          pct:
+            type: number
+          target:
+            type: integer
+          upsell:
+            type: integer
+        type: object
+      risk:
+        properties:
+          high:
+            type: integer
+          low:
+            type: integer
+          mid:
+            type: integer
+        type: object
+      top_accounts:
+        items:
+          $ref: '#/definitions/entity.TopAccount'
+        type: array
+    type: object
+  entity.DistinctResult:
+    properties:
+      field:
+        type: string
+      truncated:
+        type: boolean
+      values:
+        items:
+          type: string
+        type: array
+    type: object
+  entity.DistributionData:
+    properties:
+      contract_expiry:
+        properties:
+          0_30d:
+            type: integer
+          31_60d:
+            type: integer
+          61_90d:
+            type: integer
+          90d_plus:
+            type: integer
+        type: object
+      engagement:
+        $ref: '#/definitions/entity.EngagementData'
+      hc_size_breakdown:
+        items:
+          $ref: '#/definitions/entity.HCSizeCount'
+        type: array
+      industry_breakdown:
+        items:
+          $ref: '#/definitions/entity.IndustryCount'
+        type: array
+      nps_distribution:
+        properties:
+          detractor:
+            type: integer
+          passive:
+            type: integer
+          promoter:
+            type: integer
+        type: object
+      payment_status:
+        properties:
+          lunas:
+            type: integer
+          menunggu:
+            type: integer
+          terlambat:
+            type: integer
+        type: object
+      plan_type_revenue:
+        items:
+          $ref: '#/definitions/entity.PlanRevenue'
+        type: array
+      risk:
+        properties:
+          high:
+            type: integer
+          low:
+            type: integer
+          mid:
+            type: integer
+        type: object
+      usage_score:
+        properties:
+          "0_25":
+            type: integer
+          "26_50":
+            type: integer
+          "51_75":
+            type: integer
+          "76_100":
+            type: integer
+          average:
+            type: number
+        type: object
+      value_tier_breakdown:
+        items:
+          $ref: '#/definitions/entity.ValueTierCount'
+        type: array
+    type: object
   entity.EmailTemplate:
     properties:
       body_html:
@@ -539,8 +1041,56 @@ definitions:
       workspace_id:
         type: string
     type: object
+  entity.EngagementData:
+    properties:
+      bot_active:
+        type: integer
+      bot_inactive:
+        type: integer
+      checkin_replied:
+        type: integer
+      cross_sell_interested:
+        type: integer
+      cross_sell_rejected:
+        type: integer
+      nps_replied:
+        type: integer
+      renewed:
+        type: integer
+    type: object
+  entity.EngagementReportResponse:
+    properties:
+      bot_active:
+        type: integer
+      bot_inactive:
+        type: integer
+      checkin_not_replied:
+        type: integer
+      checkin_replied:
+        type: integer
+      cross_sell_clients:
+        items:
+          $ref: '#/definitions/entity.CrossSellClient'
+        type: array
+      cross_sell_interested:
+        type: integer
+      cross_sell_pending:
+        type: integer
+      cross_sell_rejected:
+        type: integer
+      not_renewed:
+        type: integer
+      nps_not_replied:
+        type: integer
+      nps_replied:
+        type: integer
+      renewed:
+        type: integer
+    type: object
   entity.Escalation:
     properties:
+      assigned_to:
+        type: string
       company_id:
         type: string
       created_at:
@@ -549,23 +1099,95 @@ definitions:
         type: string
       escalation_id:
         type: string
+      master_data_id:
+        type: string
       notes:
         type: string
+      notified_at:
+        type: string
       notified_party:
+        type: string
+      notified_via:
         type: string
       priority:
         type: string
       reason:
         type: string
+      resolution_note:
+        type: string
       resolved_at:
         type: string
       resolved_by:
+        type: string
+      severity:
+        description: feat/08 extensions
         type: string
       status:
         type: string
       telegram_message_sent:
         type: string
       workspace_id:
+        type: string
+    type: object
+  entity.ExecutiveSummaryResponse:
+    properties:
+      highlights_negative:
+        items:
+          type: string
+        type: array
+      highlights_positive:
+        items:
+          type: string
+        type: array
+      kpi:
+        additionalProperties: true
+        type: object
+    type: object
+  entity.HCSizeCount:
+    properties:
+      count:
+        type: integer
+      range:
+        type: string
+    type: object
+  entity.HealthReportResponse:
+    properties:
+      nps_by_industry:
+        items:
+          $ref: '#/definitions/entity.IndustryNPS'
+        type: array
+      nps_distribution:
+        additionalProperties:
+          type: integer
+        type: object
+      payment_distribution:
+        additionalProperties:
+          type: integer
+        type: object
+      payment_issue_clients:
+        items:
+          $ref: '#/definitions/entity.ReportClient'
+        type: array
+      risk_distribution:
+        additionalProperties:
+          type: integer
+        type: object
+      usage_distribution:
+        additionalProperties: {}
+        type: object
+    type: object
+  entity.IndustryCount:
+    properties:
+      count:
+        type: integer
+      industry:
+        type: string
+    type: object
+  entity.IndustryNPS:
+    properties:
+      avg_nps:
+        type: number
+      industry:
         type: string
     type: object
   entity.Invoice:
@@ -580,6 +1202,10 @@ definitions:
         type: string
       created_at:
         type: string
+      created_by:
+        type: string
+      days_overdue:
+        type: integer
       due_date:
         type: string
       invoice_id:
@@ -594,12 +1220,128 @@ definitions:
         type: string
       paid_at:
         type: string
+      paper_id_ref:
+        type: string
+      paper_id_url:
+        type: string
+      payment_date:
+        type: string
+      payment_method:
+        type: string
       payment_status:
         type: string
+      payment_terms:
+        description: Fields added in migration 000609.
+        type: integer
       reminder_count:
+        type: integer
+      updated_at:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  entity.InvoiceDetail:
+    properties:
+      amount:
+        type: number
+      amount_paid:
+        type: number
+      collection_stage:
+        type: string
+      company_id:
+        type: string
+      company_name:
+        type: string
+      created_at:
+        type: string
+      created_by:
+        type: string
+      days_overdue:
+        type: integer
+      due_date:
+        type: string
+      invoice_id:
+        type: string
+      issue_date:
+        type: string
+      last_reminder_date:
+        type: string
+      line_items:
+        items:
+          $ref: '#/definitions/entity.InvoiceLineItem'
+        type: array
+      link_invoice:
+        type: string
+      notes:
+        type: string
+      paid_at:
+        type: string
+      paper_id_ref:
+        type: string
+      paper_id_url:
+        type: string
+      payment_date:
+        type: string
+      payment_logs:
+        items:
+          $ref: '#/definitions/entity.PaymentLog'
+        type: array
+      payment_method:
+        type: string
+      payment_status:
+        type: string
+      payment_terms:
+        description: Fields added in migration 000609.
+        type: integer
+      reminder_count:
+        type: integer
+      updated_at:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  entity.InvoiceLineItem:
+    properties:
+      created_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      invoice_id:
+        type: string
+      qty:
+        type: integer
+      sort_order:
+        type: integer
+      subtotal:
+        type: integer
+      unit_price:
         type: integer
       workspace_id:
         type: string
+    type: object
+  entity.InvoiceStats:
+    properties:
+      amount_by_status:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      by_collection_stage:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      by_status:
+        additionalProperties:
+          format: int64
+          type: integer
+        type: object
+      total:
+        type: integer
+      total_amount:
+        type: integer
     type: object
   entity.JobRowError:
     properties:
@@ -609,6 +1351,83 @@ definitions:
         type: string
       row:
         type: integer
+    type: object
+  entity.KPIData:
+    properties:
+      ae:
+        properties:
+          avg_sales_cycle:
+            type: integer
+          deals_lost:
+            type: integer
+          deals_won:
+            type: integer
+          forecast_accuracy:
+            type: number
+          quota_attainment:
+            type: number
+          upsell_revenue:
+            type: integer
+          win_rate:
+            type: number
+        type: object
+      attention:
+        properties:
+          expiring_30d:
+            type: integer
+          high_risk:
+            type: integer
+        type: object
+      clients:
+        properties:
+          active:
+            type: integer
+          snoozed:
+            type: integer
+          total:
+            type: integer
+        type: object
+      nps:
+        properties:
+          average:
+            type: number
+          detractor:
+            type: integer
+          passive:
+            type: integer
+          promoter:
+            type: integer
+          respondents:
+            type: integer
+          score:
+            type: integer
+          total_clients:
+            type: integer
+        type: object
+      revenue:
+        properties:
+          achieved:
+            type: integer
+          pct:
+            type: number
+          target:
+            type: integer
+          upsell:
+            type: integer
+        type: object
+    type: object
+  entity.MarkPaidReq:
+    properties:
+      actor:
+        type: string
+      amount_paid:
+        type: integer
+      notes:
+        type: string
+      payment_date:
+        type: string
+      payment_method:
+        type: string
     type: object
   entity.MasterData:
     properties:
@@ -757,6 +1576,227 @@ definitions:
       workspace_id:
         type: string
     type: object
+  entity.PaymentLog:
+    properties:
+      actor:
+        type: string
+      amount_paid:
+        type: integer
+      event_type:
+        type: string
+      id:
+        type: string
+      invoice_id:
+        type: string
+      new_stage:
+        type: string
+      new_status:
+        type: string
+      notes:
+        type: string
+      old_stage:
+        type: string
+      old_status:
+        type: string
+      payment_channel:
+        type: string
+      payment_method:
+        type: string
+      payment_ref:
+        type: string
+      raw_payload:
+        additionalProperties: {}
+        type: object
+      timestamp:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  entity.PipelineColumn:
+    properties:
+      field:
+        type: string
+      id:
+        type: string
+      key:
+        type: string
+      label:
+        type: string
+      sort_order:
+        type: integer
+      visible:
+        type: boolean
+      width:
+        type: integer
+      workflow_id:
+        type: string
+    type: object
+  entity.PipelineStat:
+    properties:
+      border:
+        type: string
+      color:
+        type: string
+      id:
+        type: string
+      key:
+        type: string
+      label:
+        type: string
+      metric:
+        type: string
+      sort_order:
+        type: integer
+      workflow_id:
+        type: string
+    type: object
+  entity.PipelineTab:
+    properties:
+      filter:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      key:
+        type: string
+      label:
+        type: string
+      sort_order:
+        type: integer
+      workflow_id:
+        type: string
+    type: object
+  entity.PlanRevenue:
+    properties:
+      plan:
+        type: string
+      revenue:
+        type: integer
+    type: object
+  entity.ReportClient:
+    properties:
+      company_id:
+        type: string
+      company_name:
+        type: string
+      contract_end:
+        type: string
+      days_overdue:
+        type: integer
+      days_to_expiry:
+        type: integer
+      final_price:
+        type: integer
+      payment_status:
+        type: string
+      plan_type:
+        type: string
+      renewed:
+        type: boolean
+      risk_flag:
+        type: string
+    type: object
+  entity.RevenueDataPoint:
+    properties:
+      actual:
+        type: number
+      date:
+        type: string
+      forecast:
+        type: number
+      forecast_high:
+        type: number
+      forecast_low:
+        type: number
+      is_forecast:
+        type: boolean
+      month:
+        type: string
+      target:
+        type: number
+    type: object
+  entity.RevenueReportResponse:
+    properties:
+      at_risk_clients:
+        items:
+          $ref: '#/definitions/entity.ReportClient'
+        type: array
+      contract_expiry:
+        additionalProperties:
+          type: integer
+        type: object
+      expiring_soon:
+        items:
+          $ref: '#/definitions/entity.ReportClient'
+        type: array
+      overdue_value:
+        type: integer
+      payment_breakdown:
+        additionalProperties:
+          type: integer
+        type: object
+      plan_type_revenue:
+        items:
+          $ref: '#/definitions/entity.PlanRevenue'
+        type: array
+      top_clients:
+        items:
+          $ref: '#/definitions/entity.ReportClient'
+        type: array
+      total_contract_value:
+        type: integer
+    type: object
+  entity.RevenueTarget:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: string
+      id:
+        type: string
+      month:
+        type: integer
+      target_amount:
+        type: integer
+      updated_at:
+        type: string
+      workspace_id:
+        type: string
+      year:
+        type: integer
+    type: object
+  entity.RevenueTrendResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/entity.RevenueDataPoint'
+        type: array
+      regression:
+        properties:
+          intercept:
+            type: number
+          r_squared:
+            type: number
+          residual_std:
+            type: number
+          slope:
+            type: number
+        type: object
+      summary:
+        properties:
+          forecast_end:
+            type: number
+          growth_pct:
+            type: number
+          last_actual:
+            type: number
+        type: object
+      target:
+        type: number
+      workspace:
+        type: string
+    type: object
   entity.Role:
     properties:
       bg_color:
@@ -774,6 +1814,68 @@ definitions:
       name:
         type: string
       updated_at:
+        type: string
+    type: object
+  entity.RuleChangeLogWithCode:
+    properties:
+      edited_at:
+        type: string
+      edited_by:
+        type: string
+      field:
+        type: string
+      id:
+        type: string
+      new_value:
+        type: string
+      old_value:
+        type: string
+      rule_code:
+        type: string
+      rule_id:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  entity.RuleChannel:
+    enum:
+    - whatsapp
+    - email
+    - telegram
+    type: string
+    x-enum-varnames:
+    - RuleChannelWhatsApp
+    - RuleChannelEmail
+    - RuleChannelTelegram
+  entity.RuleRole:
+    enum:
+    - sdr
+    - bd
+    - ae
+    - cs
+    type: string
+    x-enum-varnames:
+    - RuleRoleSDR
+    - RuleRoleBD
+    - RuleRoleAE
+    - RuleRoleCS
+  entity.RuleStatus:
+    enum:
+    - active
+    - paused
+    - disabled
+    type: string
+    x-enum-varnames:
+    - RuleStatusActive
+    - RuleStatusPaused
+    - RuleStatusDisabled
+  entity.SendReminderReq:
+    properties:
+      actor:
+        type: string
+      channel:
+        type: string
+      template_id:
         type: string
     type: object
   entity.SystemConfig:
@@ -893,6 +1995,19 @@ definitions:
       workspace_id:
         type: string
     type: object
+  entity.TopAccount:
+    properties:
+      id:
+        type: string
+      last_contact:
+        type: string
+      name:
+        type: string
+      revenue:
+        type: integer
+      status:
+        type: string
+    type: object
   entity.TriggerRule:
     properties:
       action_type:
@@ -932,6 +2047,233 @@ definitions:
       workspace_id:
         type: string
     type: object
+  entity.ValueTierCount:
+    properties:
+      count:
+        type: integer
+      tier:
+        type: string
+    type: object
+  entity.Workflow:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: string
+      description:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+      stage_filter:
+        items:
+          type: string
+        type: array
+      status:
+        $ref: '#/definitions/entity.WorkflowStatus'
+      updated_at:
+        type: string
+      updated_by:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  entity.WorkflowEdge:
+    properties:
+      animated:
+        type: boolean
+      created_at:
+        type: string
+      edge_id:
+        type: string
+      id:
+        type: string
+      label:
+        type: string
+      source:
+        type: string
+      sourceHandle:
+        type: string
+      style:
+        type: object
+      target:
+        type: string
+      targetHandle:
+        type: string
+      workflow_id:
+        type: string
+    type: object
+  entity.WorkflowFull:
+    properties:
+      columns:
+        items:
+          $ref: '#/definitions/entity.PipelineColumn'
+        type: array
+      created_at:
+        type: string
+      created_by:
+        type: string
+      description:
+        type: string
+      edges:
+        items:
+          $ref: '#/definitions/entity.WorkflowEdge'
+        type: array
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      nodes:
+        items:
+          $ref: '#/definitions/entity.WorkflowNode'
+        type: array
+      slug:
+        type: string
+      stage_filter:
+        items:
+          type: string
+        type: array
+      stats:
+        items:
+          $ref: '#/definitions/entity.PipelineStat'
+        type: array
+      status:
+        $ref: '#/definitions/entity.WorkflowStatus'
+      steps:
+        items:
+          $ref: '#/definitions/entity.WorkflowStep'
+        type: array
+      tabs:
+        items:
+          $ref: '#/definitions/entity.PipelineTab'
+        type: array
+      updated_at:
+        type: string
+      updated_by:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  entity.WorkflowListItem:
+    properties:
+      created_at:
+        type: string
+      created_by:
+        type: string
+      description:
+        type: string
+      edge_count:
+        type: integer
+      icon:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      node_count:
+        type: integer
+      slug:
+        type: string
+      stage_filter:
+        items:
+          type: string
+        type: array
+      status:
+        $ref: '#/definitions/entity.WorkflowStatus'
+      updated_at:
+        type: string
+      updated_by:
+        type: string
+      workspace_id:
+        type: string
+    type: object
+  entity.WorkflowNode:
+    properties:
+      connectable:
+        type: boolean
+      created_at:
+        type: string
+      data:
+        type: object
+      draggable:
+        type: boolean
+      height:
+        type: number
+      id:
+        type: string
+      node_id:
+        type: string
+      node_type:
+        type: string
+      position_x:
+        type: number
+      position_y:
+        type: number
+      selectable:
+        type: boolean
+      updated_at:
+        type: string
+      width:
+        type: number
+      workflow_id:
+        type: string
+      z_index:
+        type: integer
+    type: object
+  entity.WorkflowStatus:
+    enum:
+    - active
+    - draft
+    - disabled
+    type: string
+    x-enum-varnames:
+    - WorkflowStatusActive
+    - WorkflowStatusDraft
+    - WorkflowStatusDisabled
+  entity.WorkflowStep:
+    properties:
+      condition:
+        type: string
+      created_at:
+        type: string
+      description:
+        type: string
+      emailTemplateId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      key:
+        type: string
+      label:
+        type: string
+      messageTemplateId:
+        type: string
+      phase:
+        type: string
+      sentFlag:
+        type: string
+      sort_order:
+        type: integer
+      stopIf:
+        type: string
+      templateId:
+        type: string
+      timing:
+        type: string
+      updated_at:
+        type: string
+      workflow_id:
+        type: string
+    type: object
   entity.Workspace:
     properties:
       color:
@@ -961,6 +2303,16 @@ definitions:
         type: string
       updated_at:
         type: string
+    type: object
+  entity.WorkspaceComparisonResponse:
+    properties:
+      combined:
+        additionalProperties: {}
+        type: object
+      workspaces:
+        items:
+          $ref: '#/definitions/entity.WorkspaceStats'
+        type: array
     type: object
   entity.WorkspaceInvitation:
     properties:
@@ -1013,6 +2365,18 @@ definitions:
       workspace_id:
         type: string
     type: object
+  entity.WorkspaceStats:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      slug:
+        type: string
+      stats:
+        additionalProperties: {}
+        type: object
+    type: object
   internal_delivery_http_payment.VerifyPaymentRequest:
     properties:
       company_id:
@@ -1022,6 +2386,26 @@ definitions:
       notes:
         type: string
       verified_by:
+        type: string
+    type: object
+  invoice.PaperIDWebhookPayload:
+    properties:
+      _raw:
+        additionalProperties: {}
+        type: object
+      amount_paid:
+        type: integer
+      external_id:
+        type: string
+      paid_at:
+        type: string
+      payment_channel:
+        type: string
+      payment_method:
+        type: string
+      payment_ref:
+        type: string
+      status:
         type: string
     type: object
   master_data.CreateRequest:
@@ -1528,6 +2912,17 @@ definitions:
       var_key:
         type: string
     type: object
+  workflow.CanvasSaveResult:
+    properties:
+      edge_count:
+        type: integer
+      node_count:
+        type: integer
+      saved_at:
+        type: string
+      workflow_id:
+        type: string
+    type: object
   workspace.CreateRequest:
     properties:
       color:
@@ -1617,6 +3012,287 @@ info:
   title: Customer Service Agent Bot API
   version: "1.0"
 paths:
+  /analytics/distributions:
+    get:
+      description: Distribution data for charts (donut, horizontal bars).
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.DistributionData'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Distribution data for charts
+      tags:
+      - Analytics
+  /analytics/engagement:
+    get:
+      description: Bot/NPS/checkin/cross-sell/renewed counts.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.EngagementData'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Engagement metrics
+      tags:
+      - Analytics
+  /analytics/forecast-accuracy:
+    get:
+      description: Last month's forecast vs actual difference.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Forecast accuracy
+      tags:
+      - Analytics
+  /analytics/kpi:
+    get:
+      description: Comprehensive KPI data for the Analytics page.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.KPIData'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Full KPI data
+      tags:
+      - Analytics
+  /analytics/revenue-trend:
+    get:
+      description: Monthly revenue data with OLS linear regression forecast.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Total months (default 16 — 10 actual + 6 forecast)
+        in: query
+        name: months
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.RevenueTrendResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Monthly revenue data with forecast
+      tags:
+      - Analytics
+  /api/automation-rules:
+    get:
+      parameters:
+      - description: sdr | bd | ae | cs
+        in: query
+        name: role
+        type: string
+      - description: active | paused | disabled
+        in: query
+        name: status
+        type: string
+      - description: Phase filter (P0, P1, ...)
+        in: query
+        name: phase
+        type: string
+      - description: Search trigger_id, template_id, condition, rule_code
+        in: query
+        name: search
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.AutomationRule'
+                  type: array
+              type: object
+      summary: List automation rules
+      tags:
+      - AutomationRules
+    post:
+      parameters:
+      - description: Rule data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.AutomationRule'
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.AutomationRule'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "409":
+          description: Duplicate rule_code
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Create automation rule
+      tags:
+      - AutomationRules
+  /api/automation-rules/{id}:
+    delete:
+      parameters:
+      - description: Rule ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Delete automation rule
+      tags:
+      - AutomationRules
+    get:
+      description: Returns rule with change logs.
+      parameters:
+      - description: Rule ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Get automation rule by ID
+      tags:
+      - AutomationRules
+    put:
+      description: Updates rule fields and automatically appends change log entries.
+      parameters:
+      - description: Rule ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Update automation rule
+      tags:
+      - AutomationRules
+  /api/automation-rules/change-logs:
+    get:
+      parameters:
+      - description: Max number of entries (default 50)
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.RuleChangeLogWithCode'
+                  type: array
+              type: object
+      summary: Get automation rule change log feed
+      tags:
+      - AutomationRules
   /api/clients:
     post:
       description: Creates a new client in the workspace specified in the X-Workspace-ID
@@ -1733,6 +3409,742 @@ paths:
           schema:
             $ref: '#/definitions/response.StandardResponse'
       summary: Update client
+      tags:
+      - Dashboard
+  /api/collections:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.Collection'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List collections
+      tags:
+      - Collections
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Create payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/collection.CreateCollectionRequest'
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ApprovalRequest'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create collection (requires approval)
+      tags:
+      - Collections
+  /api/collections/{id}:
+    delete:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Collection UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ApprovalRequest'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Delete collection (requires approval)
+      tags:
+      - Collections
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Collection UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Collection'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get collection by id
+      tags:
+      - Collections
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Collection UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Meta
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/collection.UpdateCollectionMetaRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Collection'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update collection meta (no schema change)
+      tags:
+      - Collections
+  /api/collections/{id}/fields:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Collection UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Field
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/collection.FieldInput'
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ApprovalRequest'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Add field to collection (requires approval)
+      tags:
+      - Collections
+  /api/collections/{id}/fields/{field_id}:
+    delete:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Collection UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Field UUID
+        in: path
+        name: field_id
+        required: true
+        type: string
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ApprovalRequest'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Delete field (requires approval)
+      tags:
+      - Collections
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Collection UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Field UUID
+        in: path
+        name: field_id
+        required: true
+        type: string
+      - description: Field meta
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/collection.UpdateFieldMetaRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.CollectionField'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update field meta (label, required, order, options — no type change)
+      tags:
+      - Collections
+  /api/collections/{id}/records:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Collection UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: page size (default 50, max 500)
+        in: query
+        name: limit
+        type: integer
+      - description: offset (default 0)
+        in: query
+        name: offset
+        type: integer
+      - description: e.g. created_at:desc, data.title:asc
+        in: query
+        name: sort
+        type: string
+      - description: filter DSL, e.g. data.category in [\
+        in: query
+        name: filter
+        type: string
+      - description: full-text search
+        in: query
+        name: search
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: List records with filter/sort/pagination
+      tags:
+      - Collections
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Collection UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Record data
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.CollectionRecord'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Create record
+      tags:
+      - Collections
+  /api/collections/{id}/records/{record_id}:
+    delete:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Collection UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Record UUID
+        in: path
+        name: record_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Soft-delete record
+      tags:
+      - Collections
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Collection UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Record UUID
+        in: path
+        name: record_id
+        required: true
+        type: string
+      - description: Partial record data
+        in: body
+        name: body
+        required: true
+        schema:
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.CollectionRecord'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Update record (PATCH merge)
+      tags:
+      - Collections
+  /api/collections/{id}/records/bulk:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Collection UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Bulk payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/collection.BulkRecordsRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/collection.BulkRecordsResult'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Bulk records op (delete or update)
+      tags:
+      - Collections
+  /api/collections/{id}/records/distinct:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Collection UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: field key
+        in: query
+        name: field
+        required: true
+        type: string
+      - description: max values to return (default 100, hard cap 500)
+        in: query
+        name: limit
+        type: integer
+      - description: filter DSL
+        in: query
+        name: filter
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.DistinctResult'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Distinct values for a field
+      tags:
+      - Collections
+  /api/collections/approvals/{approval_id}/approve:
+    post:
+      description: 'Checker-maker: executes the pending schema change atomically'
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Approval request UUID
+        in: path
+        name: approval_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ApprovalRequest'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Apply a pending collection_schema_change approval
+      tags:
+      - Collections
+  /api/cron/invoices/escalate:
+    get:
+      description: Promotes collection_stage of overdue invoices based on days_overdue
+        thresholds.
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: 'Cron: auto-escalate collection stages'
+      tags:
+      - Cron
+  /api/cron/invoices/overdue:
+    get:
+      description: Marks invoices past due_date as Terlambat and writes status_change
+        payment logs.
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: 'Cron: mark overdue invoices'
+      tags:
+      - Cron
+  /api/dashboard/activity-logs/companies/{company_id}/summary:
+    get:
+      description: 'Returns aggregated stats for a single company: total_sent, reply_rate,
+        last_sent_at, etc.'
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Company ID
+        in: path
+        name: company_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.CompanySummary'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Per-company activity summary
+      tags:
+      - Dashboard
+  /api/dashboard/activity-logs/recent:
+    get:
+      description: Returns activity log entries since a given timestamp for polling.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: 'ISO 8601 timestamp (default: 24h ago)'
+        in: query
+        name: since
+        type: string
+      - description: Max entries (default 50)
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.ActivityLog'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Recent activity logs (polling)
+      tags:
+      - Dashboard
+  /api/dashboard/activity-logs/stats:
+    get:
+      description: Returns 7 stat counters (total, today, bot, human, data_mutations,
+        team_actions, escalations).
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ActivityStats'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Activity log stats
+      tags:
+      - Dashboard
+  /api/dashboard/clients/{company_id}/escalations:
+    get:
+      description: Returns paginated escalations for a specific company.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Company ID
+        in: path
+        name: company_id
+        required: true
+        type: string
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      - description: Limit per page
+        in: query
+        name: limit
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.Escalation'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: List escalations for a company
+      tags:
+      - Dashboard
+  /api/dashboard/data-master/escalations/{id}:
+    get:
+      description: Returns a single escalation.
+      parameters:
+      - description: Escalation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Escalation'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Get escalation by ID
+      tags:
+      - Dashboard
+  /api/dashboard/data-master/escalations/{id}/resolve:
+    put:
+      description: Sets escalation status to Resolved with an optional resolution
+        note.
+      parameters:
+      - description: Escalation ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Resolution payload
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dashboard.resolveEscalationRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Resolve escalation
       tags:
       - Dashboard
   /api/data-master/activity-logs:
@@ -2416,9 +4828,69 @@ paths:
       summary: Onboard New Client from BD Handoff
       tags:
       - api
+  /api/invoices:
+    post:
+      description: Queues an approval request for a new invoice. Returns 202 with
+        the approval request.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Invoice create request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.CreateInvoiceReq'
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ApprovalRequest'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Create invoice (creates approval)
+      tags:
+      - Dashboard
   /api/invoices/{invoice_id}:
+    delete:
+      description: Deletes an invoice. Only invoices with status "Belum bayar" may
+        be deleted.
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: invoice_id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Delete invoice
+      tags:
+      - Dashboard
     get:
-      description: Returns a single invoice by invoice_id.
+      description: Returns a single invoice with its line items and payment logs.
       parameters:
       - description: Invoice ID
         in: path
@@ -2433,7 +4905,7 @@ paths:
             - $ref: '#/definitions/response.StandardResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/entity.Invoice'
+                  $ref: '#/definitions/entity.InvoiceDetail'
               type: object
         "404":
           description: Not Found
@@ -2443,11 +4915,12 @@ paths:
           description: Internal Server Error
           schema:
             $ref: '#/definitions/response.StandardResponse'
-      summary: Get invoice by ID
+      summary: Get invoice detail
       tags:
       - Dashboard
     put:
-      description: Partially updates an invoice (safe fields only).
+      description: Partially updates an invoice (safe fields only — payment_status
+        is rejected).
       parameters:
       - description: Invoice ID
         in: path
@@ -2475,6 +4948,137 @@ paths:
           schema:
             $ref: '#/definitions/response.StandardResponse'
       summary: Update invoice
+      tags:
+      - Dashboard
+  /api/invoices/{invoice_id}/mark-paid:
+    post:
+      description: Queues an approval request to mark an invoice as paid. Returns
+        202 with the approval request.
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: invoice_id
+        required: true
+        type: string
+      - description: Mark-paid request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.MarkPaidReq'
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ApprovalRequest'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Mark invoice as paid (creates approval)
+      tags:
+      - Dashboard
+  /api/invoices/{invoice_id}/payment-logs:
+    get:
+      description: Returns recent payment log entries for a single invoice.
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: invoice_id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.PaymentLog'
+                  type: array
+              type: object
+      summary: List payment logs for an invoice
+      tags:
+      - Dashboard
+  /api/invoices/{invoice_id}/send-reminder:
+    post:
+      description: Sends a payment reminder for an invoice, records the reminder log.
+      parameters:
+      - description: Invoice ID
+        in: path
+        name: invoice_id
+        required: true
+        type: string
+      - description: Reminder request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.SendReminderReq'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Send payment reminder
+      tags:
+      - Dashboard
+  /api/invoices/by-stage:
+    get:
+      description: Returns map of collection_stage → count for the workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  additionalProperties:
+                    format: int64
+                    type: integer
+                  type: object
+              type: object
+      summary: Invoice counts by collection stage
+      tags:
+      - Dashboard
+  /api/invoices/stats:
+    get:
+      description: Returns aggregated invoice stats for the workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.InvoiceStats'
+              type: object
+      summary: Invoice stats
       tags:
       - Dashboard
   /api/master-data/attention:
@@ -4175,6 +6779,418 @@ paths:
       summary: List template variables available in this workspace
       tags:
       - Messaging
+  /api/workflows:
+    get:
+      description: List all workflows for the current workspace.
+      parameters:
+      - description: 'Filter: active | draft | disabled'
+        in: query
+        name: status
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponseWithMeta'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.WorkflowListItem'
+                  type: array
+              type: object
+      summary: List workflows
+      tags:
+      - Workflows
+    post:
+      parameters:
+      - description: Workflow data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/entity.Workflow'
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.Workflow'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Create workflow
+      tags:
+      - Workflows
+  /api/workflows/{id}:
+    delete:
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Delete workflow
+      tags:
+      - Workflows
+    get:
+      description: Returns full workflow with nodes, edges, steps, tabs, stats, columns.
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.WorkflowFull'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Get workflow by ID
+      tags:
+      - Workflows
+    put:
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Update workflow metadata
+      tags:
+      - Workflows
+  /api/workflows/{id}/canvas:
+    put:
+      description: Replaces all nodes and edges for a workflow in a single transaction.
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Canvas data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dashboard.saveCanvasRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/workflow.CanvasSaveResult'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Save canvas (bulk replace nodes + edges)
+      tags:
+      - Workflows
+  /api/workflows/{id}/columns:
+    put:
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Columns
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dashboard.saveColumnsRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Bulk save column config
+      tags:
+      - Workflows
+  /api/workflows/{id}/config:
+    get:
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.WorkflowFull'
+              type: object
+      summary: Get pipeline config (tabs + stats + columns)
+      tags:
+      - Workflows
+  /api/workflows/{id}/data:
+    get:
+      description: Returns master_data records filtered by workflow stage_filter and
+        tab DSL.
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tab key (from workflow tabs config)
+        in: query
+        name: tab
+        type: string
+      - description: Search company_name, pic_name, company_id
+        in: query
+        name: search
+        type: string
+      - description: Pagination offset
+        in: query
+        name: offset
+        type: integer
+      - description: Page size (default 20, max 200)
+        in: query
+        name: limit
+        type: integer
+      - description: Sort column (updated_at, contract_end, final_price, ...)
+        in: query
+        name: sort_by
+        type: string
+      - description: asc | desc (default desc)
+        in: query
+        name: sort_dir
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponseWithMeta'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Get pipeline data
+      tags:
+      - Workflows
+  /api/workflows/{id}/stats:
+    put:
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Stats
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dashboard.saveStatsRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Bulk save stat cards
+      tags:
+      - Workflows
+  /api/workflows/{id}/steps:
+    get:
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.WorkflowStep'
+                  type: array
+              type: object
+      summary: List pipeline steps for a workflow
+      tags:
+      - Workflows
+    put:
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Steps
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dashboard.saveStepsRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Bulk save pipeline steps
+      tags:
+      - Workflows
+  /api/workflows/{id}/steps/{stepKey}:
+    get:
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Step key
+        in: path
+        name: stepKey
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.WorkflowStep'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Get a single pipeline step by key
+      tags:
+      - Workflows
+    put:
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Step key
+        in: path
+        name: stepKey
+        required: true
+        type: string
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Update a single pipeline step
+      tags:
+      - Workflows
+  /api/workflows/{id}/tabs:
+    put:
+      parameters:
+      - description: Workflow ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Tabs
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dashboard.saveTabsRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Bulk save pipeline tabs
+      tags:
+      - Workflows
+  /api/workflows/by-slug/{slug}:
+    get:
+      description: Returns full workflow by slug (used by /pipeline/{slug} frontend
+        route).
+      parameters:
+      - description: Workflow slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.WorkflowFull'
+              type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Get workflow by slug
+      tags:
+      - Workflows
   /api/workspaces:
     get:
       responses:
@@ -4477,6 +7493,22 @@ paths:
       summary: Accept a workspace invitation
       tags:
       - Workspace
+  /cron/analytics/rebuild-snapshots:
+    get:
+      description: Recomputes revenue_snapshots from invoices for all workspaces.
+        Run nightly via Cloud Scheduler.
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Rebuild revenue snapshots
+      tags:
+      - Cron
   /cron/run:
     get:
       description: Triggers the bot's cron job. Creates one background job per workspace
@@ -4501,6 +7533,33 @@ paths:
       summary: Trigger Cron Job
       tags:
       - cron
+  /dashboard/stats:
+    get:
+      description: Quick stats for the dashboard overview page (lightweight — used
+        on page load).
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.DashboardStats'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Dashboard overview stats
+      tags:
+      - Analytics
   /readiness:
     get:
       description: Health check for service
@@ -4512,6 +7571,222 @@ paths:
       summary: Health Check
       tags:
       - health
+  /reports/client-health:
+    get:
+      description: Risk, payment, NPS, usage distributions + payment issue clients.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.HealthReportResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Client health report
+      tags:
+      - Reports
+  /reports/engagement-retention:
+    get:
+      description: Bot activity, NPS reply, checkin reply, cross-sell, renewal stats.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.EngagementReportResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Engagement & retention report
+      tags:
+      - Reports
+  /reports/executive-summary:
+    get:
+      description: KPI summary + auto-generated highlights.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ExecutiveSummaryResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Executive summary report
+      tags:
+      - Reports
+  /reports/export:
+    post:
+      description: Export report as XLSX. Creates a background job.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: 'Report tab: executive | revenue | health | engagement | comparison'
+        in: query
+        name: tab
+        required: true
+        type: string
+      - description: 'Export format: xlsx (default)'
+        in: query
+        name: format
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Export report
+      tags:
+      - Reports
+  /reports/revenue-contracts:
+    get:
+      description: Total contract value, plan type revenue, top clients, contract
+        expiry, payment breakdown.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.RevenueReportResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Revenue & contracts report
+      tags:
+      - Reports
+  /reports/workspace-comparison:
+    get:
+      description: Per-workspace stats + combined totals. Only available for holding
+        workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.WorkspaceComparisonResponse'
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Workspace comparison report (holding only)
+      tags:
+      - Reports
+  /revenue-targets:
+    get:
+      description: Get all revenue targets for a workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.RevenueTarget'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: List revenue targets
+      tags:
+      - Revenue Targets
+    put:
+      description: Create or update a revenue target for a workspace.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Revenue target
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dashboard.upsertTargetRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Upsert revenue target
+      tags:
+      - Revenue Targets
   /webhook/checkin-form:
     post:
       description: Processes check-in form submissions from clients. Marks the client
@@ -4541,6 +7816,43 @@ paths:
           schema:
             $ref: '#/definitions/response.StandardResponse'
       summary: Process Check-in Form Submission
+      tags:
+      - webhook
+  /webhook/paperid/{workspace_id}:
+    post:
+      description: Receives payment-status updates from Paper.id. HMAC-SHA256 verified
+        via X-Paper-Signature header.
+      parameters:
+      - description: Workspace ID
+        in: path
+        name: workspace_id
+        required: true
+        type: string
+      - description: Hex-encoded HMAC-SHA256 of raw body
+        in: header
+        name: X-Paper-Signature
+        required: true
+        type: string
+      - description: Paper.id event payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/invoice.PaperIDWebhookPayload'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "401":
+          description: Invalid signature
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Paper.id payment webhook
       tags:
       - webhook
   /webhook/wa:
