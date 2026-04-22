@@ -93,7 +93,7 @@ func TestWorkflowRunner_DisabledFlagIsNoOp(t *testing.T) {
 	t.Parallel()
 
 	wfUC := &stubWorkflowUC{wf: &entity.Workflow{ID: "wf-1", Slug: "ae-lifecycle"}}
-	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{}, false, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{}, nil, nil, nil, nil, nil, nil, false, zerolog.Nop())
 
 	matched, err := wr.RunForRecord(context.Background(), "ws-1", entity.MasterData{
 		ID:    "md-1",
@@ -113,7 +113,7 @@ func TestWorkflowRunner_NoWorkflowForStageSkips(t *testing.T) {
 	t.Parallel()
 
 	wfUC := &stubWorkflowUC{wf: nil} // no workflow for stage
-	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	matched, err := wr.RunForRecord(context.Background(), "ws-1", entity.MasterData{
 		ID:    "md-1",
@@ -146,7 +146,7 @@ func TestWorkflowRunner_DoesNotWriteForbiddenFields(t *testing.T) {
 			Status:    entity.RuleStatusActive,
 		},
 	}
-	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	md := entity.MasterData{
 		ID:            "md-1",
@@ -188,7 +188,7 @@ func TestWorkflowRunner_P0P5RunsFirstIsAdditive(t *testing.T) {
 			Status:   entity.RuleStatusPaused,
 		},
 	}
-	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, true, zerolog.Nop())
+	wr := ucron.NewWorkflowRunner(wfUC, &stubAutomationUC{rules: rules}, nil, nil, nil, nil, nil, nil, true, zerolog.Nop())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()

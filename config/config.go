@@ -88,6 +88,9 @@ type AppConfig struct {
 	// Workflow Engine
 	UseWorkflowEngine bool
 
+	// Google Calendar (Indonesian holidays for workday checks)
+	GoogleCalendarAPIKey string
+
 	// Background Jobs
 	ExportStoragePath string
 
@@ -187,6 +190,9 @@ func LoadConfig() *AppConfig {
 
 		// Workflow Engine
 		UseWorkflowEngine: getEnvBool("USE_WORKFLOW_ENGINE", false),
+
+		// Google Calendar
+		GoogleCalendarAPIKey: getEnv("GOOGLE_CALENDAR_API_KEY", ""),
 
 		// Background Jobs
 		ExportStoragePath: getEnv("EXPORT_STORAGE_PATH", "./tmp/exports"),

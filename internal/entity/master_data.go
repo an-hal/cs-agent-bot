@@ -2,6 +2,8 @@ package entity
 
 import (
 	"encoding/json"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -92,6 +94,100 @@ type MasterData struct {
 
 	// WorkspaceName is populated for holding workspace queries only.
 	WorkspaceName string `json:"workspace_name,omitempty"`
+}
+
+// Core field name mappings for GetField. Returns the string representation
+// of a field or ("", false) when not found.
+func (m *MasterData) GetField(name string) (string, bool) {
+	switch strings.ToLower(name) {
+	case "stage":
+		return m.Stage, m.Stage != ""
+	case "payment_status":
+		return m.PaymentStatus, m.PaymentStatus != ""
+	case "bot_active":
+		return fmt.Sprintf("%v", m.BotActive), true
+	case "blacklisted":
+		return fmt.Sprintf("%v", m.Blacklisted), true
+	case "renewed":
+		return fmt.Sprintf("%v", m.Renewed), true
+	case "sequence_status":
+		return m.SequenceStatus, m.SequenceStatus != ""
+	case "risk_flag":
+		return m.RiskFlag, m.RiskFlag != ""
+	case "company_name":
+		return m.CompanyName, m.CompanyName != ""
+	case "company_id":
+		return m.CompanyID, m.CompanyID != ""
+	case "pic_name":
+		return m.PICName, m.PICName != ""
+	case "pic_wa":
+		return m.PICWA, m.PICWA != ""
+	case "pic_email":
+		return m.PICEmail, m.PICEmail != ""
+	case "owner_name":
+		return m.OwnerName, m.OwnerName != ""
+	case "owner_wa":
+		return m.OwnerWA, m.OwnerWA != ""
+	case "payment_terms":
+		return m.PaymentTerms, m.PaymentTerms != ""
+	case "notes":
+		return m.Notes, m.Notes != ""
+	case "contract_months":
+		return fmt.Sprintf("%d", m.ContractMonths), true
+	case "final_price":
+		return fmt.Sprintf("%d", m.FinalPrice), true
+	case "days_to_expiry":
+		if m.DaysToExpiry == nil {
+			return "", false
+		}
+		return fmt.Sprintf("%d", *m.DaysToExpiry), true
+	case "snooze_reason":
+		return m.SnoozeReason, m.SnoozeReason != ""
+	}
+
+	// Fall through to custom_fields.
+	if m.CustomFields != nil {
+		v, ok := m.CustomFields[name]
+		if ok {
+			return fmt.Sprintf("%v", v), true
+		}
+	}
+	return "", false
+}
+
+// GetDateField returns a date-typed field value. Returns (nil, false) when not found.
+func (m *MasterData) GetDateField(name string) (*time.Time, bool) {
+	switch strings.ToLower(name) {
+	case "contract_start":
+		return m.ContractStart, m.ContractStart != nil
+	case "contract_end":
+		return m.ContractEnd, m.ContractEnd != nil
+	case "last_payment_date":
+		return m.LastPaymentDate, m.LastPaymentDate != nil
+	case "last_interaction_date":
+		return m.LastInteractionDate, m.LastInteractionDate != nil
+	case "snooze_until":
+		return m.SnoozeUntil, m.SnoozeUntil != nil
+	}
+
+	// Check custom_fields for date strings.
+	if m.CustomFields != nil {
+		v, ok := m.CustomFields[name]
+		if ok {
+			s, isStr := v.(string)
+			if isStr {
+				t, err := time.Parse(time.RFC3339, s)
+				if err != nil {
+					t, err = time.Parse("2006-01-02", s)
+					if err != nil {
+						return nil, false
+					}
+				}
+				return &t, true
+			}
+		}
+	}
+	return nil, false
 }
 
 // MasterDataFilter holds list query parameters.

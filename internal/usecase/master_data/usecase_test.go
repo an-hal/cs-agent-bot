@@ -73,6 +73,10 @@ func (s *stubMDRepo) Transition(ctx context.Context, ws, id, newStage string, _ 
 	return s.transPrev, s.transCurr, nil
 }
 
+func (s *stubMDRepo) MergeCustomFields(ctx context.Context, ws, id string, _ map[string]any) error { return nil }
+func (s *stubMDRepo) BulkUpdateDaysToExpiry(ctx context.Context, ws string) (int64, error)          { return 0, nil }
+func (s *stubMDRepo) BulkMarkOverdue(ctx context.Context, ws string) (int64, error)                 { return 0, nil }
+
 type stubCFDRepo struct {
 	defs []entity.CustomFieldDefinition
 }
