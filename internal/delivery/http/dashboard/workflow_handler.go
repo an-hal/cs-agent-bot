@@ -206,7 +206,7 @@ type saveCanvasRequest struct {
 // @Tags         Workflows
 // @Param        id    path  string              true  "Workflow ID"
 // @Param        body  body  saveCanvasRequest   true  "Canvas data"
-// @Success      200   {object}  response.StandardResponse{data=workflowuc.CanvasSaveResult}
+// @Success      200   {object}  response.StandardResponse{data=workflow.CanvasSaveResult}
 // @Failure      404   {object}  response.StandardResponse
 // @Router       /api/workflows/{id}/canvas [put]
 func (h *WorkflowHandler) SaveCanvas(w http.ResponseWriter, r *http.Request) error {
