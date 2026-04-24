@@ -113,6 +113,33 @@ type AppConfig struct {
 	AuthProxyURL       string
 	GoogleClientID     string
 	SessionSecret      string
+
+	// Claude (Anthropic) — BD extraction pipeline
+	ClaudeAPIKey        string
+	ClaudeModel         string
+	ClaudeTimeoutSecs   int
+	ClaudeExtractPrompt string
+	ClaudeBANTSPrompt   string
+
+	// Fireflies (transcript fetch)
+	FirefliesAPIKey     string
+	FirefliesGraphQLURL string
+
+	// SMTP (email delivery — global fallback if workspace_integrations SMTP not set)
+	SMTPHost     string
+	SMTPPort     int
+	SMTPUsername string
+	SMTPPassword string
+	SMTPFromAddr string
+	SMTPUseTLS   bool
+
+	// Mock mode — forces noop clients to mock impls that return realistic data
+	// and record to the in-memory outbox (viewable at /mock/outbox).
+	MockExternalAPIs bool
+
+	// AES-256 key (base64/hex/raw 32 bytes) for workspace_integrations.config
+	// secret encryption. Empty = plaintext storage (dev default).
+	ConfigEncryptionKey string
 }
 
 func LoadConfig() *AppConfig {
@@ -216,6 +243,30 @@ func LoadConfig() *AppConfig {
 		AuthProxyURL:   getEnv("AUTH_PROXY_URL", "https://ms-auth-proxy.up.railway.app"),
 		GoogleClientID: getEnv("GOOGLE_CLIENT_ID", ""),
 		SessionSecret:  getEnv("SESSION_SECRET", ""),
+
+		// Claude (Anthropic)
+		ClaudeAPIKey:        getEnv("ANTHROPIC_API_KEY", ""),
+		ClaudeModel:         getEnv("CLAUDE_MODEL", "claude-sonnet-4-6"),
+		ClaudeTimeoutSecs:   getEnvInt("CLAUDE_TIMEOUT_SECONDS", 30),
+		ClaudeExtractPrompt: getEnv("CLAUDE_EXTRACT_PROMPT", "bd_extract_v1"),
+		ClaudeBANTSPrompt:   getEnv("CLAUDE_BANTS_PROMPT", "bants_score_v1"),
+
+		// Fireflies
+		FirefliesAPIKey:     getEnv("FIREFLIES_API_KEY", ""),
+		FirefliesGraphQLURL: getEnv("FIREFLIES_GRAPHQL_URL", "https://api.fireflies.ai/graphql"),
+
+		// SMTP
+		SMTPHost:     getEnv("SMTP_HOST", ""),
+		SMTPPort:     getEnvInt("SMTP_PORT", 587),
+		SMTPUsername: getEnv("SMTP_USERNAME", ""),
+		SMTPPassword: getEnv("SMTP_PASSWORD", ""),
+		SMTPFromAddr: getEnv("SMTP_FROM_ADDR", ""),
+		SMTPUseTLS:   getEnvBool("SMTP_USE_TLS", true),
+
+		// Mock mode (defaults true so local dev works without any external keys).
+		MockExternalAPIs: getEnvBool("MOCK_EXTERNAL_APIS", true),
+
+		ConfigEncryptionKey: getEnv("CONFIG_ENCRYPTION_KEY", ""),
 	}
 
 	validateRequired(cfg)

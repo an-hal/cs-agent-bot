@@ -84,6 +84,9 @@ func (s *stubAutomationUC) ListChangeLogs(_ context.Context, _ string, _ int) ([
 func (s *stubAutomationUC) GetActiveByRole(_ context.Context, _ string, _ entity.RuleRole) ([]entity.AutomationRule, error) {
 	return s.rules, nil
 }
+func (s *stubAutomationUC) ApplyToggleStatus(_ context.Context, _, _, _ string) (*entity.AutomationRule, error) {
+	return nil, nil
+}
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 

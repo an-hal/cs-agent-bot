@@ -16,6 +16,9 @@ type CronInvoice interface {
 	UpdateOverdueStatuses(ctx context.Context) error
 	// AutoEscalateStages promotes collection_stage based on days_overdue thresholds.
 	AutoEscalateStages(ctx context.Context) error
+	// AutoResendReminders emits a SendReminder at each cadence point
+	// (pre-due 14/7/3, due-today, overdue 3/8/15). Idempotent per day.
+	AutoResendReminders(ctx context.Context) error
 }
 
 // Stage escalation thresholds (days overdue → stage).

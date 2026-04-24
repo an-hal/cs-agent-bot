@@ -336,6 +336,15 @@ func (f *fakeLogRepo) GetRecentActivities(ctx context.Context, workspaceIDs []st
 func (f *fakeLogRepo) GetCompanySummary(ctx context.Context, workspaceIDs []string, companyID string) (*entity.CompanySummary, error) {
 	return nil, nil
 }
+func (f *fakeLogRepo) GetRecentActionLogs(_ context.Context, _ []string, _ int) ([]entity.ActionLog, error) {
+	return nil, nil
+}
+func (f *fakeLogRepo) GetActionLogSummary(_ context.Context, _ []string, _ time.Time) (*entity.ActionLogSummary, error) {
+	return &entity.ActionLogSummary{}, nil
+}
+func (f *fakeLogRepo) GetTodayActionLogs(_ context.Context, _ []string, _ int) ([]entity.ActionLog, error) {
+	return nil, nil
+}
 
 // ---------------------------------------------------------------------------
 // Builder helpers.

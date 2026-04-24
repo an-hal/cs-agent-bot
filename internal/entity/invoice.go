@@ -40,6 +40,10 @@ const (
 type Invoice struct {
 	InvoiceID        string     `json:"invoice_id"`
 	CompanyID        string     `json:"company_id"`
+	// CompanyName is resolved from master_data at query-time and included on
+	// the top-level Invoice shape so FE list views don't need a separate
+	// fetch. Empty when the join misses (e.g. deleted client).
+	CompanyName      string     `json:"company_name,omitempty"`
 	IssueDate        time.Time  `json:"issue_date"`
 	DueDate          time.Time  `json:"due_date"`
 	Amount           float64    `json:"amount"`
@@ -63,6 +67,11 @@ type Invoice struct {
 	PaperIDRef    string     `json:"paper_id_ref"`
 	CreatedBy     string     `json:"created_by"`
 	UpdatedAt     *time.Time `json:"updated_at"`
+
+	// Optional: non-empty for multi-termin partial-payment invoices. Each
+	// entry tracks one tranche — see Termin struct. Sum of entry amounts
+	// should equal Invoice.Amount (validated by usecase).
+	TerminBreakdown []Termin `json:"termin_breakdown,omitempty"`
 }
 
 // InvoiceFilter holds optional filters for listing invoices.
@@ -118,23 +127,50 @@ type InvoiceDetail struct {
 }
 
 // InvoiceStats holds aggregated stat-card data for the invoice dashboard.
+// LunasPct is a [0, 100] float so FE can render as-is; UniqueCompanies lets
+// FE show "N companies billed this period" alongside the total count.
 type InvoiceStats struct {
 	Total             int64            `json:"total"`
 	TotalAmount       int64            `json:"total_amount"`
+	UniqueCompanies   int64            `json:"unique_companies"`
+	LunasPct          float64          `json:"lunas_pct"`
 	ByStatus          map[string]int64 `json:"by_status"`
 	AmountByStatus    map[string]int64 `json:"amount_by_status"`
 	ByCollectionStage map[string]int64 `json:"by_collection_stage"`
 }
 
+// PaymentMethodRoute enums — FE spec requires BE to validate which rail the
+// invoice will collect through.
+const (
+	PaymentMethodRoutePaperID  = "paper_id"       // hosted-checkout via Paper.id
+	PaymentMethodRouteTransfer = "transfer_bank"  // manual reconciliation by AE
+)
+
 // CreateInvoiceReq carries everything needed to create a new invoice.
 type CreateInvoiceReq struct {
-	CompanyID    string            `json:"company_id"`
-	IssueDate    time.Time         `json:"issue_date"`
-	DueDate      time.Time         `json:"due_date"`
-	PaymentTerms int               `json:"payment_terms"`
-	Notes        string            `json:"notes"`
-	CreatedBy    string            `json:"created_by"`
-	LineItems    []InvoiceLineItem `json:"line_items"`
+	CompanyID           string            `json:"company_id"`
+	IssueDate           time.Time         `json:"issue_date"`
+	DueDate             time.Time         `json:"due_date"`
+	PaymentTerms        int               `json:"payment_terms"`
+	Notes               string            `json:"notes"`
+	CreatedBy           string            `json:"created_by"`
+	LineItems           []InvoiceLineItem `json:"line_items"`
+	// PaymentMethodRoute selects the collection rail (paper_id | transfer_bank).
+	// Empty defaults to transfer_bank (backwards-compatible).
+	PaymentMethodRoute  string            `json:"payment_method_route"`
+	// TerminBreakdown — when non-empty, marks the invoice as multi-termin.
+	// Sum of amounts must equal total invoice amount (validated by usecase).
+	TerminBreakdown     []Termin          `json:"termin_breakdown,omitempty"`
+}
+
+// IsValidPaymentMethodRoute reports whether s is an accepted payment route.
+// Empty string is accepted (defaults to transfer_bank upstream).
+func IsValidPaymentMethodRoute(s string) bool {
+	switch s {
+	case "", PaymentMethodRoutePaperID, PaymentMethodRouteTransfer:
+		return true
+	}
+	return false
 }
 
 // MarkPaidReq carries the data needed to manually mark an invoice as paid.
@@ -144,6 +180,39 @@ type MarkPaidReq struct {
 	Notes         string    `json:"notes"`
 	AmountPaid    int64     `json:"amount_paid"`
 	Actor         string    `json:"actor"`
+}
+
+// Termin is one tranche of a multi-part payment. Stored on an invoice as a
+// slice under Invoice.TerminBreakdown (JSONB).
+type Termin struct {
+	TerminNumber  int       `json:"termin_number"`
+	Amount        int64     `json:"amount"`
+	DueDate       time.Time `json:"due_date"`
+	Status        string    `json:"status"`           // pending|paid|overdue
+	PaidAt        *time.Time `json:"paid_at,omitempty"`
+	PaymentMethod string    `json:"payment_method,omitempty"`
+	PaymentRef    string    `json:"payment_ref,omitempty"`
+	Notes         string    `json:"notes,omitempty"`
+}
+
+// ConfirmPartialReq is the payload for AE-only confirm-partial endpoint.
+type ConfirmPartialReq struct {
+	TerminNumber  int       `json:"termin_number"`
+	AmountPaid    int64     `json:"amount_paid"`
+	PaymentMethod string    `json:"payment_method"`
+	PaymentRef    string    `json:"payment_ref"`
+	PaidAt        time.Time `json:"paid_at"`
+	Actor         string    `json:"-"`
+	Notes         string    `json:"notes"`
+}
+
+// UpdateStageReq for POST /invoices/{id}/update-stage — manual collection-stage
+// override (typically used when AE negotiates offline and needs to move a
+// client to a softer/firmer stage than the cron would have assigned).
+type UpdateStageReq struct {
+	NewStage string `json:"new_stage"`
+	Reason   string `json:"reason"`
+	Actor    string `json:"-"`
 }
 
 // SendReminderReq carries the parameters for dispatching a payment reminder.

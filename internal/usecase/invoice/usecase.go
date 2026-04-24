@@ -39,6 +39,31 @@ type Usecase interface {
 	Stats(ctx context.Context, wsIDs []string) (*entity.InvoiceStats, error)
 	ByStage(ctx context.Context, wsIDs []string) (map[string]int64, error)
 	PaymentLogs(ctx context.Context, invoiceID string) ([]entity.PaymentLog, error)
+
+	// Activity returns a unified timeline for one invoice — payment_logs +
+	// mutation history from master_data_mutations that touched this invoice's
+	// company_id. Newest first.
+	Activity(ctx context.Context, workspaceID, invoiceID string, limit int) ([]InvoiceActivityEntry, error)
+
+	// UpdateStage manually sets the collection_stage on an invoice (AE-only
+	// in practice — role-gating enforced by caller). Writes a payment_log
+	// entry with event_type=stage_updated + old/new stage.
+	UpdateStage(ctx context.Context, workspaceID, invoiceID string, req entity.UpdateStageReq) (*entity.Invoice, error)
+
+	// ConfirmPartial marks one termin as paid on a multi-termin invoice.
+	// When all termins reach status=paid the invoice's payment_status flips
+	// to Lunas automatically.
+	ConfirmPartial(ctx context.Context, workspaceID, invoiceID string, req entity.ConfirmPartialReq) (*entity.Invoice, error)
+}
+
+// InvoiceActivityEntry is one row of the unified invoice timeline.
+type InvoiceActivityEntry struct {
+	Source    string    `json:"source"`    // "payment_log" | "mutation"
+	Timestamp time.Time `json:"timestamp"`
+	EventType string    `json:"event_type,omitempty"`
+	Actor     string    `json:"actor,omitempty"`
+	Summary   string    `json:"summary,omitempty"`
+	Detail    map[string]any `json:"detail,omitempty"`
 }
 
 type invoiceUsecase struct {
@@ -151,6 +176,9 @@ func (u *invoiceUsecase) Create(ctx context.Context, req entity.CreateInvoiceReq
 	if len(req.LineItems) == 0 {
 		return nil, apperror.ValidationError("at least one line_item is required")
 	}
+	if !entity.IsValidPaymentMethodRoute(req.PaymentMethodRoute) {
+		return nil, apperror.ValidationError("payment_method_route must be paper_id or transfer_bank")
+	}
 
 	// Compute totals.
 	var totalAmount int64
@@ -158,15 +186,40 @@ func (u *invoiceUsecase) Create(ctx context.Context, req entity.CreateInvoiceReq
 		totalAmount += li.Subtotal
 	}
 
+	// Termin validation — when present, sum of termin amounts must equal
+	// the line-item total.
+	if len(req.TerminBreakdown) > 0 {
+		var terminSum int64
+		seen := map[int]bool{}
+		for _, t := range req.TerminBreakdown {
+			if t.TerminNumber <= 0 {
+				return nil, apperror.ValidationError("termin_number must be >= 1")
+			}
+			if seen[t.TerminNumber] {
+				return nil, apperror.ValidationError("duplicate termin_number in breakdown")
+			}
+			seen[t.TerminNumber] = true
+			if t.Amount <= 0 {
+				return nil, apperror.ValidationError("termin amount must be positive")
+			}
+			terminSum += t.Amount
+		}
+		if terminSum != totalAmount {
+			return nil, apperror.ValidationError("sum of termin amounts must equal total line_item amount")
+		}
+	}
+
 	payload := map[string]any{
-		"company_id":    req.CompanyID,
-		"issue_date":    req.IssueDate,
-		"due_date":      req.DueDate,
-		"payment_terms": req.PaymentTerms,
-		"notes":         req.Notes,
-		"created_by":    req.CreatedBy,
-		"total_amount":  totalAmount,
-		"line_item_count": len(req.LineItems),
+		"company_id":            req.CompanyID,
+		"issue_date":            req.IssueDate,
+		"due_date":              req.DueDate,
+		"payment_terms":         req.PaymentTerms,
+		"notes":                 req.Notes,
+		"created_by":            req.CreatedBy,
+		"total_amount":          totalAmount,
+		"line_item_count":       len(req.LineItems),
+		"payment_method_route":  defaultStr(req.PaymentMethodRoute, entity.PaymentMethodRouteTransfer),
+		"has_termin":            len(req.TerminBreakdown) > 0,
 	}
 	desc := fmt.Sprintf("Create invoice for company %s (amount: %d)", req.CompanyID, totalAmount)
 

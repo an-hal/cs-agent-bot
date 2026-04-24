@@ -13,6 +13,7 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
+	"github.com/lib/pq"
 	"github.com/rs/zerolog"
 )
 
@@ -30,6 +31,10 @@ type MasterDataRepository interface {
 	MergeCustomFields(ctx context.Context, workspaceID, id string, updates map[string]any) error
 	BulkUpdateDaysToExpiry(ctx context.Context, workspaceID string) (int64, error)
 	BulkMarkOverdue(ctx context.Context, workspaceID string) (int64, error)
+	// ExistingCompanyIDs returns the subset of given company_ids that already
+	// exist for this workspace. Used by import-preview for dedup and by the
+	// client-create path when FE wants to show a "duplicate" warning pre-submit.
+	ExistingCompanyIDs(ctx context.Context, workspaceID string, companyIDs []string) (map[string]string, error)
 }
 
 // MasterDataPatch carries optional core column updates.
@@ -812,4 +817,42 @@ func castForJSON(expr string, isJSON bool, sample any) string {
 	default:
 		return expr
 	}
+}
+
+// ExistingCompanyIDs returns a map of company_id -> master_data.id for any of
+// the given company_ids that already exist in this workspace. Uses a single
+// ANY query so it's O(1) DB round-trips regardless of input size (bounded at
+// 1000 ids for safety).
+func (r *masterDataRepo) ExistingCompanyIDs(ctx context.Context, workspaceID string, companyIDs []string) (map[string]string, error) {
+	ctx, span := r.tracer.Start(ctx, "master_data.repository.ExistingCompanyIDs")
+	defer span.End()
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	out := map[string]string{}
+	if len(companyIDs) == 0 {
+		return out, nil
+	}
+	if len(companyIDs) > 1000 {
+		companyIDs = companyIDs[:1000]
+	}
+	rows, err := r.db.QueryContext(ctx, `
+        SELECT company_id, id::text
+          FROM master_data
+         WHERE workspace_id::text = $1
+           AND company_id = ANY($2)`,
+		workspaceID, pq.Array(companyIDs),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("existing company_ids: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid, id string
+		if err := rows.Scan(&cid, &id); err != nil {
+			return nil, err
+		}
+		out[cid] = id
+	}
+	return out, rows.Err()
 }

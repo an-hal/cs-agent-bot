@@ -239,6 +239,17 @@ func (c *CustomFieldDefinition) SelectOptions() []string {
 	return out
 }
 
+// Source tags for MasterDataMutation.Source — helps FE filter edit history
+// by origin (dashboard edit vs bot write vs bulk import vs API caller).
+const (
+	MutationSourceDashboard    = "dashboard"
+	MutationSourceBot          = "bot"
+	MutationSourceImport       = "import"
+	MutationSourceAPI          = "api"
+	MutationSourceReactivation = "reactivation"
+	MutationSourceHandoff      = "handoff"
+)
+
 // MasterDataMutation is one row of dashboard edit history.
 type MasterDataMutation struct {
 	ID             string         `json:"id"`
@@ -247,6 +258,7 @@ type MasterDataMutation struct {
 	CompanyID      string         `json:"company_id,omitempty"`
 	CompanyName    string         `json:"company_name,omitempty"`
 	Action         string         `json:"action"`
+	Source         string         `json:"source"`
 	ActorEmail     string         `json:"actor"`
 	ChangedFields  []string       `json:"changed_fields"`
 	PreviousValues map[string]any `json:"previous_values,omitempty"`
@@ -294,10 +306,12 @@ type ApprovalRequest struct {
 
 // Approval request types.
 const (
-	ApprovalTypeDeleteClient   = "delete_client_record"
-	ApprovalTypeBulkImport     = "bulk_import_master_data"
-	ApprovalStatusPending      = "pending"
-	ApprovalStatusApproved     = "approved"
-	ApprovalStatusRejected     = "rejected"
-	ApprovalStatusExpired      = "expired"
+	ApprovalTypeDeleteClient        = "delete_client_record"
+	ApprovalTypeBulkImport          = "bulk_import_master_data"
+	ApprovalTypeStageTransition     = "stage_transition"
+	ApprovalTypeIntegrationKeyChange = "integration_key_change"
+	ApprovalStatusPending           = "pending"
+	ApprovalStatusApproved          = "approved"
+	ApprovalStatusRejected          = "rejected"
+	ApprovalStatusExpired           = "expired"
 )

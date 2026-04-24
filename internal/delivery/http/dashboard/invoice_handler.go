@@ -3,6 +3,7 @@ package dashboard
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/http/router"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/response"
@@ -21,12 +22,110 @@ import (
 type InvoiceHandler struct {
 	uc        dashboard.DashboardUsecase
 	invoiceUC invoice.Usecase
+	pdfGen    invoice.PDFGenerator
 	logger    zerolog.Logger
 	tracer    tracer.Tracer
 }
 
 func NewInvoiceHandler(uc dashboard.DashboardUsecase, invoiceUC invoice.Usecase, logger zerolog.Logger, tr tracer.Tracer) *InvoiceHandler {
-	return &InvoiceHandler{uc: uc, invoiceUC: invoiceUC, logger: logger, tracer: tr}
+	return &InvoiceHandler{uc: uc, invoiceUC: invoiceUC, pdfGen: invoice.NewPDFGenerator(invoiceUC), logger: logger, tracer: tr}
+}
+
+// Activity godoc
+// @Summary      Unified activity timeline for one invoice (payment_logs + mutations)
+// @Tags         Invoices
+// @Security     BearerAuth
+// @Param        X-Workspace-ID header string true "Workspace ID"
+// @Param        invoice_id     path   string true "Invoice ID"
+// @Param        limit          query  int    false "Max items (default 50, max 200)"
+// @Router       /api/invoices/{invoice_id}/activity [get]
+func (h *InvoiceHandler) Activity(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.InvoiceActivity")
+	defer span.End()
+	id := router.GetParam(r, "invoice_id")
+	if id == "" {
+		return apperror.BadRequest("invoice_id required")
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	out, err := h.invoiceUC.Activity(ctx, ctxutil.GetWorkspaceID(ctx), id, limit)
+	if err != nil {
+		return err
+	}
+	return response.StandardSuccess(w, r, http.StatusOK, "Invoice activity", out)
+}
+
+// UpdateStage godoc
+// @Summary      Manually set collection_stage for an invoice (AE-only)
+// @Tags         Invoices
+// @Security     BearerAuth
+// @Accept       json
+// @Param        X-Workspace-ID header string true "Workspace ID"
+// @Param        invoice_id     path   string true "Invoice ID"
+// @Param        body           body   entity.UpdateStageReq true "New stage"
+// @Router       /api/invoices/{invoice_id}/update-stage [post]
+func (h *InvoiceHandler) UpdateStage(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.InvoiceUpdateStage")
+	defer span.End()
+	id := router.GetParam(r, "invoice_id")
+	var req entity.UpdateStageReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return apperror.BadRequest("invalid JSON body")
+	}
+	req.Actor = callerEmail(r)
+	out, err := h.invoiceUC.UpdateStage(ctx, ctxutil.GetWorkspaceID(ctx), id, req)
+	if err != nil {
+		return err
+	}
+	return response.StandardSuccess(w, r, http.StatusOK, "Stage updated", out)
+}
+
+// ConfirmPartial godoc
+// @Summary      Confirm one termin as paid on a multi-termin invoice (AE-only)
+// @Tags         Invoices
+// @Security     BearerAuth
+// @Accept       json
+// @Param        X-Workspace-ID header string true "Workspace ID"
+// @Param        invoice_id     path   string true "Invoice ID"
+// @Param        body           body   entity.ConfirmPartialReq true "Termin confirmation"
+// @Router       /api/invoices/{invoice_id}/confirm-partial [put]
+func (h *InvoiceHandler) ConfirmPartial(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.InvoiceConfirmPartial")
+	defer span.End()
+	id := router.GetParam(r, "invoice_id")
+	var req entity.ConfirmPartialReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return apperror.BadRequest("invalid JSON body")
+	}
+	req.Actor = callerEmail(r)
+	out, err := h.invoiceUC.ConfirmPartial(ctx, ctxutil.GetWorkspaceID(ctx), id, req)
+	if err != nil {
+		return err
+	}
+	return response.StandardSuccess(w, r, http.StatusOK, "Termin confirmed", out)
+}
+
+// PDF godoc
+// @Summary      Download invoice as HTML (printable → PDF via headless Chrome)
+// @Description  Returns a styled HTML document ready for client-side PDF rendering.
+// @Description  A server-side Chrome/wkhtmltopdf step is optional; this endpoint is
+// @Description  deliberately dependency-free so it works in every env.
+// @Tags         Invoices
+// @Security     BearerAuth
+// @Param        X-Workspace-ID header string true  "Workspace ID"
+// @Param        invoice_id     path   string true  "Invoice ID"
+// @Produce      text/html
+// @Success      200  {string}  string  "HTML body"
+// @Router       /api/invoices/{invoice_id}/pdf [get]
+func (h *InvoiceHandler) PDF(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.InvoicePDF")
+	defer span.End()
+	invoiceID := router.GetParam(r, "invoice_id")
+	if invoiceID == "" {
+		return apperror.BadRequest("invoice_id required")
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Disposition", `inline; filename="invoice-`+invoiceID+`.html"`)
+	return h.pdfGen.GeneratePDF(ctx, ctxutil.GetWorkspaceID(ctx), invoiceID, w)
 }
 
 // List godoc

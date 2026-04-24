@@ -25,6 +25,10 @@ type Usecase interface {
 
 	// For cron
 	GetActiveByRole(ctx context.Context, workspaceID string, role entity.RuleRole) ([]entity.AutomationRule, error)
+
+	// ApplyToggleStatus executes a pending "toggle_automation_rule" approval
+	// (active↔paused). The approval payload must include {rule_id, target_status}.
+	ApplyToggleStatus(ctx context.Context, workspaceID, approvalID, checkerEmail string) (*entity.AutomationRule, error)
 }
 
 type usecase struct {
@@ -118,6 +122,12 @@ func (u *usecase) Update(ctx context.Context, workspaceID, id, actor string, fie
 					RequestType: "toggle_automation_rule",
 					Description: desc,
 					MakerEmail:  actor,
+					Payload: map[string]any{
+						"rule_id":       current.ID,
+						"rule_code":     current.RuleCode,
+						"from_status":   cs,
+						"target_status": ns,
+					},
 				})
 				if aerr != nil {
 					u.logger.Warn().Err(aerr).Msg("Failed to create approval request for rule toggle")
@@ -210,4 +220,61 @@ func validateRule(r *entity.AutomationRule) error {
 func isToggleRequiringApproval(currentStatus, newStatus string) bool {
 	return (currentStatus == "active" && newStatus == "paused") ||
 		(currentStatus == "paused" && newStatus == "active")
+}
+
+// ApplyToggleStatus executes a pending toggle_automation_rule approval.
+// It flips the rule's status to payload.target_status, records the change log
+// via repo.Update, then marks the approval approved. Same constraints as
+// collection.ApplyCollectionSchemaChange: maker != checker, status=pending,
+// request_type matches.
+func (u *usecase) ApplyToggleStatus(ctx context.Context, workspaceID, approvalID, checkerEmail string) (*entity.AutomationRule, error) {
+	if workspaceID == "" || approvalID == "" {
+		return nil, apperror.ValidationError("workspace_id and approval_id required")
+	}
+	if u.approvalRepo == nil {
+		return nil, apperror.InternalErrorWithMessage("approval repo not wired", nil)
+	}
+	ar, err := u.approvalRepo.GetByID(ctx, workspaceID, approvalID)
+	if err != nil {
+		return nil, err
+	}
+	if ar == nil {
+		return nil, apperror.NotFound("approval_request", approvalID)
+	}
+	if ar.RequestType != "toggle_automation_rule" {
+		return nil, apperror.BadRequest("approval is not a toggle_automation_rule request")
+	}
+	if ar.Status != entity.ApprovalStatusPending {
+		return nil, apperror.BadRequest("approval is not pending (status=" + ar.Status + ")")
+	}
+	if ar.MakerEmail == checkerEmail {
+		return nil, apperror.BadRequest("cannot approve your own request")
+	}
+
+	ruleID, _ := ar.Payload["rule_id"].(string)
+	targetStatus, _ := ar.Payload["target_status"].(string)
+	if ruleID == "" || targetStatus == "" {
+		return nil, apperror.BadRequest("approval payload missing rule_id or target_status")
+	}
+	if targetStatus != "active" && targetStatus != "paused" {
+		return nil, apperror.BadRequest("target_status must be active or paused")
+	}
+
+	// Bypass the approval gate by calling repo.Update directly (which is what
+	// Update does for non-toggle fields). We rely on the repo to record the
+	// change log under the checker's name — this keeps the audit trail honest
+	// (the approver committed the change, not the requester).
+	if _, err := u.repo.Update(ctx, workspaceID, ruleID, map[string]interface{}{"status": targetStatus}, checkerEmail); err != nil {
+		return nil, fmt.Errorf("automationRule.ApplyToggleStatus update: %w", err)
+	}
+
+	if err := u.approvalRepo.UpdateStatus(ctx, workspaceID, ar.ID, entity.ApprovalStatusApproved, checkerEmail, ""); err != nil {
+		return nil, fmt.Errorf("mark approval approved: %w", err)
+	}
+
+	updated, err := u.repo.GetByID(ctx, workspaceID, ruleID)
+	if err != nil {
+		return nil, fmt.Errorf("automationRule.ApplyToggleStatus re-fetch: %w", err)
+	}
+	return updated, nil
 }

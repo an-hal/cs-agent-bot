@@ -55,12 +55,16 @@ func (r *masterDataMutationRepo) Append(ctx context.Context, m *entity.MasterDat
 		return fmt.Errorf("marshal new: %w", err)
 	}
 
+	src := m.Source
+	if src == "" {
+		src = entity.MutationSourceDashboard
+	}
 	_, err = r.db.ExecContext(ctx,
 		`INSERT INTO master_data_mutations
-            (workspace_id, master_data_id, company_id, company_name, action, actor_email,
+            (workspace_id, master_data_id, company_id, company_name, action, source, actor_email,
              changed_fields, previous_values, new_values, note)
-         VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10)`,
-		m.WorkspaceID, m.MasterDataID, m.CompanyID, m.CompanyName, m.Action, m.ActorEmail,
+         VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6, $7, $8, $9::jsonb, $10::jsonb, $11)`,
+		m.WorkspaceID, m.MasterDataID, m.CompanyID, m.CompanyName, m.Action, src, m.ActorEmail,
 		pq.Array(m.ChangedFields), string(prevRaw), string(newRaw), m.Note,
 	)
 	if err != nil {
@@ -84,7 +88,7 @@ func (r *masterDataMutationRepo) List(ctx context.Context, workspaceID string, s
 	}
 	query, args, err := database.PSQL.
 		Select(`id::text, workspace_id::text, master_data_id::text, COALESCE(company_id,''),
-            COALESCE(company_name,''), action, actor_email, changed_fields,
+            COALESCE(company_name,''), action, COALESCE(source,'dashboard'), actor_email, changed_fields,
             COALESCE(previous_values,'{}'::jsonb), COALESCE(new_values,'{}'::jsonb),
             COALESCE(note,''), timestamp`).
 		From("master_data_mutations").
@@ -106,7 +110,7 @@ func (r *masterDataMutationRepo) List(ctx context.Context, workspaceID string, s
 		var prevRaw, newRaw []byte
 		if err := rows.Scan(
 			&m.ID, &m.WorkspaceID, &m.MasterDataID, &m.CompanyID, &m.CompanyName,
-			&m.Action, &m.ActorEmail, pq.Array(&m.ChangedFields),
+			&m.Action, &m.Source, &m.ActorEmail, pq.Array(&m.ChangedFields),
 			&prevRaw, &newRaw, &m.Note, &m.Timestamp,
 		); err != nil {
 			return nil, fmt.Errorf("scan: %w", err)

@@ -485,7 +485,25 @@ func (r *invoiceRepo) Stats(ctx context.Context, wsIDs []string) (*entity.Invoic
 		}
 		stats.ByCollectionStage[stage] = cnt
 	}
-	return stats, stageRows.Err()
+	if err := stageRows.Err(); err != nil {
+		return nil, err
+	}
+
+	// Unique companies billed across this scope — small scalar query, batched
+	// after the aggregates above.
+	_ = r.DB.QueryRowContext(ctx,
+		"SELECT COUNT(DISTINCT company_id) FROM invoices WHERE workspace_id::text = ANY($1)",
+		pq.Array(wsIDs),
+	).Scan(&stats.UniqueCompanies)
+
+	// Derive Lunas percentage from what we already have. Keeps the math in
+	// one place so FE doesn't need to recompute.
+	if stats.Total > 0 {
+		if lunas, ok := stats.ByStatus[entity.PaymentStatusLunas]; ok {
+			stats.LunasPct = (float64(lunas) / float64(stats.Total)) * 100.0
+		}
+	}
+	return stats, nil
 }
 
 // UpdateStatusBulk sets payment_status for a list of invoices in one statement.

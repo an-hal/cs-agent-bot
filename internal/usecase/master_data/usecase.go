@@ -18,6 +18,7 @@ import (
 
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/apperror"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/xlsximport"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
 )
 
@@ -54,6 +55,16 @@ type Usecase interface {
 	ListMutations(ctx context.Context, workspaceID string, since *time.Time, limit int) ([]entity.MasterDataMutation, error)
 
 	RequestImport(ctx context.Context, workspaceID, actorEmail, fileName string, mode ImportMode, rowCount int, preview []map[string]any, fileRef string) (*entity.ApprovalRequest, error)
+	// PreviewImport parses rows + runs dedup lookup, no DB writes.
+	PreviewImport(ctx context.Context, workspaceID string, rows []xlsximport.ClientImportRow, mode ImportMode) (*ImportPreview, error)
+	// ApplyBDHandoffToClient copies BD discovery fields into AE-owned fields
+	// on transition to client stage. Returns the list of populated fields.
+	ApplyBDHandoffToClient(ctx context.Context, workspaceID, clientID, actorEmail string) ([]string, error)
+	// RequestStageTransition creates an approval_request for a gated stage
+	// transition (e.g. prospect→client).
+	RequestStageTransition(ctx context.Context, workspaceID, clientID, actorEmail string, req TransitionRequest) (*entity.ApprovalRequest, error)
+	// ApplyApprovedStageTransition executes a pending stage_transition approval.
+	ApplyApprovedStageTransition(ctx context.Context, workspaceID, approvalID, checkerEmail string) (*TransitionResult, error)
 	Export(ctx context.Context, workspaceID string, w io.Writer) error
 	Template(ctx context.Context, workspaceID string, w io.Writer) error
 }
@@ -247,6 +258,7 @@ func (u *usecase) Create(ctx context.Context, workspaceID, actorEmail string, re
 		CompanyID:     created.CompanyID,
 		CompanyName:   created.CompanyName,
 		Action:        "create_client",
+		Source:        entity.MutationSourceDashboard,
 		ActorEmail:    actorEmail,
 		ChangedFields: []string{"*"},
 		NewValues:     map[string]any{"company_id": created.CompanyID, "stage": created.Stage},
@@ -310,6 +322,7 @@ func (u *usecase) Patch(ctx context.Context, workspaceID, id, actorEmail string,
 		CompanyID:      updated.CompanyID,
 		CompanyName:    updated.CompanyName,
 		Action:         "edit_client",
+		Source:         sourceFromWriteContext(ctxKind),
 		ActorEmail:     actorEmail,
 		ChangedFields:  changedFields,
 		PreviousValues: prevValues,
@@ -378,6 +391,7 @@ func (u *usecase) ApplyApprovedDelete(ctx context.Context, workspaceID, approval
 		WorkspaceID:   workspaceID,
 		MasterDataID:  clientID,
 		Action:        "delete_client",
+		Source:        entity.MutationSourceDashboard,
 		ActorEmail:    checkerEmail,
 		ChangedFields: []string{"*"},
 	})
@@ -454,12 +468,24 @@ func (u *usecase) Transition(ctx context.Context, workspaceID, id, actorEmail st
 		CompanyID:      curr.CompanyID,
 		CompanyName:    curr.CompanyName,
 		Action:         "stage_transition",
+		Source:         sourceFromWriteContext(ctxKind),
 		ActorEmail:     actorEmail,
 		ChangedFields:  []string{"stage"},
 		PreviousValues: prevValues,
 		NewValues:      newValues,
 		Note:           req.Reason,
 	})
+	// BD→AE handoff: when a prospect is promoted to client, auto-copy BD
+	// discovery fields into AE-owned slots so the AE starts with full context.
+	// Best-effort — failure here doesn't roll back the transition.
+	if prev.Stage == entity.StageProspect && curr.Stage == entity.StageClient {
+		if populated, err := u.ApplyBDHandoffToClient(ctx, workspaceID, curr.ID, actorEmail); err == nil && len(populated) > 0 {
+			// re-fetch so the caller sees the merged custom_fields
+			if refreshed, err := u.repo.GetByID(ctx, workspaceID, curr.ID); err == nil && refreshed != nil {
+				curr = refreshed
+			}
+		}
+	}
 	return &TransitionResult{Data: curr, PreviousStage: prev.Stage}, nil
 }
 
@@ -475,6 +501,18 @@ func (u *usecase) ListMutations(ctx context.Context, workspaceID string, since *
 // ───────────────────────────── helpers ─────────────────────────────
 
 var errNotFound = errors.New("not found")
+
+// sourceFromWriteContext maps the internal WriteContext to the mutation-log
+// Source tag used by FE activity views.
+func sourceFromWriteContext(k WriteContext) string {
+	switch k {
+	case WriteContextBot:
+		return entity.MutationSourceBot
+	case WriteContextDashboardUser:
+		return entity.MutationSourceDashboard
+	}
+	return entity.MutationSourceAPI
+}
 
 func isValidStage(s string) bool {
 	switch s {

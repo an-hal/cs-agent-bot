@@ -1,0 +1,540 @@
+{
+  "info": {
+    "_postman_id": "cs-agent-bot-collection",
+    "name": "cs-agent-bot",
+    "description": "Complete API surface for cs-agent-bot. Host defaults to https://localhost:8003 via the `base_url` variable. All dashboard endpoints require `X-Workspace-ID` and Bearer JWT. Generated from route.go on 2026-04-23.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{"key": "token", "value": "{{jwt}}", "type": "string"}]
+  },
+  "variable": [
+    {"key": "base_url", "value": "https://localhost:8003", "type": "string"},
+    {"key": "route_prefix", "value": "/v1/cs-agent-bot", "type": "string", "description": "APP_ROUTE_PREFIX — leave empty if unset."},
+    {"key": "workspace_id", "value": "00000000-0000-0000-0000-000000000000", "type": "string"},
+    {"key": "jwt", "value": "", "type": "string", "description": "User JWT for dashboard endpoints."},
+    {"key": "oidc_jwt", "value": "", "type": "string", "description": "GCP Cloud Scheduler OIDC token (cron routes only)."},
+    {"key": "hmac_signature", "value": "", "type": "string", "description": "HMAC signature header for handoff/payment webhooks."},
+    {"key": "haloai_signature", "value": "", "type": "string", "description": "HaloAI webhook HMAC signature."}
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /readiness",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{base_url}}/readiness", "host": ["{{base_url}}"], "path": ["readiness"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "POST /auth/login",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"secret\"\n}"},
+            "url": {"raw": "{{base_url}}{{route_prefix}}/auth/login", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "auth", "login"]}
+          }
+        },
+        {
+          "name": "POST /auth/google",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"id_token\": \"GOOGLE_ID_TOKEN\"\n}"},
+            "url": {"raw": "{{base_url}}{{route_prefix}}/auth/google", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "auth", "google"]}
+          }
+        },
+        {
+          "name": "POST /auth/logout",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "POST",
+            "header": [],
+            "url": {"raw": "{{base_url}}{{route_prefix}}/auth/logout", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "auth", "logout"]}
+          }
+        },
+        {
+          "name": "GET /whitelist/check",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{base_url}}{{route_prefix}}/whitelist/check?email=user@example.com", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "whitelist", "check"], "query": [{"key": "email", "value": "user@example.com"}]}
+          }
+        },
+        {
+          "name": "GET /whitelist",
+          "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/whitelist", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "whitelist"]}}
+        },
+        {
+          "name": "POST /whitelist",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"email\": \"newuser@example.com\"\n}"},
+            "url": {"raw": "{{base_url}}{{route_prefix}}/whitelist", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "whitelist"]}
+          }
+        },
+        {
+          "name": "DELETE /whitelist/{id}",
+          "request": {"method": "DELETE", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/whitelist/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "whitelist", ":id"], "variable": [{"key": "id", "value": ""}]}}
+        }
+      ]
+    },
+    {
+      "name": "Webhooks & Cron",
+      "description": "OIDC for cron, HMAC for handoff/payment, HaloAI sig for /webhook/wa.",
+      "item": [
+        {
+          "name": "GET /cron/run (OIDC)",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{oidc_jwt}}"}]},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{base_url}}{{route_prefix}}/cron/run", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "cron", "run"]}
+          }
+        },
+        {
+          "name": "GET /cron/invoices/overdue (OIDC)",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{oidc_jwt}}"}]},
+            "method": "GET", "header": [],
+            "url": {"raw": "{{base_url}}{{route_prefix}}/cron/invoices/overdue", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "cron", "invoices", "overdue"]}
+          }
+        },
+        {
+          "name": "GET /cron/invoices/escalate (OIDC)",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{oidc_jwt}}"}]},
+            "method": "GET", "header": [],
+            "url": {"raw": "{{base_url}}{{route_prefix}}/cron/invoices/escalate", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "cron", "invoices", "escalate"]}
+          }
+        },
+        {
+          "name": "GET /cron/analytics/rebuild-snapshots (OIDC)",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{oidc_jwt}}"}]},
+            "method": "GET", "header": [],
+            "url": {"raw": "{{base_url}}{{route_prefix}}/cron/analytics/rebuild-snapshots", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "cron", "analytics", "rebuild-snapshots"]}
+          }
+        },
+        {
+          "name": "POST /handoff/new-client (HMAC)",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "POST",
+            "header": [{"key": "X-Signature", "value": "{{hmac_signature}}"}, {"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"company_id\": \"ACME-001\",\n  \"company_name\": \"Acme\",\n  \"contract_end\": \"2026-12-31\"\n}"},
+            "url": {"raw": "{{base_url}}{{route_prefix}}/handoff/new-client", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "handoff", "new-client"]}
+          }
+        },
+        {
+          "name": "POST /payment/verify (HMAC)",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "POST",
+            "header": [{"key": "X-Signature", "value": "{{hmac_signature}}"}, {"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"invoice_id\": \"INV-001\",\n  \"status\": \"paid\"\n}"},
+            "url": {"raw": "{{base_url}}{{route_prefix}}/payment/verify", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "payment", "verify"]}
+          }
+        },
+        {
+          "name": "POST /webhook/wa (HaloAI HMAC)",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "POST",
+            "header": [{"key": "X-Haloai-Signature", "value": "{{haloai_signature}}"}, {"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"from\": \"+628123456789\",\n  \"message\": \"sudah bayar\",\n  \"message_type\": \"text\"\n}"},
+            "url": {"raw": "{{base_url}}{{route_prefix}}/webhook/wa", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "webhook", "wa"]}
+          }
+        },
+        {
+          "name": "POST /webhook/checkin-form",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"company_id\": \"ACME-001\",\n  \"nps_score\": 9,\n  \"feedback\": \"great\"\n}"},
+            "url": {"raw": "{{base_url}}{{route_prefix}}/webhook/checkin-form", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "webhook", "checkin-form"]}
+          }
+        },
+        {
+          "name": "POST /webhook/paperid/{workspace_id}",
+          "request": {
+            "auth": {"type": "noauth"},
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"invoice_number\": \"INV-001\",\n  \"status\": \"paid\",\n  \"paid_at\": \"2026-04-23T00:00:00Z\"\n}"},
+            "url": {"raw": "{{base_url}}{{route_prefix}}/webhook/paperid/{{workspace_id}}", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "webhook", "paperid", "{{workspace_id}}"]}
+          }
+        }
+      ]
+    },
+    {
+      "name": "Workspaces",
+      "item": [
+        {"name": "GET /workspaces", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/workspaces", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workspaces"]}}},
+        {"name": "POST /workspaces", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"slug\": \"acme\",\n  \"name\": \"Acme Corp\",\n  \"description\": \"\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/workspaces", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workspaces"]}}},
+        {"name": "GET /workspaces/{id}", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/workspaces/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workspaces", ":id"], "variable": [{"key": "id", "value": "{{workspace_id}}"}]}}},
+        {"name": "PUT /workspaces/{id}", "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"name\": \"Acme Corp (new)\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/workspaces/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workspaces", ":id"], "variable": [{"key": "id", "value": "{{workspace_id}}"}]}}},
+        {"name": "DELETE /workspaces/{id}", "request": {"method": "DELETE", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/workspaces/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workspaces", ":id"], "variable": [{"key": "id", "value": "{{workspace_id}}"}]}}},
+        {"name": "POST /workspaces/{id}/switch", "request": {"method": "POST", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/workspaces/:id/switch", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workspaces", ":id", "switch"], "variable": [{"key": "id", "value": "{{workspace_id}}"}]}}},
+        {"name": "GET /workspaces/{id}/members", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/workspaces/:id/members", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workspaces", ":id", "members"], "variable": [{"key": "id", "value": "{{workspace_id}}"}]}}},
+        {"name": "POST /workspaces/{id}/members/invite", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"email\": \"new@example.com\",\n  \"role\": \"member\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/workspaces/:id/members/invite", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workspaces", ":id", "members", "invite"], "variable": [{"key": "id", "value": "{{workspace_id}}"}]}}},
+        {"name": "PUT /workspaces/{id}/members/{member_id}", "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"role\": \"admin\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/workspaces/:id/members/:member_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workspaces", ":id", "members", ":member_id"], "variable": [{"key": "id", "value": "{{workspace_id}}"}, {"key": "member_id", "value": ""}]}}},
+        {"name": "DELETE /workspaces/{id}/members/{member_id}", "request": {"method": "DELETE", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/workspaces/:id/members/:member_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workspaces", ":id", "members", ":member_id"], "variable": [{"key": "id", "value": "{{workspace_id}}"}, {"key": "member_id", "value": ""}]}}},
+        {"name": "POST /workspaces/invitations/{token}/accept", "request": {"method": "POST", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/workspaces/invitations/:token/accept", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workspaces", "invitations", ":token", "accept"], "variable": [{"key": "token", "value": ""}]}}}
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {"name": "GET /notifications", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/notifications?unread_only=false&limit=50&offset=0", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "notifications"], "query": [{"key": "unread_only", "value": "false"}, {"key": "limit", "value": "50"}, {"key": "offset", "value": "0"}]}}},
+        {"name": "POST /notifications", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"recipient_email\": \"user@example.com\",\n  \"type\": \"info\",\n  \"message\": \"Hello\",\n  \"href\": \"/app/...\",\n  \"source_feature\": \"manual\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/notifications", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "notifications"]}}},
+        {"name": "GET /notifications/count", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/notifications/count", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "notifications", "count"]}}},
+        {"name": "PUT /notifications/{id}/read", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/notifications/:id/read", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "notifications", ":id", "read"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /notifications/read-all", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/notifications/read-all", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "notifications", "read-all"]}}}
+      ]
+    },
+    {
+      "name": "User Preferences (A1)",
+      "description": "Per-user, per-workspace UI state store. FE-owned value shape.",
+      "item": [
+        {"name": "GET /preferences (list)", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/preferences", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "preferences"]}}},
+        {"name": "GET /preferences/{namespace}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/preferences/theme", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "preferences", "theme"]}}},
+        {"name": "PUT /preferences/{namespace}", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"value\": {\n    \"mode\": \"dark\",\n    \"accent\": \"blue\"\n  }\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/preferences/theme", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "preferences", "theme"]}}},
+        {"name": "DELETE /preferences/{namespace}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/preferences/theme", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "preferences", "theme"]}}}
+      ]
+    },
+    {
+      "name": "Workspace Integrations (A2)",
+      "description": "Per-workspace third-party credentials. Secrets redacted on read.",
+      "item": [
+        {"name": "GET /integrations (list)", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/integrations", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "integrations"]}}},
+        {"name": "GET /integrations/{provider}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/integrations/haloai", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "integrations", "haloai"]}}},
+        {"name": "PUT /integrations/haloai", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"display_name\": \"HaloAI Production\",\n  \"is_active\": true,\n  \"config\": {\n    \"api_url\": \"https://halo.example\",\n    \"business_id\": \"biz-123\",\n    \"channel_id\": \"ch-456\",\n    \"wa_api_token\": \"REPLACE_ME\"\n  }\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/integrations/haloai", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "integrations", "haloai"]}}},
+        {"name": "PUT /integrations/telegram", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"display_name\": \"Telegram AE Alerts\",\n  \"is_active\": true,\n  \"config\": {\n    \"bot_token\": \"REPLACE_ME\",\n    \"default_chat_id\": \"-100xxx\"\n  }\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/integrations/telegram", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "integrations", "telegram"]}}},
+        {"name": "PUT /integrations/paper_id", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"display_name\": \"Paper.id\",\n  \"is_active\": true,\n  \"config\": {\n    \"webhook_secret\": \"REPLACE_ME\",\n    \"api_key\": \"REPLACE_ME\"\n  }\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/integrations/paper_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "integrations", "paper_id"]}}},
+        {"name": "PUT /integrations/smtp", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"display_name\": \"SMTP Outbound\",\n  \"is_active\": true,\n  \"config\": {\n    \"host\": \"smtp.sendgrid.net\",\n    \"port\": 587,\n    \"from_email\": \"noreply@example.com\",\n    \"username\": \"apikey\",\n    \"password\": \"REPLACE_ME\"\n  }\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/integrations/smtp", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "integrations", "smtp"]}}},
+        {"name": "DELETE /integrations/{provider}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/integrations/smtp", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "integrations", "smtp"]}}}
+      ]
+    },
+    {
+      "name": "Approvals (A3)",
+      "description": "Central dispatcher. Routes by request_type: create_invoice, mark_invoice_paid, collection_schema_change, delete_client_record, toggle_automation_rule. bulk_import uses its own endpoint.",
+      "item": [
+        {"name": "POST /approvals/{id}/apply", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/approvals/:id/apply", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "approvals", ":id", "apply"], "variable": [{"key": "id", "value": ""}]}}}
+      ]
+    },
+    {
+      "name": "Manual Actions (B)",
+      "description": "GUARD manual-flow queue — 20 flows requiring human composition.",
+      "item": [
+        {"name": "GET /manual-actions?mine=true&status=pending", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/manual-actions?mine=true&status=pending&limit=20", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "manual-actions"], "query": [{"key": "mine", "value": "true"}, {"key": "status", "value": "pending"}, {"key": "role", "value": "ae", "disabled": true}, {"key": "priority", "value": "P0", "disabled": true}, {"key": "flow_category", "value": "renewal_opener", "disabled": true}, {"key": "limit", "value": "20"}]}}},
+        {"name": "GET /manual-actions/{id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/manual-actions/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "manual-actions", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PATCH /manual-actions/{id}/mark-sent", "request": {"method": "PATCH", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"channel\": \"wa\",\n  \"actual_message\": \"Pak, terkait renewal...\",\n  \"notes\": \"positive tone\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/manual-actions/:id/mark-sent", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "manual-actions", ":id", "mark-sent"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PATCH /manual-actions/{id}/skip", "request": {"method": "PATCH", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"reason\": \"client already responded via call\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/manual-actions/:id/skip", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "manual-actions", ":id", "skip"], "variable": [{"key": "id", "value": ""}]}}}
+      ]
+    },
+    {
+      "name": "Activity Logs",
+      "item": [
+        {"name": "GET /activity-logs", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/activity-logs?limit=50&offset=0", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "activity-logs"], "query": [{"key": "limit", "value": "50"}, {"key": "offset", "value": "0"}]}}},
+        {"name": "POST /activity-logs", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"feature\": \"master_data\",\n  \"action\": \"update_client\",\n  \"resource_id\": \"ACME-001\",\n  \"detail\": {\"field\": \"stage\"}\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/activity-logs", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "activity-logs"]}}},
+        {"name": "GET /activity-logs/recent", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/activity-logs/recent", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "activity-logs", "recent"]}}},
+        {"name": "GET /activity-logs/stats", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/activity-logs/stats", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "activity-logs", "stats"]}}},
+        {"name": "GET /activity-logs/companies/{company_id}/summary", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/activity-logs/companies/:company_id/summary", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "activity-logs", "companies", ":company_id", "summary"], "variable": [{"key": "company_id", "value": "ACME-001"}]}}}
+      ]
+    },
+    {
+      "name": "Background Jobs",
+      "item": [
+        {"name": "GET /jobs", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/jobs", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "jobs"]}}},
+        {"name": "GET /jobs/{job_id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/jobs/:job_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "jobs", ":job_id"], "variable": [{"key": "job_id", "value": ""}]}}},
+        {"name": "GET /jobs/{job_id}/download", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/jobs/:job_id/download", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "jobs", ":job_id", "download"], "variable": [{"key": "job_id", "value": ""}]}}}
+      ]
+    },
+    {
+      "name": "Data Master (legacy /data-master)",
+      "item": [
+        {"name": "GET /data-master/clients", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/clients", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "clients"]}}},
+        {"name": "POST /data-master/clients", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"company_id\": \"ACME-001\",\n  \"company_name\": \"Acme Corp\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/clients", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "clients"]}}},
+        {"name": "GET /data-master/clients/{company_id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/clients/:company_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "clients", ":company_id"], "variable": [{"key": "company_id", "value": "ACME-001"}]}}},
+        {"name": "PUT /data-master/clients/{company_id}", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"company_name\": \"Acme Corp (upd)\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/clients/:company_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "clients", ":company_id"], "variable": [{"key": "company_id", "value": "ACME-001"}]}}},
+        {"name": "DELETE /data-master/clients/{company_id}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/clients/:company_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "clients", ":company_id"], "variable": [{"key": "company_id", "value": "ACME-001"}]}}},
+        {"name": "POST /data-master/clients/import", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "body": {"mode": "formdata", "formdata": [{"key": "file", "type": "file", "src": []}]}, "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/clients/import", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "clients", "import"]}}},
+        {"name": "POST /data-master/clients/export", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/clients/export", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "clients", "export"]}}},
+        {"name": "GET /data-master/clients/{company_id}/escalations", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/clients/:company_id/escalations", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "clients", ":company_id", "escalations"], "variable": [{"key": "company_id", "value": "ACME-001"}]}}},
+        {"name": "GET /data-master/invoices", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/invoices", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "invoices"]}}},
+        {"name": "GET /data-master/invoices/{invoice_id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/invoices/:invoice_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "invoices", ":invoice_id"], "variable": [{"key": "invoice_id", "value": ""}]}}},
+        {"name": "PUT /data-master/invoices/{invoice_id}", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/invoices/:invoice_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "invoices", ":invoice_id"], "variable": [{"key": "invoice_id", "value": ""}]}}},
+        {"name": "GET /data-master/escalations", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/escalations", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "escalations"]}}},
+        {"name": "GET /data-master/escalations/{id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/escalations/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "escalations", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /data-master/escalations/{id}/resolve", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"note\": \"resolved via call\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/escalations/:id/resolve", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "escalations", ":id", "resolve"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "GET /data-master/message-templates", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/message-templates", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "message-templates"]}}},
+        {"name": "GET /data-master/message-templates/{template_id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/message-templates/:template_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "message-templates", ":template_id"], "variable": [{"key": "template_id", "value": ""}]}}},
+        {"name": "PUT /data-master/message-templates/{template_id}", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"body\": \"Updated template...\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/message-templates/:template_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "message-templates", ":template_id"], "variable": [{"key": "template_id", "value": ""}]}}},
+        {"name": "GET /data-master/trigger-rules", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/trigger-rules", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "trigger-rules"]}}},
+        {"name": "POST /data-master/trigger-rules", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/trigger-rules", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "trigger-rules"]}}},
+        {"name": "GET /data-master/trigger-rules/{rule_id}", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/trigger-rules/:rule_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "trigger-rules", ":rule_id"], "variable": [{"key": "rule_id", "value": ""}]}}},
+        {"name": "PUT /data-master/trigger-rules/{rule_id}", "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/trigger-rules/:rule_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "trigger-rules", ":rule_id"], "variable": [{"key": "rule_id", "value": ""}]}}},
+        {"name": "DELETE /data-master/trigger-rules/{rule_id}", "request": {"method": "DELETE", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/trigger-rules/:rule_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "trigger-rules", ":rule_id"], "variable": [{"key": "rule_id", "value": ""}]}}},
+        {"name": "POST /data-master/trigger-rules/cache/invalidate", "request": {"method": "POST", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/trigger-rules/cache/invalidate", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "trigger-rules", "cache", "invalidate"]}}},
+        {"name": "GET /data-master/template-variables", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/template-variables", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "template-variables"]}}},
+        {"name": "GET /data-master/system-config", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/system-config", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "system-config"]}}},
+        {"name": "PUT /data-master/system-config/{key}", "request": {"method": "PUT", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"value\": \"new value\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/data-master/system-config/PROMO_DEADLINE", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "data-master", "system-config", "PROMO_DEADLINE"]}}}
+      ]
+    },
+    {
+      "name": "Invoices (/invoices)",
+      "item": [
+        {"name": "GET /invoices", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/invoices?limit=50&offset=0", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "invoices"], "query": [{"key": "limit", "value": "50"}, {"key": "offset", "value": "0"}]}}},
+        {"name": "POST /invoices", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"company_id\": \"ACME-001\",\n  \"due_date\": \"2026-05-31\",\n  \"line_items\": [{\"description\": \"HRIS subscription\", \"amount\": 12000000}]\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/invoices", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "invoices"]}}},
+        {"name": "GET /invoices/stats", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/invoices/stats", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "invoices", "stats"]}}},
+        {"name": "GET /invoices/by-stage", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/invoices/by-stage", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "invoices", "by-stage"]}}},
+        {"name": "GET /invoices/{invoice_id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/invoices/:invoice_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "invoices", ":invoice_id"], "variable": [{"key": "invoice_id", "value": ""}]}}},
+        {"name": "PUT /invoices/{invoice_id}", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/invoices/:invoice_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "invoices", ":invoice_id"], "variable": [{"key": "invoice_id", "value": ""}]}}},
+        {"name": "DELETE /invoices/{invoice_id}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/invoices/:invoice_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "invoices", ":invoice_id"], "variable": [{"key": "invoice_id", "value": ""}]}}},
+        {"name": "POST /invoices/{invoice_id}/mark-paid", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"note\": \"confirmed via Paper.id\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/invoices/:invoice_id/mark-paid", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "invoices", ":invoice_id", "mark-paid"], "variable": [{"key": "invoice_id", "value": ""}]}}},
+        {"name": "POST /invoices/{invoice_id}/send-reminder", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/invoices/:invoice_id/send-reminder", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "invoices", ":invoice_id", "send-reminder"], "variable": [{"key": "invoice_id", "value": ""}]}}},
+        {"name": "GET /invoices/{invoice_id}/payment-logs", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/invoices/:invoice_id/payment-logs", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "invoices", ":invoice_id", "payment-logs"], "variable": [{"key": "invoice_id", "value": ""}]}}}
+      ]
+    },
+    {
+      "name": "Master Data (/master-data)",
+      "item": [
+        {"name": "GET /master-data/clients", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/clients", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "clients"]}}},
+        {"name": "GET /master-data/clients/export", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/clients/export", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "clients", "export"]}}},
+        {"name": "GET /master-data/clients/template", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/clients/template", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "clients", "template"]}}},
+        {"name": "POST /master-data/clients/import", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "body": {"mode": "formdata", "formdata": [{"key": "file", "type": "file", "src": []}]}, "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/clients/import", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "clients", "import"]}}},
+        {"name": "POST /master-data/clients", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"company_id\": \"ACME-001\",\n  \"company_name\": \"Acme Corp\",\n  \"stage\": \"lead\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/clients", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "clients"]}}},
+        {"name": "GET /master-data/clients/{id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/clients/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "clients", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /master-data/clients/{id}", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"updates\": {\"company_name\": \"Acme v2\"},\n  \"custom_field_updates\": {}\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/clients/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "clients", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "DELETE /master-data/clients/{id}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/clients/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "clients", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "POST /master-data/clients/{id}/transition", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"new_stage\": \"prospect\",\n  \"reason\": \"qualified\",\n  \"updates\": {},\n  \"custom_field_updates\": {}\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/clients/:id/transition", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "clients", ":id", "transition"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "POST /master-data/query", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"conditions\": [],\n  \"limit\": 50\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/query", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "query"]}}},
+        {"name": "GET /master-data/stats", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/stats", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "stats"]}}},
+        {"name": "GET /master-data/attention", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/attention", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "attention"]}}},
+        {"name": "GET /master-data/mutations", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/mutations", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "mutations"]}}},
+        {"name": "GET /master-data/field-definitions", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/field-definitions", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "field-definitions"]}}},
+        {"name": "POST /master-data/field-definitions", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"key\": \"industry\",\n  \"label\": \"Industry\",\n  \"type\": \"text\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/field-definitions", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "field-definitions"]}}},
+        {"name": "PUT /master-data/field-definitions/reorder", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"order\": [\"industry\", \"hc_size\"]\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/field-definitions/reorder", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "field-definitions", "reorder"]}}},
+        {"name": "PUT /master-data/field-definitions/{id}", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/field-definitions/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "field-definitions", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "DELETE /master-data/field-definitions/{id}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/field-definitions/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "field-definitions", ":id"], "variable": [{"key": "id", "value": ""}]}}}
+      ]
+    },
+    {
+      "name": "Team",
+      "item": [
+        {"name": "GET /team/members", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/team/members", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "members"]}}},
+        {"name": "POST /team/members/invite", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"email\": \"new@example.com\",\n  \"role_id\": \"role-ae\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/team/members/invite", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "members", "invite"]}}},
+        {"name": "GET /team/members/{id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/team/members/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "members", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /team/members/{id}", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/team/members/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "members", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /team/members/{id}/role", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"role_id\": \"role-admin\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/team/members/:id/role", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "members", ":id", "role"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /team/members/{id}/status", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"status\": \"active\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/team/members/:id/status", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "members", ":id", "status"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /team/members/{id}/workspaces", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"workspace_ids\": [\"{{workspace_id}}\"]\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/team/members/:id/workspaces", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "members", ":id", "workspaces"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "DELETE /team/members/{id}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/team/members/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "members", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "POST /team/invitations/{token}/accept", "request": {"method": "POST", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/team/invitations/:token/accept", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "invitations", ":token", "accept"], "variable": [{"key": "token", "value": ""}]}}},
+        {"name": "GET /team/roles", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/team/roles", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "roles"]}}},
+        {"name": "POST /team/roles", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"name\": \"Manager\",\n  \"slug\": \"manager\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/team/roles", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "roles"]}}},
+        {"name": "GET /team/roles/{id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/team/roles/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "roles", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /team/roles/{id}", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/team/roles/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "roles", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /team/roles/{id}/permissions", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"permissions\": []\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/team/roles/:id/permissions", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "roles", ":id", "permissions"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "DELETE /team/roles/{id}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/team/roles/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "roles", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "GET /team/permissions/me", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/team/permissions/me", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "team", "permissions", "me"]}}}
+      ]
+    },
+    {
+      "name": "Messaging Templates",
+      "item": [
+        {"name": "GET /templates/messages", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/templates/messages", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "templates", "messages"]}}},
+        {"name": "POST /templates/messages", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"code\": \"REN90\",\n  \"channel\": \"wa\",\n  \"body\": \"Pak, renewal H-90...\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/templates/messages", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "templates", "messages"]}}},
+        {"name": "GET /templates/messages/{id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/templates/messages/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "templates", "messages", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /templates/messages/{id}", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/templates/messages/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "templates", "messages", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "DELETE /templates/messages/{id}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/templates/messages/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "templates", "messages", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "GET /templates/emails", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/templates/emails", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "templates", "emails"]}}},
+        {"name": "POST /templates/emails", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"code\": \"WELCOME_EMAIL\",\n  \"subject\": \"Welcome\",\n  \"body_html\": \"<p>Welcome</p>\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/templates/emails", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "templates", "emails"]}}},
+        {"name": "GET /templates/emails/{id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/templates/emails/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "templates", "emails", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /templates/emails/{id}", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/templates/emails/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "templates", "emails", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "DELETE /templates/emails/{id}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/templates/emails/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "templates", "emails", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "POST /templates/preview", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"template_body\": \"Hi [first_name]\",\n  \"variables\": {\"first_name\": \"Budi\"}\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/templates/preview", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "templates", "preview"]}}},
+        {"name": "GET /templates/edit-logs", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/templates/edit-logs", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "templates", "edit-logs"]}}},
+        {"name": "GET /templates/edit-logs/{template_id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/templates/edit-logs/:template_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "templates", "edit-logs", ":template_id"], "variable": [{"key": "template_id", "value": ""}]}}},
+        {"name": "GET /templates/variables", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/templates/variables", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "templates", "variables"]}}}
+      ]
+    },
+    {
+      "name": "Workflows",
+      "item": [
+        {"name": "GET /workflows", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/workflows", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows"]}}},
+        {"name": "POST /workflows", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"slug\": \"ae-pipeline\",\n  \"name\": \"AE Pipeline\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/workflows", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows"]}}},
+        {"name": "GET /workflows/by-slug/{slug}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/workflows/by-slug/:slug", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows", "by-slug", ":slug"], "variable": [{"key": "slug", "value": ""}]}}},
+        {"name": "GET /workflows/{id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/workflows/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /workflows/{id}", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/workflows/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "DELETE /workflows/{id}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/workflows/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /workflows/{id}/canvas", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"nodes\": [],\n  \"edges\": []\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/workflows/:id/canvas", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows", ":id", "canvas"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "GET /workflows/{id}/steps", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/workflows/:id/steps", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows", ":id", "steps"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /workflows/{id}/steps", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"steps\": []\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/workflows/:id/steps", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows", ":id", "steps"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "GET /workflows/{id}/steps/{stepKey}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/workflows/:id/steps/:stepKey", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows", ":id", "steps", ":stepKey"], "variable": [{"key": "id", "value": ""}, {"key": "stepKey", "value": ""}]}}},
+        {"name": "PUT /workflows/{id}/steps/{stepKey}", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/workflows/:id/steps/:stepKey", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows", ":id", "steps", ":stepKey"], "variable": [{"key": "id", "value": ""}, {"key": "stepKey", "value": ""}]}}},
+        {"name": "GET /workflows/{id}/config", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/workflows/:id/config", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows", ":id", "config"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /workflows/{id}/tabs", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"tabs\": []\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/workflows/:id/tabs", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows", ":id", "tabs"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /workflows/{id}/stats", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/workflows/:id/stats", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows", ":id", "stats"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /workflows/{id}/columns", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"columns\": []\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/workflows/:id/columns", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows", ":id", "columns"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "GET /workflows/{id}/data", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/workflows/:id/data", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "workflows", ":id", "data"], "variable": [{"key": "id", "value": ""}]}}}
+      ]
+    },
+    {
+      "name": "Automation Rules",
+      "item": [
+        {"name": "GET /automation-rules", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/automation-rules", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "automation-rules"]}}},
+        {"name": "POST /automation-rules", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"rule_code\": \"AE_P4_REN90\",\n  \"trigger_id\": \"ae_renewal\",\n  \"timing\": \"H-90\",\n  \"condition\": \"-\",\n  \"role\": \"ae\",\n  \"phase\": \"renewal\",\n  \"channel\": \"wa\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/automation-rules", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "automation-rules"]}}},
+        {"name": "GET /automation-rules/change-logs", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/automation-rules/change-logs", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "automation-rules", "change-logs"]}}},
+        {"name": "GET /automation-rules/{id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/automation-rules/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "automation-rules", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PUT /automation-rules/{id}", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"status\": \"paused\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/automation-rules/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "automation-rules", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "DELETE /automation-rules/{id}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/automation-rules/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "automation-rules", ":id"], "variable": [{"key": "id", "value": ""}]}}}
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {"name": "GET /dashboard/stats", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/dashboard/stats", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "dashboard", "stats"]}}},
+        {"name": "GET /analytics/kpi", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/analytics/kpi", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "analytics", "kpi"]}}},
+        {"name": "GET /analytics/distributions", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/analytics/distributions", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "analytics", "distributions"]}}},
+        {"name": "GET /analytics/engagement", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/analytics/engagement", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "analytics", "engagement"]}}},
+        {"name": "GET /analytics/revenue-trend", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/analytics/revenue-trend", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "analytics", "revenue-trend"]}}},
+        {"name": "GET /analytics/forecast-accuracy", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/analytics/forecast-accuracy", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "analytics", "forecast-accuracy"]}}},
+        {"name": "GET /revenue-targets", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/revenue-targets", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "revenue-targets"]}}},
+        {"name": "PUT /revenue-targets", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"period\": \"2026-Q2\",\n  \"target_amount\": 100000000\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/revenue-targets", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "revenue-targets"]}}}
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        {"name": "GET /reports/executive-summary", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/reports/executive-summary", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "reports", "executive-summary"]}}},
+        {"name": "GET /reports/revenue-contracts", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/reports/revenue-contracts", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "reports", "revenue-contracts"]}}},
+        {"name": "GET /reports/client-health", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/reports/client-health", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "reports", "client-health"]}}},
+        {"name": "GET /reports/engagement-retention", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/reports/engagement-retention", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "reports", "engagement-retention"]}}},
+        {"name": "GET /reports/workspace-comparison", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/reports/workspace-comparison", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "reports", "workspace-comparison"]}}},
+        {"name": "POST /reports/export", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"report\": \"executive-summary\",\n  \"format\": \"xlsx\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/reports/export", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "reports", "export"]}}}
+      ]
+    },
+    {
+      "name": "Collections",
+      "item": [
+        {"name": "GET /collections", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/collections", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "collections"]}}},
+        {"name": "POST /collections", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"slug\": \"products\",\n  \"name\": \"Products\",\n  \"description\": \"\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/collections", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "collections"]}}},
+        {"name": "GET /collections/{id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/collections/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "collections", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PATCH /collections/{id}", "request": {"method": "PATCH", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/collections/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "collections", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "DELETE /collections/{id}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/collections/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "collections", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "POST /collections/{id}/fields", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"key\": \"price\",\n  \"label\": \"Price\",\n  \"type\": \"number\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/collections/:id/fields", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "collections", ":id", "fields"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PATCH /collections/{id}/fields/{field_id}", "request": {"method": "PATCH", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/collections/:id/fields/:field_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "collections", ":id", "fields", ":field_id"], "variable": [{"key": "id", "value": ""}, {"key": "field_id", "value": ""}]}}},
+        {"name": "DELETE /collections/{id}/fields/{field_id}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/collections/:id/fields/:field_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "collections", ":id", "fields", ":field_id"], "variable": [{"key": "id", "value": ""}, {"key": "field_id", "value": ""}]}}},
+        {"name": "POST /collections/approvals/{approval_id}/approve", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/collections/approvals/:approval_id/approve", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "collections", "approvals", ":approval_id", "approve"], "variable": [{"key": "approval_id", "value": ""}]}}},
+        {"name": "GET /collections/{id}/records", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/collections/:id/records", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "collections", ":id", "records"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "GET /collections/{id}/records/distinct", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/collections/:id/records/distinct", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "collections", ":id", "records", "distinct"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "POST /collections/{id}/records", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"fields\": {\"price\": 100}\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/collections/:id/records", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "collections", ":id", "records"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PATCH /collections/{id}/records/{record_id}", "request": {"method": "PATCH", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/collections/:id/records/:record_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "collections", ":id", "records", ":record_id"], "variable": [{"key": "id", "value": ""}, {"key": "record_id", "value": ""}]}}},
+        {"name": "DELETE /collections/{id}/records/{record_id}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/collections/:id/records/:record_id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "collections", ":id", "records", ":record_id"], "variable": [{"key": "id", "value": ""}, {"key": "record_id", "value": ""}]}}},
+        {"name": "POST /collections/{id}/records/bulk", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"records\": []\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/collections/:id/records/bulk", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "collections", ":id", "records", "bulk"], "variable": [{"key": "id", "value": ""}]}}}
+      ]
+    },
+    {
+      "name": "Audit Logs — Workspace Access",
+      "description": "Cross-workspace access audit (feat/01 §2c + feat/08).",
+      "item": [
+        {"name": "GET /audit-logs/workspace-access", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/audit-logs/workspace-access?limit=50&offset=0", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "audit-logs", "workspace-access"], "query": [{"key": "actor", "value": "", "disabled": true}, {"key": "kind", "value": "read", "disabled": true}, {"key": "resource", "value": "master_data", "disabled": true}, {"key": "limit", "value": "50"}, {"key": "offset", "value": "0"}]}}},
+        {"name": "POST /audit-logs/workspace-access", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"access_kind\": \"read\",\n  \"resource\": \"master_data\",\n  \"resource_id\": \"md-123\",\n  \"reason\": \"reviewing client record from holding view\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/audit-logs/workspace-access", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "audit-logs", "workspace-access"]}}}
+      ]
+    },
+    {
+      "name": "Fireflies",
+      "description": "Transcript ingestion (feat/00-shared/07). Webhook is HMAC-signed and stateless — idempotent by fireflies_id.",
+      "item": [
+        {"name": "POST /webhook/fireflies/{workspace_id} (HMAC)", "request": {"auth": {"type": "noauth"}, "method": "POST", "header": [{"key": "X-Signature", "value": "{{hmac_signature}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"fireflies_id\": \"ff-abc-123\",\n  \"meeting_title\": \"Discovery call — Acme\",\n  \"meeting_date\": \"2026-04-23T10:00:00Z\",\n  \"duration_seconds\": 1800,\n  \"host_email\": \"bd@kantorku.id\",\n  \"participants\": [\"bd@kantorku.id\", \"cfo@acme.com\"],\n  \"transcript_text\": \"Full transcript here...\",\n  \"raw\": {}\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/webhook/fireflies/{{workspace_id}}", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "webhook", "fireflies", "{{workspace_id}}"]}}},
+        {"name": "GET /fireflies/transcripts", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/fireflies/transcripts?status=succeeded&limit=50", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "fireflies", "transcripts"], "query": [{"key": "status", "value": "succeeded", "description": "pending|running|succeeded|failed"}, {"key": "limit", "value": "50"}, {"key": "offset", "value": "0", "disabled": true}]}}},
+        {"name": "GET /fireflies/transcripts/{id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/fireflies/transcripts/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "fireflies", "transcripts", ":id"], "variable": [{"key": "id", "value": ""}]}}}
+      ]
+    },
+    {
+      "name": "Reactivation",
+      "description": "Dormant-client reactivation triggers + events (feat/03 master-data).",
+      "item": [
+        {"name": "GET /reactivation/triggers", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/reactivation/triggers?active=true", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "reactivation", "triggers"], "query": [{"key": "active", "value": "true"}]}}},
+        {"name": "POST /reactivation/triggers", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"code\": \"price_change\",\n  \"name\": \"Price change re-engage\",\n  \"description\": \"Fire when workspace pricing changes\",\n  \"condition\": \"-\",\n  \"template_code\": \"REACTIVATE_PRICE\",\n  \"is_active\": true\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/reactivation/triggers", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "reactivation", "triggers"]}}},
+        {"name": "GET /reactivation/triggers/{id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/reactivation/triggers/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "reactivation", "triggers", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "DELETE /reactivation/triggers/{id}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/reactivation/triggers/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "reactivation", "triggers", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "POST /master-data/clients/{id}/reactivate", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"trigger_code\": \"manual\",\n  \"note\": \"Ad-hoc outreach after renewal hint\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/clients/:id/reactivate", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "clients", ":id", "reactivate"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "GET /master-data/clients/{id}/reactivation-history", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/master-data/clients/:id/reactivation-history?limit=50", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "master-data", "clients", ":id", "reactivation-history"], "variable": [{"key": "id", "value": ""}], "query": [{"key": "limit", "value": "50"}]}}}
+      ]
+    },
+    {
+      "name": "Coaching",
+      "description": "BD peer-review + manager-review sessions (feat/00-shared/11).",
+      "item": [
+        {"name": "GET /coaching/sessions", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/coaching/sessions?limit=50", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "coaching", "sessions"], "query": [{"key": "bd", "value": "", "disabled": true}, {"key": "coach", "value": "", "disabled": true}, {"key": "status", "value": "draft|submitted|reviewed", "disabled": true}, {"key": "limit", "value": "50"}, {"key": "offset", "value": "0", "disabled": true}]}}},
+        {"name": "POST /coaching/sessions", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"bd_email\": \"bd@kantorku.id\",\n  \"session_type\": \"peer_review\",\n  \"master_data_id\": \"\",\n  \"claude_extraction_id\": \"\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/coaching/sessions", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "coaching", "sessions"]}}},
+        {"name": "GET /coaching/sessions/{id}", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/coaching/sessions/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "coaching", "sessions", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "PATCH /coaching/sessions/{id}", "request": {"method": "PATCH", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"bants_clarity_score\": 4,\n  \"discovery_depth_score\": 5,\n  \"tone_fit_score\": 3,\n  \"next_step_clarity_score\": 4,\n  \"strengths\": \"Strong discovery questions\",\n  \"improvements\": \"Close with a concrete next step\",\n  \"action_items\": \"Send proposal by Fri\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/coaching/sessions/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "coaching", "sessions", ":id"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "POST /coaching/sessions/{id}/submit", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/coaching/sessions/:id/submit", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "coaching", "sessions", ":id", "submit"], "variable": [{"key": "id", "value": ""}]}}},
+        {"name": "DELETE /coaching/sessions/{id}", "request": {"method": "DELETE", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/coaching/sessions/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "coaching", "sessions", ":id"], "variable": [{"key": "id", "value": ""}]}}}
+      ]
+    },
+    {
+      "name": "Rejection Analysis",
+      "description": "Per-reply rejection classification + analytics (feat/05-messaging).",
+      "item": [
+        {"name": "GET /rejection-analysis", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/rejection-analysis?limit=50", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "rejection-analysis"], "query": [{"key": "master_data_id", "value": "", "disabled": true}, {"key": "category", "value": "price|authority|timing|feature|tone|other", "disabled": true}, {"key": "limit", "value": "50"}, {"key": "offset", "value": "0", "disabled": true}]}}},
+        {"name": "POST /rejection-analysis/analyze", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"master_data_id\": \"md-123\",\n  \"source_channel\": \"wa\",\n  \"source_message\": \"Bro, ini terlalu mahal, butuh diskon dulu\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/rejection-analysis/analyze", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "rejection-analysis", "analyze"]}}},
+        {"name": "POST /rejection-analysis (record pre-classified)", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"master_data_id\": \"md-123\",\n  \"source_channel\": \"call_note\",\n  \"source_message\": \"Nanti saja pak, fokus Q4\",\n  \"rejection_category\": \"timing\",\n  \"severity\": \"mid\",\n  \"analysis_summary\": \"Delay until Q4; keep warm\",\n  \"suggested_response\": \"Set a Q3 check-in reminder\",\n  \"analyst\": \"human\",\n  \"analyst_version\": \"ae-v1\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/rejection-analysis", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "rejection-analysis"]}}},
+        {"name": "GET /rejection-analysis/stats?days=30", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/rejection-analysis/stats?days=30", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "rejection-analysis", "stats"], "query": [{"key": "days", "value": "30"}]}}}
+      ]
+    },
+    {
+      "name": "Analytics — KPI Bundle",
+      "description": "Single-call batch endpoint (feat/09).",
+      "item": [
+        {"name": "GET /analytics/kpi/bundle", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/analytics/kpi/bundle?role=ae&months=6", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "analytics", "kpi", "bundle"], "query": [{"key": "role", "value": "ae", "description": "sdr|bd|ae|admin (optional)"}, {"key": "months", "value": "6"}]}}}
+      ]
+    },
+    {
+      "name": "Mock External APIs",
+      "description": "FE QA surface for Claude / Fireflies / HaloAI / SMTP. Auto-active when MOCK_EXTERNAL_APIS=true or API keys absent. Every POST records to the shared in-memory outbox — inspect via GET /mock/outbox.",
+      "item": [
+        {"name": "GET /mock/outbox", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/mock/outbox?limit=50", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "mock", "outbox"], "query": [{"key": "provider", "value": "claude", "description": "claude|fireflies|haloai|smtp (empty = all)", "disabled": true}, {"key": "limit", "value": "50"}]}}},
+        {"name": "GET /mock/outbox/{id}", "request": {"method": "GET", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/mock/outbox/:id", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "mock", "outbox", ":id"], "variable": [{"key": "id", "value": "mock-claude-1"}]}}},
+        {"name": "DELETE /mock/outbox", "request": {"method": "DELETE", "header": [], "url": {"raw": "{{base_url}}{{route_prefix}}/mock/outbox", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "mock", "outbox"], "query": [{"key": "provider", "value": "claude", "description": "Empty = clear all", "disabled": true}]}}},
+        {"name": "POST /mock/claude/extract", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"transcript_text\": \"CFO: Saya yang putuskan soal anggaran HR tools. Budget 150 juta siap. Minggu ini bisa review proposal. 250 karyawan, payroll urgent.\",\n  \"hints\": {\n    \"meeting_title\": \"Discovery — Acme\"\n  }\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/mock/claude/extract", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "mock", "claude", "extract"]}}},
+        {"name": "POST /mock/fireflies/fetch", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"fireflies_id\": \"ff-mock-001\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/mock/fireflies/fetch", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "mock", "fireflies", "fetch"]}}},
+        {"name": "POST /mock/haloai/send", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"workspace_id\": \"{{workspace_id}}\",\n  \"to\": \"628123456789\",\n  \"template_id\": \"REN90\",\n  \"body\": \"Pak, renewal H-90...\",\n  \"variables\": {\n    \"pic_name\": \"Pak Budi\",\n    \"company_name\": \"Acme\"\n  }\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/mock/haloai/send", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "mock", "haloai", "send"]}}},
+        {"name": "POST /mock/smtp/send", "request": {"method": "POST", "header": [{"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"to\": [\"client@example.com\"],\n  \"subject\": \"Welcome to Kantorku\",\n  \"body_html\": \"<p>Hi Budi,</p><p>Welcome aboard!</p>\",\n  \"from_addr\": \"noreply@kantorku.id\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/mock/smtp/send", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "mock", "smtp", "send"]}}}
+      ]
+    },
+    {
+      "name": "Wave C — Invoice Extras & Action Log",
+      "description": "Endpoints added after FE-spec gap audit (2026-04-24): invoice activity/stage/partial + action-log aggregation.",
+      "item": [
+        {"name": "GET /invoices/{invoice_id}/activity", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/invoices/:invoice_id/activity?limit=50", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "invoices", ":invoice_id", "activity"], "variable": [{"key": "invoice_id", "value": ""}], "query": [{"key": "limit", "value": "50"}]}}},
+        {"name": "POST /invoices/{invoice_id}/update-stage", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"new_stage\": \"Stage 2 — Firm\",\n  \"reason\": \"Client requested 1-week extension\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/invoices/:invoice_id/update-stage", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "invoices", ":invoice_id", "update-stage"], "variable": [{"key": "invoice_id", "value": ""}]}}},
+        {"name": "PUT /invoices/{invoice_id}/confirm-partial", "request": {"method": "PUT", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"termin_number\": 1,\n  \"amount_paid\": 40000000,\n  \"payment_method\": \"transfer_bank\",\n  \"payment_ref\": \"TRX-20260430-001\",\n  \"paid_at\": \"2026-04-30T10:00:00Z\",\n  \"notes\": \"Termin 1/3\"\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/invoices/:invoice_id/confirm-partial", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "invoices", ":invoice_id", "confirm-partial"], "variable": [{"key": "invoice_id", "value": ""}]}}},
+        {"name": "POST /invoices (with termin_breakdown)", "request": {"method": "POST", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}, {"key": "Content-Type", "value": "application/json"}], "body": {"mode": "raw", "raw": "{\n  \"company_id\": \"ACME-001\",\n  \"issue_date\": \"2026-04-01T00:00:00Z\",\n  \"due_date\": \"2026-06-30T00:00:00Z\",\n  \"payment_terms\": 30,\n  \"payment_method_route\": \"transfer_bank\",\n  \"line_items\": [\n    {\"description\": \"Annual HRIS subscription\", \"qty\": 1, \"unit_price\": 120000000, \"subtotal\": 120000000}\n  ],\n  \"termin_breakdown\": [\n    {\"termin_number\": 1, \"amount\": 40000000, \"due_date\": \"2026-04-30T00:00:00Z\", \"status\": \"pending\"},\n    {\"termin_number\": 2, \"amount\": 40000000, \"due_date\": \"2026-05-31T00:00:00Z\", \"status\": \"pending\"},\n    {\"termin_number\": 3, \"amount\": 40000000, \"due_date\": \"2026-06-30T00:00:00Z\", \"status\": \"pending\"}\n  ]\n}"}, "url": {"raw": "{{base_url}}{{route_prefix}}/invoices", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "invoices"]}}},
+        {"name": "GET /action-log/recent", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/action-log/recent?limit=50", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "action-log", "recent"], "query": [{"key": "limit", "value": "50"}]}}},
+        {"name": "GET /action-log/today", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/action-log/today?limit=200", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "action-log", "today"], "query": [{"key": "limit", "value": "200"}]}}},
+        {"name": "GET /action-log/summary", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/action-log/summary?hours=24", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "action-log", "summary"], "query": [{"key": "hours", "value": "24"}]}}},
+        {"name": "GET /activity-log/today", "request": {"method": "GET", "header": [{"key": "X-Workspace-ID", "value": "{{workspace_id}}"}], "url": {"raw": "{{base_url}}{{route_prefix}}/activity-log/today", "host": ["{{base_url}}"], "path": ["{{route_prefix}}", "activity-log", "today"]}}}
+      ]
+    }
+  ]
+}

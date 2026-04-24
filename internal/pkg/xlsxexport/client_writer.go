@@ -36,7 +36,7 @@ func WriteClientSheet(w io.Writer, clients []entity.Client) error {
 
 	for col, h := range exportHeaders {
 		cell, _ := excelize.CoordinatesToCellName(col+1, 1)
-		f.SetCellValue(sheetName, cell, h)
+		f.SetCellValue(sheetName, cell, SanitizeCell(h))
 	}
 
 	for i, c := range clients {
@@ -44,7 +44,7 @@ func WriteClientSheet(w io.Writer, clients []entity.Client) error {
 		values := clientRowValues(c)
 		for col, v := range values {
 			cell, _ := excelize.CoordinatesToCellName(col+1, rowNum)
-			f.SetCellValue(sheetName, cell, v)
+			f.SetCellValue(sheetName, cell, SanitizeCell(v))
 		}
 	}
 
