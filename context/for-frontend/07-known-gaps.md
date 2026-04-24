@@ -131,7 +131,7 @@ Swap to real: set env var + `MOCK_EXTERNAL_APIS=false`. Response shape identical
 
 ## New endpoint summary (added after FE spec review)
 
-Total BE endpoints: **~251** (up from 245). Net change: **+6 endpoints
+Total BE endpoints: **~252** (up from 245). Net change: **+7 endpoints
 directly addressing FE spec gaps**.
 
 ```

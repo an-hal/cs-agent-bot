@@ -1,7 +1,7 @@
 # cs-agent-bot — Frontend Integration Guide
 
 Documentation for FE developers integrating against cs-agent-bot BE.
-Snapshot 2026-04-24. BE spec coverage: **±97%**.
+Snapshot 2026-04-24. BE spec coverage: **±99%**.
 
 ## Read this first
 
@@ -9,7 +9,7 @@ Snapshot 2026-04-24. BE spec coverage: **±97%**.
 |---|---|
 | [00-GETTING-STARTED.md](00-GETTING-STARTED.md) | Initial setup — run BE locally, auth, headers, Postman |
 | [01-auth-and-errors.md](01-auth-and-errors.md) | JWT + workspace header scheme, standardized error codes |
-| [02-endpoint-catalog.md](02-endpoint-catalog.md) | Complete ±245 endpoint list by category |
+| [02-endpoint-catalog.md](02-endpoint-catalog.md) | Complete ±252 endpoint list by category |
 | [03-integration-state.md](03-integration-state.md) | External integrations (Claude, Fireflies, HaloAI, SMTP, Paper.id, Telegram) — what's real vs mock |
 | [04-mock-mode.md](04-mock-mode.md) | FE QA via mock endpoints + outbox inspection |
 | [05-data-models.md](05-data-models.md) | Key response shapes (envelope, pagination, common entities) |
@@ -50,5 +50,5 @@ Per-feature detailed specs live in `features/`. Each feature has at minimum:
 ## Postman
 
 Import `../cs-agent-bot/docs/postman/cs-agent-bot.postman_collection.json`
-(228 requests, 28 folders). Environment at the same folder. Variables
+(229 requests, 29 folders). Environment at the same folder. Variables
 pre-filled for `localhost:8003` — override for staging/prod.

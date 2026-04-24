@@ -77,7 +77,7 @@ Missing `X-Workspace-ID` on a workspace-scoped route returns `400 BAD_REQUEST`:
 
 ## Postman collection
 
-Location: `docs/postman/cs-agent-bot.postman_collection.json` (28 folders, 228 requests).
+Location: `docs/postman/cs-agent-bot.postman_collection.json` (29 folders, 229 requests).
 
 1. Import `cs-agent-bot.postman_collection.json`
 2. Import `cs-agent-bot.postman_environment.json`

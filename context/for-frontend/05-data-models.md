@@ -39,6 +39,16 @@ All primary IDs are UUIDs rendered as strings. Exception: `invoice_id`,
 `company_id`, `template_id` — human-readable business keys (e.g. `INV-2026-001`,
 `ACME-CORP-001`, `TPL-OB-WELCOME`).
 
+### Note on `master_data_id`
+
+Several entities carry a `master_data_id` UUID field (e.g. `FirefliesTranscript`,
+`ClaudeExtraction`, `CoachingSession`, `ManualAction`, `RejectionAnalysis`,
+`ReactivationEvent`). These all point to the **same underlying row in the
+`clients` table**. Internally the BE exposes a read-only VIEW called
+`master_data` where `clients.master_id` is aliased as `id` — FE sees a stable
+UUID either way. For consumers, treat `master_data_id` as "the id of a
+client/master-data row" and use `GET /master-data/clients/{id}` to fetch.
+
 ## Key entities
 
 ### Client / MasterData

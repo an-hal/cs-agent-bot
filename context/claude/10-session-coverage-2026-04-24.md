@@ -1,10 +1,28 @@
 # Session Coverage — 2026-04-24
 
 Continuation of 2026-04-23. Today's delta pushes `context/for-backend/` spec
-implementation from **±85% → ±97%**, closing every code-only gap and leaving
-only third-party SDK swaps remaining.
+implementation from **±85% → ±99%** (after Wave C FE-spec alignment),
+closing every code-only gap and leaving only third-party SDK swaps remaining.
 
 See also: [09-session-coverage-2026-04-23.md](09-session-coverage-2026-04-23.md).
+
+## Post-session note (upstream pull)
+
+After this session's commits landed to `master`, the team retrofitted 3
+Wave-2 migrations to reference `clients(master_id)` instead of
+`master_data(id)` (commit `cf31d3d`):
+- `20260423000003_create_manual_action_queue`
+- `20260423000013_create_reactivation_triggers`
+- `20260423000015_create_rejection_analysis_log`
+
+Rationale: `master_data` is a VIEW over `clients`, and PostgreSQL can't
+FK-target a view. See [05-database.md](05-database.md) §"master_data is a
+VIEW". Column semantics unchanged — `clients.master_id` == `master_data.id`.
+
+Swagger was also regenerated upstream (commit `5fe756a`) but **only covers
+Wave 1–Section A endpoints**. Wave B (`20260424*`) + Wave C endpoints
+(invoice extras + action-log aggregation) are NOT in the current
+`docs/swagger.json` — run `make swag` to regenerate.
 
 ## What shipped today
 

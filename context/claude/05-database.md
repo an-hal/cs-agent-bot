@@ -18,10 +18,31 @@ make migrate-down
 make migrate-create name=add_something
 ```
 
+## Important: `master_data` is a VIEW, not a table
+
+The `master_data` relation referenced throughout the codebase is a
+**read-only VIEW** over the `clients` table (migration
+`20260414000202_create_master_data_view.up.sql`). It projects
+`clients.master_id AS id` + aliases for other columns so repos can
+`SELECT FROM master_data` naturally.
+
+Implications for migrations:
+- **Reads** (`SELECT FROM master_data`) — fine, view returns rows.
+- **FK constraints** — use `REFERENCES clients(master_id)`, **never**
+  `REFERENCES master_data(id)`. PostgreSQL cannot FK-target a view.
+- **Writes** (INSERT/UPDATE/DELETE) — bypass the view; go to `clients`
+  directly via the master_data usecase.
+
+Three migrations created in Wave 2 (2026-04-23) were retrofitted by the
+team to reference `clients(master_id)` instead of `master_data(id)`:
+- `20260423000003_create_manual_action_queue`
+- `20260423000013_create_reactivation_triggers` (and `reactivation_events`)
+- `20260423000015_create_rejection_analysis_log`
+
 ## Core Tables
 
 ### Automation / Engagement
-- `clients` — Company state + 40+ columns (contract dates, flags, metrics, engagement phase)
+- `clients` — Company state + 40+ columns (contract dates, flags, metrics, engagement phase). Primary key is `master_id` (UUID). The `master_data` VIEW re-exposes this as `id`.
 - `client_flags` — 34 boolean flags (per-phase progress, reply status)
 - `action_log` — **INSERT-only** audit trail (`REVOKE UPDATE, DELETE` enforced at DB level)
 - `conversation_states` — per-client conversation tracking
