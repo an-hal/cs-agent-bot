@@ -176,6 +176,44 @@
                 }
             }
         },
+        "/analytics/kpi/bundle": {
+            "get": {
+                "description": "Single-call batch for FE dashboard; optional role filter tags the payload so FE\ncan render role-specific panels without a second round-trip. Cache is recommended\nat the client side (15 min).",
+                "tags": [
+                    "Analytics"
+                ],
+                "summary": "Bundled KPI + distributions + engagement + forecast",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "sdr|bd|ae|admin — optional, echoed in meta",
+                        "name": "role",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Revenue-trend history window (default 6)",
+                        "name": "months",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/analytics/revenue-trend": {
             "get": {
                 "description": "Monthly revenue data with OLS linear regression forecast.",
@@ -224,6 +262,257 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/action-log/recent": {
+            "get": {
+                "tags": [
+                    "ActionLogs"
+                ],
+                "summary": "Last N bot actions for the current workspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/action-log/summary": {
+            "get": {
+                "tags": [
+                    "ActionLogs"
+                ],
+                "summary": "Aggregated bot action counts (total, messages_sent, replies, escalations)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Lookback hours (default 24)",
+                        "name": "hours",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/action-log/today": {
+            "get": {
+                "tags": [
+                    "ActionLogs"
+                ],
+                "summary": "Bot actions from the current UTC day",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (default 200)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/activity-log/feed": {
+            "get": {
+                "tags": [
+                    "ActivityLogs"
+                ],
+                "summary": "Unified activity feed (action_log + mutations + activity_log)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/activity-log/today": {
+            "get": {
+                "description": "Convenience wrapper over /activity-log/feed scoped to today's UTC.",
+                "tags": [
+                    "ActivityLogs"
+                ],
+                "summary": "Today's unified activity (action + mutations + activity_log)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/approvals/{id}/apply": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Routes by request_type: create_invoice, mark_invoice_paid,\ncollection_schema_change, delete_client_record,\ntoggle_automation_rule.\nbulk_import_master_data requires the row payload — use\nPOST /data-master/import/commit/{approval_id} instead.",
+                "tags": [
+                    "Approvals"
+                ],
+                "summary": "Apply a pending approval (central dispatcher)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Approval request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ApprovalRequest"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/audit-logs/workspace-access": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "AuditLogs"
+                ],
+                "summary": "List cross-workspace access audit entries",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by actor_email",
+                        "name": "actor",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "read|write|admin",
+                        "name": "kind",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Resource filter",
+                        "name": "resource",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AuditLogs"
+                ],
+                "summary": "Record a cross-workspace access event",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Event",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.recordWorkspaceAccessBody"
+                        }
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/automation-rules": {
@@ -655,6 +944,185 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/coaching/sessions": {
+            "get": {
+                "tags": [
+                    "Coaching"
+                ],
+                "summary": "List coaching sessions (filter by bd/coach/status)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "bd_email",
+                        "name": "bd",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "coach_email",
+                        "name": "coach",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "draft|submitted|reviewed",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Coaching"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Session",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/coaching.CreateRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/coaching/sessions/{id}": {
+            "get": {
+                "tags": [
+                    "Coaching"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "delete": {
+                "tags": [
+                    "Coaching"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "patch": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Coaching"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Patch",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/coaching.UpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/coaching/sessions/{id}/submit": {
+            "post": {
+                "tags": [
+                    "Coaching"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Session ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/collections": {
@@ -1539,6 +2007,32 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/cron/pdp/retention": {
+            "get": {
+                "tags": [
+                    "PDP"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/cron/sessions/cleanup": {
+            "get": {
+                "tags": [
+                    "Sessions"
+                ],
+                "summary": "Delete expired revocation rows (cron)",
+                "responses": {}
             }
         },
         "/api/dashboard/activity-logs/companies/{company_id}/summary": {
@@ -2893,6 +3387,77 @@
                 }
             }
         },
+        "/api/fireflies/transcripts": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Fireflies"
+                ],
+                "summary": "List ingested Fireflies transcripts",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "pending|running|succeeded|failed",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/fireflies/transcripts/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Fireflies"
+                ],
+                "summary": "Get a Fireflies transcript by id",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Transcript ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/api/handoff/new-client": {
             "post": {
                 "security": [
@@ -2937,6 +3502,194 @@
                     },
                     "500": {
                         "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/integrations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "WorkspaceIntegrations"
+                ],
+                "summary": "List integrations configured for this workspace (secrets redacted)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.WorkspaceIntegration"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/integrations/{provider}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "WorkspaceIntegrations"
+                ],
+                "summary": "Get a single integration by provider (secrets redacted)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Provider (haloai|telegram|paper_id|smtp)",
+                        "name": "provider",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.WorkspaceIntegration"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "WorkspaceIntegrations"
+                ],
+                "summary": "Create or update an integration for a provider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Provider (haloai|telegram|paper_id|smtp)",
+                        "name": "provider",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Integration config",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.upsertIntegrationBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.WorkspaceIntegration"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "WorkspaceIntegrations"
+                ],
+                "summary": "Delete an integration by provider",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Provider",
+                        "name": "provider",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
                         }
@@ -3212,6 +3965,84 @@
                 }
             }
         },
+        "/api/invoices/{invoice_id}/activity": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "Invoices"
+                ],
+                "summary": "Unified activity timeline for one invoice (payment_logs + mutations)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Invoice ID",
+                        "name": "invoice_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/invoices/{invoice_id}/confirm-partial": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Invoices"
+                ],
+                "summary": "Confirm one termin as paid on a multi-termin invoice (AE-only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Invoice ID",
+                        "name": "invoice_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Termin confirmation",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entity.ConfirmPartialReq"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/api/invoices/{invoice_id}/mark-paid": {
             "post": {
                 "description": "Queues an approval request to mark an invoice as paid. Returns 202 with the approval request.",
@@ -3306,6 +4137,47 @@
                 }
             }
         },
+        "/api/invoices/{invoice_id}/pdf": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns a styled HTML document ready for client-side PDF rendering.\nA server-side Chrome/wkhtmltopdf step is optional; this endpoint is\ndeliberately dependency-free so it works in every env.",
+                "produces": [
+                    "text/html"
+                ],
+                "tags": [
+                    "Invoices"
+                ],
+                "summary": "Download invoice as HTML (printable → PDF via headless Chrome)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Invoice ID",
+                        "name": "invoice_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "HTML body",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/api/invoices/{invoice_id}/send-reminder": {
             "post": {
                 "description": "Sends a payment reminder for an invoice, records the reminder log.",
@@ -3342,6 +4214,312 @@
                         "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/invoices/{invoice_id}/update-stage": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Invoices"
+                ],
+                "summary": "Manually set collection_stage for an invoice (AE-only)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Invoice ID",
+                        "name": "invoice_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "New stage",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/entity.UpdateStageReq"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/manual-actions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ManualActions"
+                ],
+                "summary": "List manual action queue entries (filterable)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "pending|in_progress|sent|skipped|expired",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Assignee email (default: caller)",
+                        "name": "assigned_to_user",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Shortcut: filter to caller's assignments",
+                        "name": "mine",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "sdr|bd|ae|admin",
+                        "name": "role",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "P0|P1|P2",
+                        "name": "priority",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "flow category",
+                        "name": "flow_category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items (default 50, max 200)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponseWithMeta"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.ManualAction"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/manual-actions/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "ManualActions"
+                ],
+                "summary": "Get a manual action by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Manual action ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ManualAction"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/manual-actions/{id}/mark-sent": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ManualActions"
+                ],
+                "summary": "Confirm the human sent this manual action",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Manual action ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Send confirmation",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/manualaction.MarkSentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ManualAction"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/manual-actions/{id}/skip": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "ManualActions"
+                ],
+                "summary": "Skip a manual action (min 5-char reason)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Manual action ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Skip reason",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.skipManualActionBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.ManualAction"
+                                        }
+                                    }
+                                }
+                            ]
                         }
                     }
                 }
@@ -3644,6 +4822,66 @@
                 }
             }
         },
+        "/api/master-data/clients/import/preview": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upload the same xlsx as /import but receive a per-row breakdown\n(new|duplicate|invalid + existing_id when duplicate). FE uses this\nfor the confirmation modal before submitting the real import.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "tags": [
+                    "MasterData"
+                ],
+                "summary": "Preview a bulk import (dedup + validation, no writes)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Excel file",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "add_new|update_existing",
+                        "name": "mode",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/master_data.ImportPreview"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/api/master-data/clients/template": {
             "get": {
                 "security": [
@@ -3830,6 +5068,68 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/master-data/clients/{id}/reactivate": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reactivation"
+                ],
+                "summary": "Manually fire a reactivation for a client",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "master_data.id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Options",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.reactivateClientBody"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/master-data/clients/{id}/reactivation-history": {
+            "get": {
+                "tags": [
+                    "Reactivation"
+                ],
+                "summary": "List reactivation events for a client",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "master_data.id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/master-data/clients/{id}/transition": {
@@ -4693,6 +5993,778 @@
                         }
                     }
                 }
+            }
+        },
+        "/api/pdp/erasure-requests": {
+            "get": {
+                "tags": [
+                    "PDP"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "pending|approved|executed|rejected|expired",
+                        "name": "status",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter by subject",
+                        "name": "subject_email",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PDP"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Subject + scope",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.createErasureBody"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/pdp/erasure-requests/{id}": {
+            "get": {
+                "tags": [
+                    "PDP"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Erasure request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/pdp/erasure-requests/{id}/approve": {
+            "post": {
+                "tags": [
+                    "PDP"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Erasure request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/pdp/erasure-requests/{id}/execute": {
+            "post": {
+                "tags": [
+                    "PDP"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Erasure request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/pdp/erasure-requests/{id}/reject": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PDP"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Erasure request ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reason",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.rejectErasureBody"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/pdp/retention-policies": {
+            "get": {
+                "tags": [
+                    "PDP"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter to is_active=true only",
+                        "name": "active",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "PDP"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Policy",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.upsertPolicyBody"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/pdp/retention-policies/{id}": {
+            "delete": {
+                "tags": [
+                    "PDP"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Policy ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/preferences": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "UserPreferences"
+                ],
+                "summary": "List all preferences for the caller in this workspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/entity.UserPreference"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/preferences/{namespace}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "UserPreferences"
+                ],
+                "summary": "Get a single preference by namespace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Preference namespace (e.g. theme, sidebar, columns.clients)",
+                        "name": "namespace",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.UserPreference"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "UserPreferences"
+                ],
+                "summary": "Create or update a preference by namespace (full replace of value)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Preference namespace",
+                        "name": "namespace",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Preference value",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.upsertPreferenceBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.StandardResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/entity.UserPreference"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "UserPreferences"
+                ],
+                "summary": "Delete a preference by namespace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Preference namespace",
+                        "name": "namespace",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/reactivation/triggers": {
+            "get": {
+                "tags": [
+                    "Reactivation"
+                ],
+                "summary": "List reactivation triggers for this workspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Filter to is_active=true only",
+                        "name": "active",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reactivation"
+                ],
+                "summary": "Create or update a reactivation trigger (by code)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Trigger",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/reactivation.UpsertTriggerRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/reactivation/triggers/{id}": {
+            "get": {
+                "tags": [
+                    "Reactivation"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Trigger ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "delete": {
+                "tags": [
+                    "Reactivation"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Trigger ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/rejection-analysis": {
+            "get": {
+                "tags": [
+                    "RejectionAnalysis"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Filter to a client",
+                        "name": "master_data_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "price|authority|timing|feature|tone|other",
+                        "name": "category",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RejectionAnalysis"
+                ],
+                "summary": "Store a pre-classified rejection analysis",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Analysis",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rejectionanalysis.RecordRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/rejection-analysis/analyze": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "RejectionAnalysis"
+                ],
+                "summary": "Run the rule classifier over a reply and store the result",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Reply",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/rejectionanalysis.AnalyzeRequest"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/rejection-analysis/stats": {
+            "get": {
+                "tags": [
+                    "RejectionAnalysis"
+                ],
+                "summary": "Aggregate rejection categories over a time window",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Lookback days (default 30)",
+                        "name": "days",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/sessions/revoke": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Sessions"
+                ],
+                "summary": "Revoke a user session / JWT jti",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "JTI + expiry",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.revokeSessionBody"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/sessions/revoked": {
+            "get": {
+                "tags": [
+                    "Sessions"
+                ],
+                "summary": "List active revocations for a user",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "User email",
+                        "name": "user_email",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/team/activity": {
+            "get": {
+                "tags": [
+                    "Team"
+                ],
+                "summary": "List team activity (invites, role changes, etc.)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max items",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Team"
+                ],
+                "summary": "Append a team activity entry (used by team handlers / tests)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Entry",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.recordTeamActivityBody"
+                        }
+                    }
+                ],
+                "responses": {}
             }
         },
         "/api/team/invitations/{token}/accept": {
@@ -6186,6 +8258,44 @@
                 }
             }
         },
+        "/api/webhook/fireflies/{workspace_id}": {
+            "post": {
+                "description": "Idempotent — repeat deliveries of the same fireflies_id return the existing record.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Webhooks"
+                ],
+                "summary": "Receive a Fireflies transcript webhook",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Target workspace ID",
+                        "name": "workspace_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Transcript payload",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/webhook.firefliesWebhookBody"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/response.StandardResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/workflows": {
             "get": {
                 "description": "List all workflows for the current workspace.",
@@ -6847,6 +8957,71 @@
                 }
             }
         },
+        "/api/workspace/holding/expand": {
+            "get": {
+                "description": "Returns [workspace_id] if no holding is configured, else all siblings sharing the same holding_id.",
+                "tags": [
+                    "Workspace"
+                ],
+                "summary": "Resolve the full workspace set a holding covers (self + siblings)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/api/workspace/theme": {
+            "get": {
+                "tags": [
+                    "Workspace"
+                ],
+                "summary": "Get theme config for the current workspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            },
+            "put": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Workspace"
+                ],
+                "summary": "Replace the theme config for the current workspace",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Workspace ID",
+                        "name": "X-Workspace-ID",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Theme JSON (opaque)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.upsertThemeBody"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/api/workspaces": {
             "get": {
                 "security": [
@@ -7475,6 +9650,154 @@
                 }
             }
         },
+        "/mock/claude/extract": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Mock"
+                ],
+                "summary": "Run the Claude mock extractor against an arbitrary transcript",
+                "parameters": [
+                    {
+                        "description": "Transcript + hints",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.mockClaudeReq"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/mock/fireflies/fetch": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Mock"
+                ],
+                "summary": "Fetch a canned Fireflies transcript via the mock client",
+                "parameters": [
+                    {
+                        "description": "Fireflies id",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.mockFirefliesReq"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/mock/haloai/send": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Mock"
+                ],
+                "summary": "Send a WA message through the mock HaloAI sender",
+                "parameters": [
+                    {
+                        "description": "Send request",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.mockHaloAIReq"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/mock/outbox": {
+            "get": {
+                "tags": [
+                    "Mock"
+                ],
+                "summary": "List mock external-API call records",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "claude|fireflies|haloai|smtp (empty = all)",
+                        "name": "provider",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Max records (default 50)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            },
+            "delete": {
+                "tags": [
+                    "Mock"
+                ],
+                "summary": "Clear the mock outbox (all or by provider)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Provider to clear (empty = all)",
+                        "name": "provider",
+                        "in": "query"
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/mock/outbox/{id}": {
+            "get": {
+                "tags": [
+                    "Mock"
+                ],
+                "summary": "Get a single mock outbox record by id",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Outbox record id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {}
+            }
+        },
+        "/mock/smtp/send": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Mock"
+                ],
+                "summary": "Send an email through the mock SMTP client",
+                "parameters": [
+                    {
+                        "description": "Email",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dashboard.mockSMTPReq"
+                        }
+                    }
+                ],
+                "responses": {}
+            }
+        },
         "/readiness": {
             "get": {
                 "description": "Health check for service",
@@ -7990,6 +10313,61 @@
                 }
             }
         },
+        "coaching.CreateRequest": {
+            "type": "object",
+            "properties": {
+                "bd_email": {
+                    "type": "string"
+                },
+                "claude_extraction_id": {
+                    "type": "string"
+                },
+                "coach_email": {
+                    "type": "string"
+                },
+                "master_data_id": {
+                    "type": "string"
+                },
+                "session_type": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "coaching.UpdateRequest": {
+            "type": "object",
+            "properties": {
+                "action_items": {
+                    "type": "string"
+                },
+                "bants_clarity_score": {
+                    "type": "integer"
+                },
+                "discovery_depth_score": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "improvements": {
+                    "type": "string"
+                },
+                "next_step_clarity_score": {
+                    "type": "integer"
+                },
+                "strengths": {
+                    "type": "string"
+                },
+                "tone_fit_score": {
+                    "type": "integer"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
         "collection.BulkRecordsRequest": {
             "type": "object",
             "properties": {
@@ -8277,6 +10655,115 @@
                 }
             }
         },
+        "dashboard.createErasureBody": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "subject_email": {
+                    "type": "string"
+                },
+                "subject_kind": {
+                    "type": "string"
+                }
+            }
+        },
+        "dashboard.mockClaudeReq": {
+            "type": "object",
+            "properties": {
+                "hints": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "transcript_text": {
+                    "type": "string"
+                }
+            }
+        },
+        "dashboard.mockFirefliesReq": {
+            "type": "object",
+            "properties": {
+                "fireflies_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "dashboard.mockHaloAIReq": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "template_id": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "string"
+                },
+                "variables": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "dashboard.mockSMTPReq": {
+            "type": "object",
+            "properties": {
+                "bcc": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "body_html": {
+                    "type": "string"
+                },
+                "body_text": {
+                    "type": "string"
+                },
+                "cc": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "from_addr": {
+                    "type": "string"
+                },
+                "subject": {
+                    "type": "string"
+                },
+                "to": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "dashboard.reactivateClientBody": {
+            "type": "object",
+            "properties": {
+                "note": {
+                    "type": "string"
+                },
+                "trigger_code": {
+                    "type": "string"
+                }
+            }
+        },
         "dashboard.recordActivityRequest": {
             "type": "object",
             "properties": {
@@ -8303,10 +10790,70 @@
                 }
             }
         },
+        "dashboard.recordTeamActivityBody": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "detail": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "role_id": {
+                    "type": "string"
+                },
+                "target_email": {
+                    "type": "string"
+                }
+            }
+        },
+        "dashboard.recordWorkspaceAccessBody": {
+            "type": "object",
+            "properties": {
+                "access_kind": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "resource": {
+                    "type": "string"
+                },
+                "resource_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "dashboard.rejectErasureBody": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
         "dashboard.resolveEscalationRequest": {
             "type": "object",
             "properties": {
                 "resolution_note": {
+                    "type": "string"
+                }
+            }
+        },
+        "dashboard.revokeSessionBody": {
+            "type": "object",
+            "properties": {
+                "expires_in_hours": {
+                    "type": "integer"
+                },
+                "jti": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "user_email": {
                     "type": "string"
                 }
             }
@@ -8372,6 +10919,55 @@
                 }
             }
         },
+        "dashboard.skipManualActionBody": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "dashboard.upsertIntegrationBody": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "dashboard.upsertPolicyBody": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "data_class": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "retention_days": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dashboard.upsertPreferenceBody": {
+            "type": "object",
+            "properties": {
+                "value": {
+                    "type": "object",
+                    "additionalProperties": {}
+                }
+            }
+        },
         "dashboard.upsertTargetRequest": {
             "type": "object",
             "properties": {
@@ -8383,6 +10979,15 @@
                 },
                 "year": {
                     "type": "integer"
+                }
+            }
+        },
+        "dashboard.upsertThemeBody": {
+            "type": "object",
+            "properties": {
+                "theme": {
+                    "type": "object",
+                    "additionalProperties": {}
                 }
             }
         },
@@ -9179,6 +11784,29 @@
                 }
             }
         },
+        "entity.ConfirmPartialReq": {
+            "type": "object",
+            "properties": {
+                "amount_paid": {
+                    "type": "integer"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "paid_at": {
+                    "type": "string"
+                },
+                "payment_method": {
+                    "type": "string"
+                },
+                "payment_ref": {
+                    "type": "string"
+                },
+                "termin_number": {
+                    "type": "integer"
+                }
+            }
+        },
         "entity.CreateInvoiceReq": {
             "type": "object",
             "properties": {
@@ -9203,8 +11831,19 @@
                 "notes": {
                     "type": "string"
                 },
+                "payment_method_route": {
+                    "description": "PaymentMethodRoute selects the collection rail (paper_id | transfer_bank).\nEmpty defaults to transfer_bank (backwards-compatible).",
+                    "type": "string"
+                },
                 "payment_terms": {
                     "type": "integer"
+                },
+                "termin_breakdown": {
+                    "description": "TerminBreakdown — when non-empty, marks the invoice as multi-termin.\nSum of amounts must equal total invoice amount (validated by usecase).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.Termin"
+                    }
                 }
             }
         },
@@ -9787,6 +12426,10 @@
                 "company_id": {
                     "type": "string"
                 },
+                "company_name": {
+                    "description": "CompanyName is resolved from master_data at query-time and included on\nthe top-level Invoice shape so FE list views don't need a separate\nfetch. Empty when the join misses (e.g. deleted client).",
+                    "type": "string"
+                },
                 "created_at": {
                     "type": "string"
                 },
@@ -9838,6 +12481,13 @@
                 },
                 "reminder_count": {
                     "type": "integer"
+                },
+                "termin_breakdown": {
+                    "description": "Optional: non-empty for multi-termin partial-payment invoices. Each\nentry tracks one tranche — see Termin struct. Sum of entry amounts\nshould equal Invoice.Amount (validated by usecase).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.Termin"
+                    }
                 },
                 "updated_at": {
                     "type": "string"
@@ -9929,6 +12579,13 @@
                 "reminder_count": {
                     "type": "integer"
                 },
+                "termin_breakdown": {
+                    "description": "Optional: non-empty for multi-termin partial-payment invoices. Each\nentry tracks one tranche — see Termin struct. Sum of entry amounts\nshould equal Invoice.Amount (validated by usecase).",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/entity.Termin"
+                    }
+                },
                 "updated_at": {
                     "type": "string"
                 },
@@ -9993,10 +12650,16 @@
                         "format": "int64"
                     }
                 },
+                "lunas_pct": {
+                    "type": "number"
+                },
                 "total": {
                     "type": "integer"
                 },
                 "total_amount": {
+                    "type": "integer"
+                },
+                "unique_companies": {
                     "type": "integer"
                 }
             }
@@ -10111,6 +12774,66 @@
                             "type": "integer"
                         }
                     }
+                }
+            }
+        },
+        "entity.ManualAction": {
+            "type": "object",
+            "properties": {
+                "actual_message": {
+                    "type": "string"
+                },
+                "assigned_to_user": {
+                    "type": "string"
+                },
+                "context_summary": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "due_at": {
+                    "type": "string"
+                },
+                "flow_category": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "master_data_id": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "sent_at": {
+                    "type": "string"
+                },
+                "sent_channel": {
+                    "type": "string"
+                },
+                "skipped_reason": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "suggested_draft": {
+                    "type": "string"
+                },
+                "trigger_id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
                 }
             }
         },
@@ -10986,6 +13709,36 @@
                 }
             }
         },
+        "entity.Termin": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "integer"
+                },
+                "due_date": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "paid_at": {
+                    "type": "string"
+                },
+                "payment_method": {
+                    "type": "string"
+                },
+                "payment_ref": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "pending|paid|overdue",
+                    "type": "string"
+                },
+                "termin_number": {
+                    "type": "integer"
+                }
+            }
+        },
         "entity.TopAccount": {
             "type": "object",
             "properties": {
@@ -11059,6 +13812,44 @@
                 },
                 "updated_at": {
                     "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.UpdateStageReq": {
+            "type": "object",
+            "properties": {
+                "new_stage": {
+                    "type": "string"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "entity.UserPreference": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_email": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "object",
+                    "additionalProperties": {}
                 },
                 "workspace_id": {
                     "type": "string"
@@ -11467,6 +14258,42 @@
                 }
             }
         },
+        "entity.WorkspaceIntegration": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "updated_by": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
         "entity.WorkspaceInvitation": {
             "type": "object",
             "properties": {
@@ -11609,6 +14436,20 @@
                 }
             }
         },
+        "manualaction.MarkSentRequest": {
+            "type": "object",
+            "properties": {
+                "actual_message": {
+                    "type": "string"
+                },
+                "channel": {
+                    "type": "string"
+                },
+                "notes": {
+                    "type": "string"
+                }
+            }
+        },
         "master_data.CreateRequest": {
             "type": "object",
             "properties": {
@@ -11680,6 +14521,67 @@
                     "type": "string"
                 },
                 "stage": {
+                    "type": "string"
+                }
+            }
+        },
+        "master_data.ImportMode": {
+            "type": "string",
+            "enum": [
+                "add_new",
+                "update_existing"
+            ],
+            "x-enum-varnames": [
+                "ImportModeAddNew",
+                "ImportModeUpdateExisting"
+            ]
+        },
+        "master_data.ImportPreview": {
+            "type": "object",
+            "properties": {
+                "duplicates": {
+                    "type": "integer"
+                },
+                "invalid": {
+                    "type": "integer"
+                },
+                "mode": {
+                    "$ref": "#/definitions/master_data.ImportMode"
+                },
+                "new": {
+                    "type": "integer"
+                },
+                "rows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/master_data.ImportPreviewRow"
+                    }
+                },
+                "total_rows": {
+                    "type": "integer"
+                }
+            }
+        },
+        "master_data.ImportPreviewRow": {
+            "type": "object",
+            "properties": {
+                "company_id": {
+                    "type": "string"
+                },
+                "company_name": {
+                    "type": "string"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "existing_id": {
+                    "type": "string"
+                },
+                "row": {
+                    "type": "integer"
+                },
+                "status": {
+                    "description": "\"new\" | \"duplicate\" | \"invalid\"",
                     "type": "string"
                 }
             }
@@ -11856,6 +14758,84 @@
                     "type": "string"
                 },
                 "type": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "reactivation.UpsertTriggerRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "condition": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "is_active": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "template_code": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "rejectionanalysis.AnalyzeRequest": {
+            "type": "object",
+            "properties": {
+                "master_data_id": {
+                    "type": "string"
+                },
+                "source_channel": {
+                    "type": "string"
+                },
+                "source_message": {
+                    "type": "string"
+                },
+                "workspace_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "rejectionanalysis.RecordRequest": {
+            "type": "object",
+            "properties": {
+                "analysis_summary": {
+                    "type": "string"
+                },
+                "analyst": {
+                    "type": "string"
+                },
+                "analyst_version": {
+                    "type": "string"
+                },
+                "master_data_id": {
+                    "type": "string"
+                },
+                "rejection_category": {
+                    "type": "string"
+                },
+                "severity": {
+                    "type": "string"
+                },
+                "source_channel": {
+                    "type": "string"
+                },
+                "source_message": {
+                    "type": "string"
+                },
+                "suggested_response": {
                     "type": "string"
                 },
                 "workspace_id": {
@@ -12369,6 +15349,39 @@
                     "type": "string"
                 },
                 "var_key": {
+                    "type": "string"
+                }
+            }
+        },
+        "webhook.firefliesWebhookBody": {
+            "type": "object",
+            "properties": {
+                "duration_seconds": {
+                    "type": "integer"
+                },
+                "fireflies_id": {
+                    "type": "string"
+                },
+                "host_email": {
+                    "type": "string"
+                },
+                "meeting_date": {
+                    "type": "string"
+                },
+                "meeting_title": {
+                    "type": "string"
+                },
+                "participants": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "raw": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "transcript_text": {
                     "type": "string"
                 }
             }
