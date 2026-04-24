@@ -23,6 +23,11 @@ type LogRepository interface {
 	GetActivityStats(ctx context.Context, workspaceIDs []string) (entity.ActivityStats, error)
 	GetRecentActivities(ctx context.Context, workspaceIDs []string, since time.Time, limit int) ([]entity.ActivityLog, error)
 	GetCompanySummary(ctx context.Context, workspaceIDs []string, companyID string) (*entity.CompanySummary, error)
+
+	// Bot-action specific reads (dashboard bot-activity sidebar).
+	GetRecentActionLogs(ctx context.Context, workspaceIDs []string, limit int) ([]entity.ActionLog, error)
+	GetActionLogSummary(ctx context.Context, workspaceIDs []string, since time.Time) (*entity.ActionLogSummary, error)
+	GetTodayActionLogs(ctx context.Context, workspaceIDs []string, limit int) ([]entity.ActionLog, error)
 }
 
 type logRepo struct {

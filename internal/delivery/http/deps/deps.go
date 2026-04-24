@@ -7,13 +7,27 @@ import (
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
 	"github.com/Sejutacita/cs-agent-bot/internal/tracer"
 	analyticsuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/analytics"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/approval"
+	auditws "github.com/Sejutacita/cs-agent-bot/internal/usecase/audit_workspace_access"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/auth"
+	claudeextractionuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/claude_extraction"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/coaching"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/fireflies"
+	firefliesclient "github.com/Sejutacita/cs-agent-bot/internal/usecase/fireflies_client"
+	haloaimock "github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai_mock"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/mockoutbox"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/rediscache"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/pdp"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/reactivation"
+	smtpclient "github.com/Sejutacita/cs-agent-bot/internal/usecase/smtp_client"
+	rejectionanalysisuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/rejection_analysis"
 	automationrule "github.com/Sejutacita/cs-agent-bot/internal/usecase/automation_rule"
 	collectionuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/collection"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
 	customfield "github.com/Sejutacita/cs-agent-bot/internal/usecase/custom_field"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/invoice"
+	manualaction "github.com/Sejutacita/cs-agent-bot/internal/usecase/manual_action"
 	masterdata "github.com/Sejutacita/cs-agent-bot/internal/usecase/master_data"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/messaging"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/notification"
@@ -22,6 +36,8 @@ import (
 	reportsuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/reports"
 	teamuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/team"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/trigger"
+	userpreferences "github.com/Sejutacita/cs-agent-bot/internal/usecase/user_preferences"
+	workspaceintegration "github.com/Sejutacita/cs-agent-bot/internal/usecase/workspace_integration"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/webhook"
 	workflowuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/workflow"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/workspace"
@@ -67,4 +83,45 @@ type Deps struct {
 
 	// Collections (feat/10)
 	CollectionUC collectionuc.Usecase
+
+	// Shared: user preferences (per-user, per-workspace UI state)
+	UserPreferencesUC userpreferences.Usecase
+
+	// Shared: per-workspace integration credentials (HaloAI/Telegram/Paper.id/SMTP)
+	WorkspaceIntegrationUC workspaceintegration.Usecase
+
+	// Shared: central approval dispatcher (routes by request_type)
+	ApprovalDispatcher approval.Dispatcher
+
+	// Feature 06-workflow-engine/07: manual action queue (GUARD)
+	ManualActionUC manualaction.Usecase
+
+	// Wave-1 extensions
+	AuditWorkspaceAccessUC auditws.Usecase
+	FirefliesUC            fireflies.Usecase
+	ClaudeExtractionUC     claudeextractionuc.Usecase
+	ReactivationUC         reactivation.Usecase
+	CoachingUC             coaching.Usecase
+	RejectionAnalysisUC    rejectionanalysisuc.Usecase
+
+	// Mock plumbing (wired when MOCK_EXTERNAL_APIS=true or key absent)
+	MockOutbox       *mockoutbox.Outbox
+	MockClaudeClient claudeextractionuc.Client
+	MockFFClient     firefliesclient.Client
+	MockWASender     haloaimock.Sender
+	MockSMTPClient   smtpclient.Client
+
+	// PDP compliance (erasure + retention)
+	PDPUC pdp.Usecase
+
+	// Analytics cache (Redis 15-min; nil = no caching, handler still works)
+	AnalyticsCache rediscache.Cache
+
+	// Wave B2
+	WorkspaceThemeRepo repository.WorkspaceThemeRepository
+	ActivityFeedRepo   repository.ActivityFeedRepository
+
+	// Wave B3
+	TeamActivityRepo    repository.TeamActivityLogRepository
+	RevokedSessionsRepo repository.RevokedSessionRepository
 }

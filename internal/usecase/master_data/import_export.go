@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/apperror"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/xlsxexport"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/xlsximport"
 	"github.com/xuri/excelize/v2"
 )
@@ -36,6 +38,27 @@ type ImportRowError struct {
 	Row       int    `json:"row"`
 	Error     string `json:"error"`
 	CompanyID string `json:"company_id,omitempty"`
+}
+
+// ImportPreview summarizes a dedup-preview run — parse + lookup, no writes.
+// FE shows this in a modal before asking the user to confirm the actual import.
+type ImportPreview struct {
+	Mode       ImportMode         `json:"mode"`
+	TotalRows  int                `json:"total_rows"`
+	New        int                `json:"new"`
+	Duplicates int                `json:"duplicates"`
+	Invalid    int                `json:"invalid"`
+	Rows       []ImportPreviewRow `json:"rows"`
+}
+
+// ImportPreviewRow is one line in the preview table.
+type ImportPreviewRow struct {
+	Row         int    `json:"row"`
+	Status      string `json:"status"` // "new" | "duplicate" | "invalid"
+	CompanyID   string `json:"company_id,omitempty"`
+	CompanyName string `json:"company_name,omitempty"`
+	ExistingID  string `json:"existing_id,omitempty"`
+	Error       string `json:"error,omitempty"`
 }
 
 // RequestImport creates a checker-maker approval row for an import. The actual
@@ -98,6 +121,20 @@ func (u *usecase) ApplyApprovedImport(
 		mode = ImportMode(v)
 	}
 
+	// One-shot dedup lookup. For add_new we use it to skip duplicates; for
+	// update_existing we use it to route each row to Patch by the resolved
+	// master_data.id instead of the business key company_id.
+	companyIDs := make([]string, 0, len(rows))
+	for _, row := range rows {
+		if row.CompanyID != "" {
+			companyIDs = append(companyIDs, strings.TrimSpace(row.CompanyID))
+		}
+	}
+	existing, err := u.repo.ExistingCompanyIDs(ctx, workspaceID, companyIDs)
+	if err != nil {
+		return nil, fmt.Errorf("bulk import dedup lookup: %w", err)
+	}
+
 	res := &ImportResult{Errors: []ImportRowError{}}
 	for i, row := range rows {
 		if row.CompanyID == "" || row.CompanyName == "" {
@@ -106,8 +143,10 @@ func (u *usecase) ApplyApprovedImport(
 			})
 			continue
 		}
+		cid := strings.TrimSpace(row.CompanyID)
+		existingID, isDup := existing[cid]
 		req := CreateRequest{
-			CompanyID:       row.CompanyID,
+			CompanyID:       cid,
 			CompanyName:     row.CompanyName,
 			PICName:         row.PICName,
 			PICRole:         row.PICRole,
@@ -124,17 +163,48 @@ func (u *usecase) ApplyApprovedImport(
 			FinalPrice:      int64(row.FinalPrice),
 			Notes:           row.Notes,
 		}
+
 		if mode == ImportModeUpdateExisting {
-			// Coarse stub: full update_existing flow is left to a follow-up
-			// because clients lack a stable lookup-by-company_id at the
-			// master_data layer in this scaffold.
+			if !isDup {
+				// Row not found — in update_existing mode we skip rather than insert.
+				res.Skipped++
+				continue
+			}
+			patch := PatchRequest{
+				CompanyName:     &req.CompanyName,
+				PICName:         ptrIfNonEmpty(req.PICName),
+				PICRole:         ptrIfNonEmpty(req.PICRole),
+				PICWA:           ptrIfNonEmpty(req.PICWA),
+				PICEmail:        ptrIfNonEmpty(req.PICEmail),
+				OwnerName:       ptrIfNonEmpty(req.OwnerName),
+				OwnerWA:         ptrIfNonEmpty(req.OwnerWA),
+				OwnerTelegramID: ptrIfNonEmpty(req.OwnerTelegramID),
+				ContractStart:   req.ContractStart,
+				ContractEnd:     req.ContractEnd,
+				ContractMonths:  ptrIfNonZeroInt(req.ContractMonths),
+				PaymentTerms:    ptrIfNonEmpty(req.PaymentTerms),
+				PaymentStatus:   ptrIfNonEmpty(req.PaymentStatus),
+				FinalPrice:      ptrIfNonZero64(req.FinalPrice),
+				Notes:           ptrIfNonEmpty(req.Notes),
+			}
+			if _, _, err := u.Patch(ctx, workspaceID, existingID, checkerEmail, WriteContextDashboardUser, patch); err != nil {
+				res.Errors = append(res.Errors, ImportRowError{
+					Row: i + 2, Error: err.Error(), CompanyID: cid,
+				})
+				continue
+			}
+			res.Imported++ // "imported" here = row touched; FE renders as updated.
+			continue
+		}
+
+		// add_new mode — skip duplicates cleanly.
+		if isDup {
 			res.Skipped++
 			continue
 		}
-		_, err := u.Create(ctx, workspaceID, checkerEmail, req)
-		if err != nil {
+		if _, err := u.Create(ctx, workspaceID, checkerEmail, req); err != nil {
 			res.Errors = append(res.Errors, ImportRowError{
-				Row: i + 2, Error: err.Error(), CompanyID: row.CompanyID,
+				Row: i + 2, Error: err.Error(), CompanyID: cid,
 			})
 			continue
 		}
@@ -180,7 +250,7 @@ func (u *usecase) Export(ctx context.Context, workspaceID string, w io.Writer) e
 	}
 	for col, h := range headers {
 		cell, _ := excelize.CoordinatesToCellName(col+1, 1)
-		_ = f.SetCellValue(sheet, cell, h)
+		_ = f.SetCellValue(sheet, cell, xlsxexport.SanitizeCell(h))
 	}
 
 	for i, m := range rows {
@@ -190,7 +260,7 @@ func (u *usecase) Export(ctx context.Context, workspaceID string, w io.Writer) e
 		}
 		for col, v := range values {
 			cell, _ := excelize.CoordinatesToCellName(col+1, i+2)
-			_ = f.SetCellValue(sheet, cell, v)
+			_ = f.SetCellValue(sheet, cell, xlsxexport.SanitizeCell(v))
 		}
 	}
 	return f.Write(w)
@@ -283,4 +353,97 @@ func ptrTime(t time.Time) *time.Time {
 		return nil
 	}
 	return &t
+}
+
+// ptrIfNonEmpty returns a pointer to s only when s is non-empty. Used to keep
+// bulk-import update patches "set only what changed" so empty cells don't
+// clobber existing data.
+func ptrIfNonEmpty(s string) *string {
+	if strings.TrimSpace(s) == "" {
+		return nil
+	}
+	return &s
+}
+
+func ptrIfNonZeroInt(v int) *int {
+	if v == 0 {
+		return nil
+	}
+	return &v
+}
+
+func ptrIfNonZero64(v int64) *int64 {
+	if v == 0 {
+		return nil
+	}
+	return &v
+}
+
+// PreviewImport runs a dry-run over parsed rows: normalizes company_id,
+// checks for duplicates in master_data, and reports per-row status without
+// touching the DB. FE displays this in a confirmation modal so the user knows
+// exactly how many rows will add vs update vs skip before signing off.
+func (u *usecase) PreviewImport(ctx context.Context, workspaceID string, rows []xlsximport.ClientImportRow, mode ImportMode) (*ImportPreview, error) {
+	if workspaceID == "" {
+		return nil, apperror.ValidationError("workspace_id required")
+	}
+	if mode != ImportModeAddNew && mode != ImportModeUpdateExisting {
+		return nil, apperror.ValidationError("invalid import mode: must be add_new or update_existing")
+	}
+
+	preview := &ImportPreview{
+		Mode:      mode,
+		TotalRows: len(rows),
+		Rows:      make([]ImportPreviewRow, 0, len(rows)),
+	}
+
+	// Collect valid company_ids for bulk lookup; track row ordering so we can
+	// attach existing_id back without N+1.
+	companyIDs := make([]string, 0, len(rows))
+	rowIdx := map[string][]int{} // company_id -> list of row numbers (duplicates-within-file)
+	for i, r := range rows {
+		cid := strings.TrimSpace(r.CompanyID)
+		if cid == "" || strings.TrimSpace(r.CompanyName) == "" {
+			preview.Rows = append(preview.Rows, ImportPreviewRow{
+				Row:         i + 2, // +2: 1-based + header row
+				Status:      "invalid",
+				CompanyID:   r.CompanyID,
+				CompanyName: r.CompanyName,
+				Error:       "company_id and company_name are required",
+			})
+			preview.Invalid++
+			continue
+		}
+		companyIDs = append(companyIDs, cid)
+		rowIdx[cid] = append(rowIdx[cid], i)
+	}
+
+	existing, err := u.repo.ExistingCompanyIDs(ctx, workspaceID, companyIDs)
+	if err != nil {
+		return nil, fmt.Errorf("preview import lookup: %w", err)
+	}
+
+	for i, r := range rows {
+		cid := strings.TrimSpace(r.CompanyID)
+		if cid == "" || strings.TrimSpace(r.CompanyName) == "" {
+			continue // already recorded as invalid above
+		}
+		existingID, isDup := existing[cid]
+		status := "new"
+		if isDup {
+			status = "duplicate"
+			preview.Duplicates++
+		} else {
+			preview.New++
+		}
+		preview.Rows = append(preview.Rows, ImportPreviewRow{
+			Row:         i + 2,
+			Status:      status,
+			CompanyID:   cid,
+			CompanyName: r.CompanyName,
+			ExistingID:  existingID,
+		})
+	}
+
+	return preview, nil
 }

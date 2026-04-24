@@ -365,6 +365,46 @@ func (h *MasterDataHandler) Import(w http.ResponseWriter, r *http.Request) error
 	return response.StandardSuccess(w, r, http.StatusAccepted, "Import approval requested", out)
 }
 
+// ImportPreview godoc
+// @Summary      Preview a bulk import (dedup + validation, no writes)
+// @Description  Upload the same xlsx as /import but receive a per-row breakdown
+// @Description  (new|duplicate|invalid + existing_id when duplicate). FE uses this
+// @Description  for the confirmation modal before submitting the real import.
+// @Tags         MasterData
+// @Security     BearerAuth
+// @Accept       multipart/form-data
+// @Param        X-Workspace-ID header string true "Workspace ID"
+// @Param        file formData file true "Excel file"
+// @Param        mode formData string true "add_new|update_existing"
+// @Success      200 {object} response.StandardResponse{data=master_data.ImportPreview}
+// @Router       /api/master-data/clients/import/preview [post]
+func (h *MasterDataHandler) ImportPreview(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.MasterDataImportPreview")
+	defer span.End()
+	if err := r.ParseMultipartForm(32 << 20); err != nil {
+		return apperror.BadRequest("invalid multipart form")
+	}
+	mode := master_data.ImportMode(r.FormValue("mode"))
+	if mode == "" {
+		mode = master_data.ImportModeAddNew
+	}
+	file, _, err := r.FormFile("file")
+	if err != nil {
+		return apperror.BadRequest("file required")
+	}
+	defer file.Close()
+
+	rows, _, err := master_data.ParseImportRows(file)
+	if err != nil {
+		return apperror.BadRequest("failed to parse xlsx: " + err.Error())
+	}
+	preview, err := h.uc.PreviewImport(ctx, ctxutil.GetWorkspaceID(ctx), rows, mode)
+	if err != nil {
+		return err
+	}
+	return response.StandardSuccess(w, r, http.StatusOK, "Import preview", preview)
+}
+
 // Export godoc
 // @Summary      Export master data as XLSX
 // @Tags         MasterData

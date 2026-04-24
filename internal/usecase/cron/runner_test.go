@@ -165,6 +165,15 @@ func (r *stubFullLogRepo) GetRecentActivities(_ context.Context, _ []string, _ t
 func (r *stubFullLogRepo) GetCompanySummary(_ context.Context, _ []string, _ string) (*entity.CompanySummary, error) {
 	return nil, nil
 }
+func (r *stubFullLogRepo) GetRecentActionLogs(_ context.Context, _ []string, _ int) ([]entity.ActionLog, error) {
+	return nil, nil
+}
+func (r *stubFullLogRepo) GetActionLogSummary(_ context.Context, _ []string, _ time.Time) (*entity.ActionLogSummary, error) {
+	return &entity.ActionLogSummary{}, nil
+}
+func (r *stubFullLogRepo) GetTodayActionLogs(_ context.Context, _ []string, _ int) ([]entity.ActionLog, error) {
+	return nil, nil
+}
 
 // stubFullBgJobRepo satisfies repository.BackgroundJobRepository.
 type stubFullBgJobRepo struct {
