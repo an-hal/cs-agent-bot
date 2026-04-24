@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS reactivation_events (
     id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id   UUID        NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     trigger_id     UUID        NOT NULL REFERENCES reactivation_triggers(id) ON DELETE CASCADE,
-    master_data_id UUID        NOT NULL REFERENCES master_data(id) ON DELETE CASCADE,
+    master_data_id UUID        NOT NULL REFERENCES clients(master_id) ON DELETE CASCADE,
     fired_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     outcome        VARCHAR(32) NOT NULL DEFAULT 'sent', -- 'sent' | 'skipped' | 'replied' | 'bounced'
     note           TEXT        NOT NULL DEFAULT ''

@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS rejection_analysis_log (
     id                 UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id       UUID         NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-    master_data_id     UUID         NOT NULL REFERENCES master_data(id) ON DELETE CASCADE,
+    master_data_id     UUID         NOT NULL REFERENCES clients(master_id) ON DELETE CASCADE,
 
     source_channel     VARCHAR(16)  NOT NULL DEFAULT 'wa',  -- wa | email | call_note | meeting
     source_message     TEXT         NOT NULL DEFAULT '',    -- original reply text

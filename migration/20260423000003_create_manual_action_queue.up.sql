@@ -5,7 +5,7 @@
 CREATE TABLE IF NOT EXISTS manual_action_queue (
     id                 UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     workspace_id       UUID         NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
-    master_data_id     UUID         NOT NULL REFERENCES master_data(id) ON DELETE CASCADE,
+    master_data_id     UUID         NOT NULL REFERENCES clients(master_id) ON DELETE CASCADE,
 
     trigger_id         VARCHAR(64)  NOT NULL,
     flow_category      VARCHAR(32)  NOT NULL,
