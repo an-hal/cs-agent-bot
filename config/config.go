@@ -109,6 +109,10 @@ type AppConfig struct {
 	// JWT Auth
 	JWTValidateURL string
 
+	// JWT Dev Bypass — only respected when Env is "development" or "local".
+	// Allows Authorization: Bearer DEV.<email> to skip Sejutacita validation.
+	JWTDevBypassEnabled bool
+
 	// Dashboard Auth (Feature 01)
 	AuthProxyURL       string
 	GoogleClientID     string
@@ -237,7 +241,8 @@ func LoadConfig() *AppConfig {
 		EnableStackTrace: getEnvBool("ENABLE_STACK_TRACE", false),
 
 		// JWT Auth
-		JWTValidateURL: getEnv("JWT_VALIDATE_URL", "https://api.sejutacita.id/v1/login/self"),
+		JWTValidateURL:      getEnv("JWT_VALIDATE_URL", "https://api.sejutacita.id/v1/login/self"),
+		JWTDevBypassEnabled: getEnvBool("JWT_DEV_BYPASS_ENABLED", false),
 
 		// Dashboard Auth (Feature 01)
 		AuthProxyURL:   getEnv("AUTH_PROXY_URL", "https://ms-auth-proxy.up.railway.app"),

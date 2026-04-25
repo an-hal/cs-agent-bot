@@ -62,10 +62,66 @@ func GetJWTUser(ctx context.Context) (*JWTUser, bool) {
 	return &user, true
 }
 
+// devBypassPrefix is the sentinel that marks a dev-mode bypass token.
+// Format: "Bearer DEV.<email>" — only honored when env is dev/local AND
+// JWT_DEV_BYPASS_ENABLED=true. Optional roles via "X-Dev-Roles" header
+// (comma-separated). See features/00-shared/13-dev-bypass.md.
+const devBypassPrefix = "DEV."
+
+func isDevEnv(env string) bool {
+	return env == "development" || env == "local"
+}
+
+// tryDevBypass returns a synthesized JWTUser when the request carries a
+// DEV.<email> token AND the environment + flag permit bypass. Returns nil
+// otherwise so the caller falls through to real validation.
+func tryDevBypass(token, env string, enabled bool, devRolesHeader string, logger zerolog.Logger) *JWTUser {
+	if !enabled || !isDevEnv(env) {
+		return nil
+	}
+	if !strings.HasPrefix(token, devBypassPrefix) {
+		return nil
+	}
+	email := strings.TrimSpace(strings.TrimPrefix(token, devBypassPrefix))
+	if email == "" || !strings.Contains(email, "@") {
+		return nil
+	}
+
+	roles := []string{"admin"}
+	if devRolesHeader = strings.TrimSpace(devRolesHeader); devRolesHeader != "" {
+		roles = roles[:0]
+		for _, r := range strings.Split(devRolesHeader, ",") {
+			if r = strings.TrimSpace(r); r != "" {
+				roles = append(roles, r)
+			}
+		}
+	}
+
+	logger.Warn().
+		Str("email", email).
+		Strs("roles", roles).
+		Str("env", env).
+		Msg("JWT: DEV BYPASS active — Sejutacita validation skipped")
+
+	return &JWTUser{
+		SessionID:    "dev-session",
+		ID:           "dev-user",
+		Email:        email,
+		Roles:        roles,
+		Platform:     "dev",
+		NormalizedID: "dev-user",
+	}
+}
+
 // JWTAuthMiddleware validates JWT tokens by calling the Sejutacita self-validation endpoint.
 // It extracts the Bearer token from the Authorization header and forwards it to the
 // validation service. On success, user info is stored in the request context.
-func JWTAuthMiddleware(validateURL string, logger zerolog.Logger) func(ErrorHandler) ErrorHandler {
+//
+// When env is "development" or "local" AND devBypassEnabled is true, a token
+// of the form "DEV.<email>" short-circuits validation and synthesizes a
+// JWTUser. This is gated by both the env and the flag to make accidental
+// activation in production impossible.
+func JWTAuthMiddleware(validateURL, env string, devBypassEnabled bool, logger zerolog.Logger) func(ErrorHandler) ErrorHandler {
 	client := &http.Client{Timeout: 10 * time.Second}
 
 	return func(next ErrorHandler) ErrorHandler {
@@ -80,6 +136,11 @@ func JWTAuthMiddleware(validateURL string, logger zerolog.Logger) func(ErrorHand
 			if token == authHeader {
 				logger.Warn().Msg("JWT: invalid Authorization header format")
 				return apperror.Unauthorized("invalid authorization header format")
+			}
+
+			// Dev-mode bypass: triple-gated (env + flag + token prefix).
+			if user := tryDevBypass(token, env, devBypassEnabled, r.Header.Get("X-Dev-Roles"), logger); user != nil {
+				return next(w, r.WithContext(WithJWTUser(r.Context(), *user)))
 			}
 
 			// Call the self-validation endpoint

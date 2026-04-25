@@ -35,6 +35,79 @@ POST /auth/google
 Token is a standard JWT. Expiry per the external `JWT_VALIDATE_URL` service
 — typically 24h. On 401, re-login.
 
+## Dev-mode bypass (local development only)
+
+For local FE development, BE can be configured to accept a synthetic
+"DEV" token that skips Sejutacita validation entirely. This is useful
+when:
+- you don't want to log in every 24h while developing,
+- you need to test as different roles quickly (`admin`, `viewer`, etc.),
+- the upstream Sejutacita auth service is flaky / unreachable from your
+  network.
+
+### Activation (BE-side, both required)
+
+```bash
+ENV=development          # or "local"
+JWT_DEV_BYPASS_ENABLED=true  # explicit opt-in
+```
+
+Both gates must be true. In `staging`/`production` the bypass is hard-off
+even if the flag is set. The env var name is `ENV` (not `APP_ENV`) — see
+`config/config.go:156`.
+
+### Token format
+
+```http
+Authorization: Bearer DEV.<email>
+X-Dev-Roles: admin,super-admin   # optional; defaults to ["admin"]
+```
+
+Examples:
+```bash
+# Dev login as admin (default role)
+curl http://localhost:8081/api/workspaces \
+  -H 'Authorization: Bearer DEV.arief.faltah@dealls.com'
+
+# Dev login as a non-admin, to test permission gates
+curl http://localhost:8081/api/team/members \
+  -H 'Authorization: Bearer DEV.viewer@dealls.com' \
+  -H 'X-Workspace-ID: <uuid>' \
+  -H 'X-Dev-Roles: viewer'
+```
+
+### What the BE injects into the request context
+
+```go
+JWTUser{
+  SessionID:    "dev-session",
+  ID:           "dev-user",
+  Email:        <email-from-token>,
+  Roles:        <X-Dev-Roles or ["admin"]>,
+  Platform:     "dev",
+  NormalizedID: "dev-user",
+}
+```
+
+### Safety
+
+- BE logs every bypass at WARN level with email + roles + env. If you
+  ever see `DEV BYPASS active` in staging or prod logs, that's a config
+  bug — file a security incident.
+- Bypass tokens are **never** issued by the auth service. The `DEV.`
+  prefix is a sentinel that the middleware recognizes locally; nothing
+  is signed.
+- Bypass tokens have no expiry and no signature. They are only useful
+  on a `localhost` BE run by the developer who set the flag.
+
+### When NOT to use
+
+- Any test that exercises real auth, session expiry, or role
+  propagation from Sejutacita — those need a real token from
+  `/auth/login`.
+- Any environment where the request might be observed by another
+  developer (shared dev server) — bypass roles can over-elevate.
+
 ## Workspace switch
 
 JWT does not bind to a workspace. FE chooses one per request via

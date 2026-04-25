@@ -99,6 +99,10 @@ POST {{base_url}}/v1/cs-agent-bot/auth/login
 GET  {{base_url}}/v1/cs-agent-bot/workspaces
      Authorization: Bearer {{jwt}}
 
+# 3-alt. Dev shortcut (only when ENV=development AND JWT_DEV_BYPASS_ENABLED=true)
+GET  {{base_url}}/v1/cs-agent-bot/workspaces
+     Authorization: Bearer DEV.your.email@dealls.com
+
 # 4. Get dashboard stats for a workspace
 GET  {{base_url}}/v1/cs-agent-bot/dashboard/stats
      Authorization: Bearer {{jwt}}
@@ -122,7 +126,8 @@ GET  {{base_url}}/v1/cs-agent-bot/mock/outbox?limit=50
 | `APP_URL` | — | Required for OIDC verification in non-dev |
 | `DB_*` | — | PostgreSQL |
 | `REDIS_*` | — | Redis (optional — analytics cache degrades gracefully) |
-| `JWT_VALIDATE_URL` | — | External JWT validator endpoint |
+| `JWT_VALIDATE_URL` | `https://api.sejutacita.id/v1/login/self` | External JWT validator endpoint |
+| `JWT_DEV_BYPASS_ENABLED` | `false` | Local-only: accept `Bearer DEV.<email>` tokens. Active **only** when `ENV=development` or `local`. See [01-auth-and-errors.md § Dev-mode bypass](01-auth-and-errors.md#dev-mode-bypass-local-development-only). |
 | `MOCK_EXTERNAL_APIS` | `true` | Auto-mock all 4 external integrations |
 | `ANTHROPIC_API_KEY` | — | Claude; empty → mock |
 | `FIREFLIES_API_KEY` | — | Fireflies; empty → mock |

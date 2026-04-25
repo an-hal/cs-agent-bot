@@ -74,7 +74,7 @@ func SetupHandler(deps deliveryHttpDeps.Deps) http.Handler {
 	oidcAuth := middleware.OIDCAuthMiddleware(deps.Cfg.AppURL, deps.Cfg.SchedulerSAEmail, deps.Cfg.Env, deps.Logger)
 	haloaiSig := middleware.HaloAISignatureMiddleware(deps.Cfg.WAWebhookSecret, deps.Cfg.Env, deps.Logger)
 	hmacAuth := middleware.HMACAuthMiddleware(deps.Cfg.HandoffWebhookSecret, deps.Cfg.Env, deps.Logger)
-	jwtAuth := middleware.JWTAuthMiddleware(deps.Cfg.JWTValidateURL, deps.Logger)
+	jwtAuth := middleware.JWTAuthMiddleware(deps.Cfg.JWTValidateURL, deps.Cfg.Env, deps.Cfg.JWTDevBypassEnabled, deps.Logger)
 	wsRequired := middleware.WorkspaceIDMiddleware()
 
 	r := router.NewRouter()
