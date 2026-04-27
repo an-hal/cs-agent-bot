@@ -15,14 +15,15 @@ import (
 // ---------- stub repositories ----------
 
 type stubWorkspaceRepo struct {
-	listForUser []entity.Workspace
-	getByID     *entity.Workspace
-	getBySlug   *entity.Workspace
-	createOut   *entity.Workspace
-	updateOut   *entity.Workspace
-	createErr   error
-	getErr      error
-	deleted     []string
+	listForUser   []entity.Workspace
+	listForMember []entity.Workspace
+	getByID       *entity.Workspace
+	getBySlug     *entity.Workspace
+	createOut     *entity.Workspace
+	updateOut     *entity.Workspace
+	createErr     error
+	getErr        error
+	deleted       []string
 
 	createCalls int
 	updateCalls int
@@ -42,6 +43,9 @@ func (s *stubWorkspaceRepo) GetBySlug(ctx context.Context, slug string) (*entity
 }
 func (s *stubWorkspaceRepo) ListForUser(ctx context.Context, email string) ([]entity.Workspace, error) {
 	return s.listForUser, nil
+}
+func (s *stubWorkspaceRepo) ListForMember(ctx context.Context, email string) ([]entity.Workspace, error) {
+	return s.listForMember, nil
 }
 func (s *stubWorkspaceRepo) Create(ctx context.Context, w *entity.Workspace) (*entity.Workspace, error) {
 	s.createCalls++
@@ -164,7 +168,7 @@ func fixedNow() time.Time {
 func fixedToken() (string, error) { return "fixed-token-abc", nil }
 
 func newWithStubs(ws *stubWorkspaceRepo, m *stubMemberRepo, inv *stubInvitationRepo) Usecase {
-	return New(ws, m, inv, fixedNow, fixedToken)
+	return New(ws, m, inv, nil, fixedNow, fixedToken)
 }
 
 func ownerMember() *entity.WorkspaceMember {

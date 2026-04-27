@@ -365,3 +365,11 @@ func (s *seqWorkspaceRepo) Update(context.Context, string, repository.WorkspaceP
 	return nil, nil
 }
 func (s *seqWorkspaceRepo) SoftDelete(context.Context, string) error { return nil }
+
+func (s *mockWorkspaceRepo) ListForMember(ctx context.Context, email string) ([]entity.Workspace, error) {
+	return nil, nil
+}
+
+func (s *seqWorkspaceRepo) ListForMember(ctx context.Context, email string) ([]entity.Workspace, error) {
+	return nil, nil
+}

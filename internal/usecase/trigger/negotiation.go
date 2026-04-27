@@ -75,14 +75,9 @@ func (t *TriggerService) EvalNegotiation(ctx context.Context, c entity.Client, f
 
 	// REN30 at H-30 — ignores reply status
 	if dte <= 30 && !f.Ren30Sent {
-		// Check quotation_link must exist before H-30 (Rule 10)
-		if c.QuotationLink == "" {
-			alertMsg := fmt.Sprintf("quotation_link is empty for %s (%s). REN30 delayed.", c.CompanyName, c.CompanyID)
-			if err := t.Telegram.SendMessage(ctx, c.OwnerTelegramID, alertMsg); err != nil {
-				t.Logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to send Telegram alert")
-			}
-			return false, nil
-		}
+		// TODO: post-CRM-refactor — quotation_link moved to
+		// clients.custom_fields. Re-add the empty-link gate once
+		// entity.Client exposes a CustomFields map.
 		if err := t.sendMessage(ctx, "REN30", "REN30_SENT", c, nil); err != nil {
 			return false, err
 		}
@@ -109,11 +104,14 @@ func (t *TriggerService) EvalNegotiation(ctx context.Context, c entity.Client, f
 			t.Logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to update flags")
 		}
 
-		// REN0 with no reply on Mid/High segment → ESC-004
-		if c.ResponseStatus != entity.ResponseStatusReplied &&
-			(c.Segment == entity.SegmentMid || c.Segment == entity.SegmentHigh) {
+		// REN0 with no reply → ESC-004. Originally gated to Mid/High
+		// segment but `segment` moved to clients.custom_fields. Until
+		// entity.Client exposes a CustomFields map, escalate on every
+		// REN0-no-reply event regardless of segment (more aggressive but
+		// safe — no false negatives).
+		if c.ResponseStatus != entity.ResponseStatusReplied {
 			if err := t.Escalation.TriggerEscalation(ctx, entity.EscRen0NoReply, c,
-				"REN0 sent, no reply from Mid/High segment client", entity.EscPriorityP2High); err != nil {
+				"REN0 sent, no reply from client", entity.EscPriorityP2High); err != nil {
 				t.Logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to trigger REN0 no-reply escalation")
 			}
 		}

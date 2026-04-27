@@ -33,6 +33,9 @@ const (
 // Dispatcher routes `POST /approvals/{id}/apply` to the correct feature Apply.
 type Dispatcher interface {
 	Apply(ctx context.Context, workspaceID, approvalID, checkerEmail string) (*entity.ApprovalRequest, error)
+	List(ctx context.Context, workspaceID string, filter repository.ApprovalFilter) ([]entity.ApprovalRequest, int64, error)
+	Get(ctx context.Context, workspaceID, approvalID string) (*entity.ApprovalRequest, error)
+	Reject(ctx context.Context, workspaceID, approvalID, checkerEmail, reason string) (*entity.ApprovalRequest, error)
 }
 
 // MasterDataStageApprover is the narrow port used to apply a stage_transition
@@ -103,6 +106,50 @@ func NewWithExtras(
 	}
 }
 
+func (d *dispatcher) List(ctx context.Context, workspaceID string, filter repository.ApprovalFilter) ([]entity.ApprovalRequest, int64, error) {
+	if workspaceID == "" {
+		return nil, 0, apperror.ValidationError("workspace_id required")
+	}
+	return d.approvalRepo.List(ctx, workspaceID, filter)
+}
+
+func (d *dispatcher) Get(ctx context.Context, workspaceID, approvalID string) (*entity.ApprovalRequest, error) {
+	if workspaceID == "" || approvalID == "" {
+		return nil, apperror.ValidationError("workspace_id and approval_id required")
+	}
+	ar, err := d.approvalRepo.GetByID(ctx, workspaceID, approvalID)
+	if err != nil {
+		return nil, err
+	}
+	if ar == nil {
+		return nil, apperror.NotFound("approval_request", approvalID)
+	}
+	return ar, nil
+}
+
+func (d *dispatcher) Reject(ctx context.Context, workspaceID, approvalID, checkerEmail, reason string) (*entity.ApprovalRequest, error) {
+	if workspaceID == "" || approvalID == "" {
+		return nil, apperror.ValidationError("workspace_id and approval_id required")
+	}
+	ar, err := d.approvalRepo.GetByID(ctx, workspaceID, approvalID)
+	if err != nil {
+		return nil, err
+	}
+	if ar == nil {
+		return nil, apperror.NotFound("approval_request", approvalID)
+	}
+	if ar.Status != entity.ApprovalStatusPending {
+		return nil, apperror.BadRequest("approval is not pending (status=" + ar.Status + ")")
+	}
+	if ar.MakerEmail == checkerEmail {
+		return nil, apperror.BadRequest("cannot reject your own request")
+	}
+	if err := d.approvalRepo.UpdateStatus(ctx, workspaceID, approvalID, entity.ApprovalStatusRejected, checkerEmail, reason); err != nil {
+		return nil, err
+	}
+	return d.approvalRepo.GetByID(ctx, workspaceID, approvalID)
+}
+
 func (d *dispatcher) Apply(ctx context.Context, workspaceID, approvalID, checkerEmail string) (*entity.ApprovalRequest, error) {
 	if workspaceID == "" || approvalID == "" {
 		return nil, apperror.ValidationError("workspace_id and approval_id required")
@@ -166,12 +213,13 @@ func (d *dispatcher) Apply(ctx context.Context, workspaceID, approvalID, checker
 		}
 
 	case TypeBulkImportMasterData:
-		// Bulk import ancillary payload (row data) is too large for JSONB and
-		// is sent in a separate request body. The dispatcher cannot execute
-		// it directly — redirect the caller to the feature endpoint.
-		return nil, apperror.BadRequest(
-			"bulk_import_master_data must be applied via POST /data-master/import/commit/{approval_id} with the row payload",
-		)
+		// File is stashed inline as base64 in approval payload by RequestImport.
+		// Sync execution so any error surfaces in the response. Bulk import
+		// over remote PG can run 30-90s for hundreds of rows; FE proxy
+		// already configures a 5-min timeout for /approvals/*/apply.
+		if _, err := d.masterDataUC.ApplyApprovedImport(ctx, workspaceID, approvalID, checkerEmail); err != nil {
+			return nil, err
+		}
 
 	default:
 		return nil, apperror.BadRequest("unsupported request_type: " + ar.RequestType)

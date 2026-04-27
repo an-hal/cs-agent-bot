@@ -6,6 +6,7 @@ import (
 
 	automationrule "github.com/Sejutacita/cs-agent-bot/internal/usecase/automation_rule"
 	"github.com/Sejutacita/cs-agent-bot/internal/entity"
+	"github.com/Sejutacita/cs-agent-bot/internal/repository"
 	"github.com/rs/zerolog"
 )
 
@@ -335,3 +336,7 @@ func TestGetActiveByRole_FiltersToActiveOnly(t *testing.T) {
 }
 
 func strPtr(s string) *string { return &s }
+
+func (s *stubApprovalRepo) List(ctx context.Context, ws string, f repository.ApprovalFilter) ([]entity.ApprovalRequest, int64, error) {
+	return nil, 0, nil
+}

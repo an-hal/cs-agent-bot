@@ -55,6 +55,30 @@ func (h *WorkspaceHandler) List(w http.ResponseWriter, r *http.Request) error {
 	return response.StandardSuccess(w, r, http.StatusOK, "Workspaces", out)
 }
 
+// Mine godoc
+// @Summary      List workspaces the caller has actual membership in
+// @Description  Strict membership listing — checks workspace_members and team_members ACL paths. No holding-bypass.
+// @Tags         Workspace
+// @Security     BearerAuth
+// @Success      200  {object}  response.StandardResponse{data=[]entity.Workspace}
+// @Failure      401  {object}  response.StandardResponse
+// @Router       /api/workspaces/mine [get]
+func (h *WorkspaceHandler) Mine(w http.ResponseWriter, r *http.Request) error {
+	ctx, span := h.tracer.Start(r.Context(), "dashboard.handler.WorkspaceMine")
+	defer span.End()
+
+	logger := ctxutil.LoggerWithRequestID(ctx, h.logger)
+	out, err := h.uc.ListMine(ctx, callerEmail(r))
+	if err != nil {
+		return err
+	}
+	if out == nil {
+		out = []entity.Workspace{}
+	}
+	logger.Info().Int("count", len(out)).Msg("workspaces (mine) listed")
+	return response.StandardSuccess(w, r, http.StatusOK, "Workspaces", out)
+}
+
 // Get godoc
 // @Summary      Get workspace details
 // @Tags         Workspace

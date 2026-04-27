@@ -1,7 +1,9 @@
 package master_data
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"sort"
@@ -61,15 +63,18 @@ type ImportPreviewRow struct {
 	Error       string `json:"error,omitempty"`
 }
 
-// RequestImport creates a checker-maker approval row for an import. The actual
-// processing happens after approval (via ApplyApprovedImport).
+// RequestImport creates a checker-maker approval row for an import. The full
+// xlsx is stashed inline as base64 in the approval payload so the apply step
+// (after checker approves) can rehydrate without a separate filestorage layer.
+// Stopgap until a real object store is wired — files >~5 MB will bloat the
+// approval row and slow JSONB queries; revisit when filestorage lands.
 func (u *usecase) RequestImport(
 	ctx context.Context,
 	workspaceID, actorEmail, fileName string,
 	mode ImportMode,
 	rowCount int,
 	preview []map[string]any,
-	fileRef string,
+	fileB64 string,
 ) (*entity.ApprovalRequest, error) {
 	if workspaceID == "" {
 		return nil, apperror.ValidationError("workspace_id required")
@@ -77,9 +82,12 @@ func (u *usecase) RequestImport(
 	if mode != ImportModeAddNew && mode != ImportModeUpdateExisting {
 		return nil, apperror.ValidationError("invalid import mode")
 	}
+	if fileB64 == "" {
+		return nil, apperror.ValidationError("file content required")
+	}
 	payload := map[string]any{
 		"file_name": fileName,
-		"file_ref":  fileRef,
+		"file_b64":  fileB64,
 		"mode":      string(mode),
 		"row_count": rowCount,
 		"preview":   preview,
@@ -95,16 +103,27 @@ func (u *usecase) RequestImport(
 }
 
 // ParseImportRows parses an xlsx into raw rows for preview / dry-run inspection.
-// The actual master_data inserts are deferred until approval.
-func ParseImportRows(r io.Reader) ([]xlsximport.ClientImportRow, []xlsximport.ParseError, error) {
-	return xlsximport.ParseClientSheet(r)
+// The actual master_data inserts are deferred until approval. When workspaceID
+// is non-empty, custom field definitions are loaded so columns matching a
+// definition are extracted into row.CustomFields.
+func (u *usecase) ParseImportRows(ctx context.Context, workspaceID string, r io.Reader) ([]xlsximport.ClientImportRow, []xlsximport.ParseError, error) {
+	var defs []entity.CustomFieldDefinition
+	if workspaceID != "" {
+		var err error
+		defs, err = u.cfdRepo.List(ctx, workspaceID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("load custom field defs: %w", err)
+		}
+	}
+	return xlsximport.ParseClientSheetWithDefs(r, defs)
 }
 
-// ApplyApprovedImport applies an approved bulk import.
+// ApplyApprovedImport applies an approved bulk import. The xlsx file was
+// stashed in the approval payload as base64 by RequestImport, so this method
+// rehydrates + parses it inline. No external file upload is required.
 func (u *usecase) ApplyApprovedImport(
 	ctx context.Context,
 	workspaceID, approvalID, checkerEmail string,
-	rows []xlsximport.ClientImportRow,
 ) (*ImportResult, error) {
 	ar, err := u.approvalRepo.GetByID(ctx, workspaceID, approvalID)
 	if err != nil {
@@ -121,6 +140,20 @@ func (u *usecase) ApplyApprovedImport(
 		mode = ImportMode(v)
 	}
 
+	// Rehydrate xlsx from base64 payload + reparse with workspace defs.
+	fileB64, _ := ar.Payload["file_b64"].(string)
+	if fileB64 == "" {
+		return nil, apperror.BadRequest("approval payload missing file_b64; resubmit the import request")
+	}
+	fileBytes, err := base64.StdEncoding.DecodeString(fileB64)
+	if err != nil {
+		return nil, apperror.BadRequest("invalid base64 in approval payload: " + err.Error())
+	}
+	rows, _, err := u.ParseImportRows(ctx, workspaceID, bytes.NewReader(fileBytes))
+	if err != nil {
+		return nil, fmt.Errorf("reparse xlsx from approval: %w", err)
+	}
+
 	// One-shot dedup lookup. For add_new we use it to skip duplicates; for
 	// update_existing we use it to route each row to Patch by the resolved
 	// master_data.id instead of the business key company_id.
@@ -133,6 +166,13 @@ func (u *usecase) ApplyApprovedImport(
 	existing, err := u.repo.ExistingCompanyIDs(ctx, workspaceID, companyIDs)
 	if err != nil {
 		return nil, fmt.Errorf("bulk import dedup lookup: %w", err)
+	}
+
+	// Load custom field definitions once so per-row create/patch don't have
+	// to re-query for every row. Saves N queries (one per row in the file).
+	defs, err := u.cfdRepo.List(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("load custom field defs: %w", err)
 	}
 
 	res := &ImportResult{Errors: []ImportRowError{}}
@@ -162,6 +202,7 @@ func (u *usecase) ApplyApprovedImport(
 			PaymentStatus:   row.PaymentStatus,
 			FinalPrice:      int64(row.FinalPrice),
 			Notes:           row.Notes,
+			CustomFields:    row.CustomFields,
 		}
 
 		if mode == ImportModeUpdateExisting {
@@ -186,8 +227,9 @@ func (u *usecase) ApplyApprovedImport(
 				PaymentStatus:   ptrIfNonEmpty(req.PaymentStatus),
 				FinalPrice:      ptrIfNonZero64(req.FinalPrice),
 				Notes:           ptrIfNonEmpty(req.Notes),
+				CustomFields:    req.CustomFields,
 			}
-			if _, _, err := u.Patch(ctx, workspaceID, existingID, checkerEmail, WriteContextDashboardUser, patch); err != nil {
+			if _, _, err := u.patchWithDefs(ctx, workspaceID, existingID, checkerEmail, WriteContextDashboardUser, patch, defs); err != nil {
 				res.Errors = append(res.Errors, ImportRowError{
 					Row: i + 2, Error: err.Error(), CompanyID: cid,
 				})
@@ -202,7 +244,7 @@ func (u *usecase) ApplyApprovedImport(
 			res.Skipped++
 			continue
 		}
-		if _, err := u.Create(ctx, workspaceID, checkerEmail, req); err != nil {
+		if _, err := u.createWithDefs(ctx, workspaceID, checkerEmail, req, defs); err != nil {
 			res.Errors = append(res.Errors, ImportRowError{
 				Row: i + 2, Error: err.Error(), CompanyID: cid,
 			})

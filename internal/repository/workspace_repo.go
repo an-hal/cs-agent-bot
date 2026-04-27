@@ -22,6 +22,7 @@ type WorkspaceRepository interface {
 	GetByID(ctx context.Context, id string) (*entity.Workspace, error)
 	GetBySlug(ctx context.Context, slug string) (*entity.Workspace, error)
 	ListForUser(ctx context.Context, userEmail string) ([]entity.Workspace, error)
+	ListForMember(ctx context.Context, userEmail string) ([]entity.Workspace, error)
 	Create(ctx context.Context, w *entity.Workspace) (*entity.Workspace, error)
 	Update(ctx context.Context, id string, patch WorkspacePatch) (*entity.Workspace, error)
 	SoftDelete(ctx context.Context, id string) error
@@ -170,6 +171,59 @@ func (r *workspaceRepo) GetBySlug(ctx context.Context, slug string) (*entity.Wor
 		return nil, fmt.Errorf("query workspace: %w", err)
 	}
 	return w, nil
+}
+
+// ListForMember returns workspaces the given email has access to, *strictly*
+// via membership — no holding-bypass. Two ACL paths are unioned:
+//   - workspace_members.user_email (active row), or
+//   - team_members.email + member_workspace_assignments (team-management ACL).
+//
+// Use this when the caller actually needs to gate access (FE allowlist, dashboard
+// switcher). For the legacy permissive list, see ListForUser.
+func (r *workspaceRepo) ListForMember(ctx context.Context, userEmail string) ([]entity.Workspace, error) {
+	ctx, span := r.tracer.Start(ctx, "workspace.repository.ListForMember")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	query := `
+		SELECT DISTINCT ` + workspaceColumnsQualified + `
+		FROM workspaces w
+		WHERE w.is_active = TRUE
+		  AND (
+		    EXISTS (
+		      SELECT 1 FROM workspace_members wm
+		      WHERE wm.workspace_id = w.id
+		        AND LOWER(wm.user_email) = LOWER($1)
+		        AND wm.is_active = TRUE
+		    )
+		    OR EXISTS (
+		      SELECT 1 FROM team_members tm
+		      JOIN member_workspace_assignments mwa ON mwa.member_id = tm.id
+		      WHERE LOWER(tm.email) = LOWER($1)
+		        AND tm.status = 'active'
+		        AND mwa.workspace_id = w.id
+		    )
+		  )
+		ORDER BY w.is_holding ASC, w.name ASC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, userEmail)
+	if err != nil {
+		return nil, fmt.Errorf("query workspaces for member: %w", err)
+	}
+	defer rows.Close()
+
+	var workspaces []entity.Workspace
+	for rows.Next() {
+		w, err := scanWorkspace(rows)
+		if err != nil {
+			return nil, fmt.Errorf("scan workspace: %w", err)
+		}
+		workspaces = append(workspaces, *w)
+	}
+	return workspaces, rows.Err()
 }
 
 // ListForUser returns workspaces the given user_email has active membership in,

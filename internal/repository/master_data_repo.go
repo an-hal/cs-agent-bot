@@ -118,7 +118,7 @@ const masterDataColumns = `
     COALESCE(risk_flag,'None'),
     contract_start, contract_end, COALESCE(contract_months,0), days_to_expiry,
     COALESCE(payment_status,'Pending'), COALESCE(payment_terms,''),
-    COALESCE(final_price,0)::bigint, last_payment_date, COALESCE(renewed,false),
+    COALESCE(final_price,0)::bigint, last_payment_date,
     last_interaction_date, COALESCE(notes,''),
     COALESCE(custom_fields,'{}'::jsonb), created_at, updated_at`
 
@@ -139,7 +139,7 @@ func scanMasterData(scanner interface {
 		&m.RiskFlag,
 		&m.ContractStart, &m.ContractEnd, &m.ContractMonths, &m.DaysToExpiry,
 		&m.PaymentStatus, &m.PaymentTerms,
-		&m.FinalPrice, &m.LastPaymentDate, &m.Renewed,
+		&m.FinalPrice, &m.LastPaymentDate,
 		&m.LastInteractionDate, &m.Notes,
 		&customRaw, &m.CreatedAt, &m.UpdatedAt,
 	)
@@ -422,7 +422,9 @@ func (r *masterDataRepo) Patch(ctx context.Context, workspaceID, id string, patc
 		upd = upd.Set("last_payment_date", *patch.LastPaymentDate)
 		dirty = true
 	}
-	setBool("renewed", patch.Renewed)
+	// renewed column dropped — value goes to custom_fields. If the patch
+	// includes it, the caller must put it under CustomFields["renewed"]
+	// instead of using PatchRequest.Renewed (which is now a no-op).
 	setStr("notes", patch.Notes)
 	if patch.CustomFields != nil {
 		raw, err := json.Marshal(patch.CustomFields)

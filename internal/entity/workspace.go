@@ -4,7 +4,9 @@ import "time"
 
 // Workspace represents a tenant in the multi-workspace CRM.
 // A workspace with IsHolding=true aggregates data from MemberIDs and is read-only
-// against tenant-scoped tables.
+// against tenant-scoped tables. MemberIDs is internal (parent → child workspace
+// FKs); it's used by dashboard/analytics/reports usecases but never exposed in
+// API responses.
 type Workspace struct {
 	ID        string                 `json:"id"`
 	Slug      string                 `json:"slug"`
@@ -13,7 +15,7 @@ type Workspace struct {
 	Color     string                 `json:"color"`
 	Plan      string                 `json:"plan"`
 	IsHolding bool                   `json:"is_holding"`
-	MemberIDs []string               `json:"member_ids"`
+	MemberIDs []string               `json:"-"`
 	Settings  map[string]interface{} `json:"settings"`
 	IsActive  bool                   `json:"is_active"`
 	CreatedAt time.Time              `json:"created_at"`

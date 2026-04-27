@@ -60,7 +60,6 @@ func (h *handoffHandler) HandleNewClient(ctx context.Context, payload NewClientP
 		PICWA:           payload.PICWA,
 		OwnerName:       payload.OwnerName,
 		OwnerWA:         entity.StringPtr(payload.OwnerWA),
-		Segment:         payload.Segment,
 		ContractMonths:  payload.ContractMonths,
 		ContractStart:   contractStart,
 		ContractEnd:     contractEnd,

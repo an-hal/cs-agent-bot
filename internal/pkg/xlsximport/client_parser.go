@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Sejutacita/cs-agent-bot/internal/entity"
 	"github.com/xuri/excelize/v2"
 )
 
@@ -39,8 +40,8 @@ type ClientImportRow struct {
 	QuotationLink   string
 
 	// Scores
-	NPSScore    int
-	UsageScore  int
+	NPSScore   int
+	UsageScore int
 
 	// Lifecycle
 	HCSize              string
@@ -56,6 +57,11 @@ type ClientImportRow struct {
 	LastInteractionDate *time.Time
 	Segment             string // mapped from Risk Flag: High/Mid/Low
 	Notes               string
+
+	// Custom — populated when caller passes field definitions to
+	// ParseClientSheetWithDefs. Header lookup is case-insensitive against both
+	// FieldLabel and FieldKey. Empty cells are skipped.
+	CustomFields map[string]any
 }
 
 // ParseError represents a non-fatal per-row parse error.
@@ -67,9 +73,19 @@ type ParseError struct {
 
 const sheetName = "Template Import"
 
-// ParseClientSheet reads the "Template Import" sheet and returns parsed rows plus any per-row errors.
-// Rows with missing required fields are skipped and recorded as ParseErrors.
+// ParseClientSheet reads the "Template Import" sheet without custom-field
+// extraction. Equivalent to ParseClientSheetWithDefs(r, nil).
 func ParseClientSheet(r io.Reader) ([]ClientImportRow, []ParseError, error) {
+	return ParseClientSheetWithDefs(r, nil)
+}
+
+// ParseClientSheetWithDefs reads the "Template Import" sheet and returns
+// parsed rows plus any per-row errors. When defs is non-empty, additional
+// columns whose header matches a definition's FieldLabel or FieldKey
+// (case-insensitive) are extracted into ClientImportRow.CustomFields.
+//
+// Rows with missing required fields are skipped and recorded as ParseErrors.
+func ParseClientSheetWithDefs(r io.Reader, defs []entity.CustomFieldDefinition) ([]ClientImportRow, []ParseError, error) {
 	f, err := excelize.OpenReader(r)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to open xlsx: %w", err)
@@ -85,6 +101,7 @@ func ParseClientSheet(r io.Reader) ([]ClientImportRow, []ParseError, error) {
 	}
 
 	idx := buildHeaderIndex(rows[0])
+	customColIdx := buildCustomFieldColumnIndex(rows[0], defs)
 
 	var results []ClientImportRow
 	var parseErrs []ParseError
@@ -149,7 +166,7 @@ func ParseClientSheet(r io.Reader) ([]ClientImportRow, []ParseError, error) {
 		npsScore, _ := strconv.Atoi(get("NPS Score"))
 		usageScore, _ := strconv.Atoi(get("Usage Score"))
 
-		row := ClientImportRow{
+		parsedRow := ClientImportRow{
 			CompanyID:           companyID,
 			CompanyName:         companyName,
 			PICName:             get("PIC Name"),
@@ -183,7 +200,10 @@ func ParseClientSheet(r io.Reader) ([]ClientImportRow, []ParseError, error) {
 			LastInteractionDate: parseNullableDate(get("Last Interaction")),
 			CrossSellResumeDate: parseNullableDate(get("Cross Sell Resume Date")),
 		}
-		results = append(results, row)
+		if cf := extractCustomFields(row, customColIdx, defs); len(cf) > 0 {
+			parsedRow.CustomFields = cf
+		}
+		results = append(results, parsedRow)
 	}
 
 	return results, parseErrs, nil
@@ -195,6 +215,76 @@ func buildHeaderIndex(headers []string) map[string]int {
 		idx[strings.TrimSpace(h)] = i
 	}
 	return idx
+}
+
+// buildCustomFieldColumnIndex returns a map of field_key → column index, by
+// matching each definition's FieldLabel or FieldKey (case-insensitive) against
+// the xlsx header row. Definitions without a matching column are absent from
+// the result.
+func buildCustomFieldColumnIndex(headers []string, defs []entity.CustomFieldDefinition) map[string]int {
+	if len(defs) == 0 {
+		return nil
+	}
+	lower := make(map[string]int, len(headers))
+	for i, h := range headers {
+		lower[strings.ToLower(strings.TrimSpace(h))] = i
+	}
+	idx := make(map[string]int, len(defs))
+	for _, d := range defs {
+		if i, ok := lower[strings.ToLower(d.FieldLabel)]; ok {
+			idx[d.FieldKey] = i
+			continue
+		}
+		if i, ok := lower[strings.ToLower(d.FieldKey)]; ok {
+			idx[d.FieldKey] = i
+		}
+	}
+	return idx
+}
+
+// extractCustomFields pulls custom-field values from a row using the column
+// index built by buildCustomFieldColumnIndex. Empty cells are skipped. Values
+// are converted by FieldType (number/boolean/date stay typed; everything else
+// stays string). Caller (validation pipeline) re-checks against options.
+func extractCustomFields(row []string, colIdx map[string]int, defs []entity.CustomFieldDefinition) map[string]any {
+	if len(colIdx) == 0 {
+		return nil
+	}
+	defByKey := make(map[string]entity.CustomFieldDefinition, len(defs))
+	for _, d := range defs {
+		defByKey[d.FieldKey] = d
+	}
+
+	out := make(map[string]any, len(colIdx))
+	for key, i := range colIdx {
+		if i >= len(row) {
+			continue
+		}
+		raw := strings.TrimSpace(row[i])
+		if raw == "" {
+			continue
+		}
+		def := defByKey[key]
+		switch def.FieldType {
+		case entity.FieldTypeNumber:
+			if n, err := strconv.ParseFloat(raw, 64); err == nil {
+				out[key] = n
+			} else {
+				out[key] = raw // keep raw; validator will reject
+			}
+		case entity.FieldTypeBoolean:
+			out[key] = parseBool(raw)
+		case entity.FieldTypeDate:
+			if t, err := time.Parse("2006-01-02", raw); err == nil {
+				out[key] = t.Format("2006-01-02")
+			} else {
+				out[key] = raw
+			}
+		default:
+			out[key] = raw
+		}
+	}
+	return out
 }
 
 func parseDate(s string) (time.Time, error) {

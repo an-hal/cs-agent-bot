@@ -574,3 +574,7 @@ func TestDistinctValues_UnknownField(t *testing.T) {
 		t.Fatal("expected unknown field error")
 	}
 }
+
+func (s *fakeApprovalRepo) List(ctx context.Context, ws string, f repository.ApprovalFilter) ([]entity.ApprovalRequest, int64, error) {
+	return nil, 0, nil
+}

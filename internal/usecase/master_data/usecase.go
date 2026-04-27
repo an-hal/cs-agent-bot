@@ -55,8 +55,14 @@ type Usecase interface {
 	ListMutations(ctx context.Context, workspaceID string, since *time.Time, limit int) ([]entity.MasterDataMutation, error)
 
 	RequestImport(ctx context.Context, workspaceID, actorEmail, fileName string, mode ImportMode, rowCount int, preview []map[string]any, fileRef string) (*entity.ApprovalRequest, error)
+	// ParseImportRows parses an xlsx with workspace-aware custom field extraction.
+	ParseImportRows(ctx context.Context, workspaceID string, r io.Reader) ([]xlsximport.ClientImportRow, []xlsximport.ParseError, error)
 	// PreviewImport parses rows + runs dedup lookup, no DB writes.
 	PreviewImport(ctx context.Context, workspaceID string, rows []xlsximport.ClientImportRow, mode ImportMode) (*ImportPreview, error)
+	// ApplyApprovedImport applies an approved bulk_import_master_data request.
+	// The xlsx file is rehydrated from the approval payload (file_b64) — no
+	// row arg required; the central dispatcher can call this directly.
+	ApplyApprovedImport(ctx context.Context, workspaceID, approvalID, checkerEmail string) (*ImportResult, error)
 	// ApplyBDHandoffToClient copies BD discovery fields into AE-owned fields
 	// on transition to client stage. Returns the list of populated fields.
 	ApplyBDHandoffToClient(ctx context.Context, workspaceID, clientID, actorEmail string) ([]string, error)
@@ -200,6 +206,25 @@ func (u *usecase) Create(ctx context.Context, workspaceID, actorEmail string, re
 	if workspaceID == "" {
 		return nil, apperror.ValidationError("workspace_id required")
 	}
+	defs, err := u.cfdRepo.List(ctx, workspaceID)
+	if err != nil {
+		return nil, fmt.Errorf("load custom field defs: %w", err)
+	}
+	return u.createWithDefs(ctx, workspaceID, actorEmail, req, defs)
+}
+
+// createWithDefs is the inner Create with custom-field definitions already
+// loaded by the caller. Use it from bulk paths (ApplyApprovedImport) to avoid
+// re-querying cfd_definitions for every row.
+func (u *usecase) createWithDefs(
+	ctx context.Context,
+	workspaceID, actorEmail string,
+	req CreateRequest,
+	defs []entity.CustomFieldDefinition,
+) (*entity.MasterData, error) {
+	if workspaceID == "" {
+		return nil, apperror.ValidationError("workspace_id required")
+	}
 	if strings.TrimSpace(req.CompanyID) == "" {
 		return nil, apperror.ValidationError("company_id required")
 	}
@@ -211,11 +236,6 @@ func (u *usecase) Create(ctx context.Context, workspaceID, actorEmail string, re
 	}
 	if req.RiskFlag != "" && !isValidRisk(req.RiskFlag) {
 		return nil, apperror.ValidationError("invalid risk_flag")
-	}
-
-	defs, err := u.cfdRepo.List(ctx, workspaceID)
-	if err != nil {
-		return nil, fmt.Errorf("load custom field defs: %w", err)
 	}
 	if err := ValidateCustomFields(defs, req.CustomFields, true); err != nil {
 		return nil, err
@@ -269,6 +289,26 @@ func (u *usecase) Create(ctx context.Context, workspaceID, actorEmail string, re
 // ───────────────────────────── Patch ─────────────────────────────
 
 func (u *usecase) Patch(ctx context.Context, workspaceID, id, actorEmail string, ctxKind WriteContext, req PatchRequest) (*entity.MasterData, []string, error) {
+	var defs []entity.CustomFieldDefinition
+	if req.CustomFields != nil {
+		var err error
+		defs, err = u.cfdRepo.List(ctx, workspaceID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("load custom field defs: %w", err)
+		}
+	}
+	return u.patchWithDefs(ctx, workspaceID, id, actorEmail, ctxKind, req, defs)
+}
+
+// patchWithDefs is the inner Patch with defs already loaded. Use from bulk
+// paths to avoid per-row cfd reloads.
+func (u *usecase) patchWithDefs(
+	ctx context.Context,
+	workspaceID, id, actorEmail string,
+	ctxKind WriteContext,
+	req PatchRequest,
+	defs []entity.CustomFieldDefinition,
+) (*entity.MasterData, []string, error) {
 	if workspaceID == "" || id == "" {
 		return nil, nil, apperror.ValidationError("workspace_id and id required")
 	}
@@ -298,10 +338,6 @@ func (u *usecase) Patch(ctx context.Context, workspaceID, id, actorEmail string,
 		return nil, nil, apperror.ValidationError("invalid risk_flag")
 	}
 	if req.CustomFields != nil {
-		defs, err := u.cfdRepo.List(ctx, workspaceID)
-		if err != nil {
-			return nil, nil, fmt.Errorf("load custom field defs: %w", err)
-		}
 		if err := ValidateCustomFields(defs, req.CustomFields, false); err != nil {
 			return nil, nil, err
 		}

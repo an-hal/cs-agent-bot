@@ -38,7 +38,8 @@ func withBotActive(v bool) scenarioOpt {
 }
 
 func withRejected(v bool) scenarioOpt {
-	return func(c *entity.Client) { c.Rejected = v }
+	// TODO post-CRM-refactor: rejected moved to custom_fields, no-op stub
+	return func(c *entity.Client) { _ = v; _ = c }
 }
 
 func withContractMonths(n int) scenarioOpt {
@@ -54,7 +55,8 @@ func withPaymentStatus(s string) scenarioOpt {
 }
 
 func withRenewed(v bool) scenarioOpt {
-	return func(c *entity.Client) { c.Renewed = v }
+	// TODO post-CRM-refactor: renewed moved to custom_fields, no-op stub
+	return func(c *entity.Client) { _ = v; _ = c }
 }
 
 func withCheckinReplied(v bool) scenarioOpt {
@@ -62,27 +64,33 @@ func withCheckinReplied(v bool) scenarioOpt {
 }
 
 func withRiskFlag(v bool) scenarioOpt {
-	return func(c *entity.Client) { c.RiskFlag = v }
+	// TODO post-CRM-refactor: risk_flag (boolean) dropped — risk_flag_text replaces it
+	return func(c *entity.Client) { _ = v; _ = c }
 }
 
 func withCrossSellRejected(v bool) scenarioOpt {
-	return func(c *entity.Client) { c.CrossSellRejected = v }
+	// TODO post-CRM-refactor: cross_sell_rejected moved to custom_fields, no-op stub
+	return func(c *entity.Client) { _ = v; _ = c }
 }
 
 func withCrossSellInterested(v bool) scenarioOpt {
-	return func(c *entity.Client) { c.CrossSellInterested = v }
+	// TODO post-CRM-refactor: cross_sell_interested moved to custom_fields, no-op stub
+	return func(c *entity.Client) { _ = v; _ = c }
 }
 
 func withNPSScore(n int) scenarioOpt {
-	return func(c *entity.Client) { c.NPSScore = n }
+	// TODO post-CRM-refactor: nps_score moved to custom_fields, no-op stub
+	return func(c *entity.Client) { _ = n; _ = c }
 }
 
 func withQuotationLink(s string) scenarioOpt {
-	return func(c *entity.Client) { c.QuotationLink = s }
+	// TODO post-CRM-refactor: quotation_link moved to custom_fields, no-op stub
+	return func(c *entity.Client) { _ = s; _ = c }
 }
 
 func withSegment(s string) scenarioOpt {
-	return func(c *entity.Client) { c.Segment = s }
+	// TODO post-CRM-refactor: segment moved to custom_fields, no-op stub
+	return func(c *entity.Client) { _ = s; _ = c }
 }
 
 func withCompanyID(id string) scenarioOpt {
@@ -97,11 +105,9 @@ func newScenarioClient(opts ...scenarioOpt) entity.Client {
 		CompanyName:    "PT Scenario",
 		BotActive:      true,
 		Blacklisted:    false,
-		Rejected:       false,
 		PaymentStatus:  entity.PaymentStatusPending,
 		ContractMonths: 12,
 		ContractEnd:    daysFromNow(90),
-		Segment:        entity.SegmentMid,
 	}
 	for _, o := range opts {
 		o(&c)

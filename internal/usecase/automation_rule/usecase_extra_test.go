@@ -498,3 +498,4 @@ func TestIsExecutable_DisabledRule_ReturnsFalse(t *testing.T) {
 		t.Error("disabled rule must not be executable")
 	}
 }
+

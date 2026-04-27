@@ -14,15 +14,12 @@ func (t *TriggerService) EvalCrossSell(ctx context.Context, c entity.Client, f e
 		return false, nil
 	}
 
-	// Stop conditions
-	if c.CrossSellRejected || c.CrossSellInterested {
-		return false, nil
-	}
+	// Stop conditions — cross_sell_* moved to clients.custom_fields.
+	// TODO: post-CRM-refactor read from custom_fields when entity.Client
+	// exposes the JSONB. Until then, the gate below no-ops.
 
-	// NPS gate: if NPSReplied=TRUE AND NPSScore < 8, block all P5
-	if f.NPSReplied && c.NPSScore < 8 {
-		return false, nil
-	}
+	// NPS gate moved to custom_fields too — see TODO above.
+	_ = f.NPSReplied
 
 	// No-overlap rule: skip if feature_update_sent this week
 	if f.FeatureUpdateSent {

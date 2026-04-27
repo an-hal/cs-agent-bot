@@ -1,7 +1,10 @@
 package dashboard
 
 import (
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -344,7 +347,15 @@ func (h *MasterDataHandler) Import(w http.ResponseWriter, r *http.Request) error
 	}
 	defer file.Close()
 
-	rows, _, err := master_data.ParseImportRows(file)
+	// Read full bytes once so we can both (a) parse for preview, and
+	// (b) stash as base64 in the approval payload for the apply step.
+	fileBytes, err := io.ReadAll(file)
+	if err != nil {
+		return apperror.BadRequest("failed to read file: " + err.Error())
+	}
+
+	wsID := ctxutil.GetWorkspaceID(ctx)
+	rows, _, err := h.uc.ParseImportRows(ctx, wsID, bytes.NewReader(fileBytes))
 	if err != nil {
 		return apperror.BadRequest("failed to parse xlsx: " + err.Error())
 	}
@@ -358,7 +369,9 @@ func (h *MasterDataHandler) Import(w http.ResponseWriter, r *http.Request) error
 			"company_name": row.CompanyName,
 		})
 	}
-	out, err := h.uc.RequestImport(ctx, ctxutil.GetWorkspaceID(ctx), callerEmail(r), header.Filename, mode, len(rows), preview, "")
+
+	fileB64 := base64.StdEncoding.EncodeToString(fileBytes)
+	out, err := h.uc.RequestImport(ctx, wsID, callerEmail(r), header.Filename, mode, len(rows), preview, fileB64)
 	if err != nil {
 		return err
 	}
@@ -394,7 +407,7 @@ func (h *MasterDataHandler) ImportPreview(w http.ResponseWriter, r *http.Request
 	}
 	defer file.Close()
 
-	rows, _, err := master_data.ParseImportRows(file)
+	rows, _, err := h.uc.ParseImportRows(ctx, ctxutil.GetWorkspaceID(ctx), file)
 	if err != nil {
 		return apperror.BadRequest("failed to parse xlsx: " + err.Error())
 	}

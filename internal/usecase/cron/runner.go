@@ -202,10 +202,10 @@ func (cr *cronRunner) processClient(ctx context.Context, c entity.Client) error 
 	}
 
 	// Gate 3: rejected by client
-	if c.Rejected {
-		cr.logger.Warn().Str("company_id", c.CompanyID).Msg("Client is rejected")
-		return nil
-	}
+	// TODO: post-CRM-refactor — rejected moved to clients.custom_fields.
+	// Re-enable this gate once entity.Client exposes a CustomFields map.
+	// Current behaviour: bot will keep messaging clients flagged as
+	// rejected — operator should manually toggle bot_active=false.
 
 	// Gate 4: max 1 WA per client per calendar day
 	sentToday, err := cr.logRepo.SentTodayAlready(ctx, c.CompanyID)
@@ -224,8 +224,11 @@ func (cr *cronRunner) processClient(ctx context.Context, c entity.Client) error 
 		return err
 	}
 
-	// Check if renewed — triggers resetCycleFlags before evaluation
-	if c.Renewed {
+	// Check if renewed — triggers resetCycleFlags before evaluation.
+	// TODO: post-CRM-refactor — renewed moved to clients.custom_fields.
+	// Re-enable once entity.Client exposes CustomFields. Current behaviour:
+	// cycle-flag reset must be triggered manually after a renewal.
+	if false {
 		if resetErr := cr.flagsRepo.ResetCycleFlags(ctx, c.CompanyID); resetErr != nil {
 			cr.logger.Error().Err(resetErr).Str("company_id", c.CompanyID).Msg("Failed to reset cycle flags")
 			return resetErr

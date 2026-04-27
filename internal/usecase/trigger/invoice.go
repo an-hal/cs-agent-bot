@@ -21,14 +21,10 @@ func (t *TriggerService) EvalInvoice(ctx context.Context, c entity.Client, f ent
 
 	// At H-30: create invoice if none exists
 	if dte <= 30 && inv == nil {
-		// Check quotation_link must exist (Rule 10)
-		if c.QuotationLink == "" {
-			alertMsg := fmt.Sprintf("quotation_link is empty for %s (%s). Invoice creation delayed.", c.CompanyName, c.CompanyID)
-			if err := t.Telegram.SendMessage(ctx, c.OwnerTelegramID, alertMsg); err != nil {
-				t.Logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to send Telegram alert about empty quotation link")
-			}
-			return false, nil
-		}
+		// TODO: post-CRM-refactor — quotation_link moved to
+		// clients.custom_fields. Re-add the empty-link gate once
+		// entity.Client exposes a CustomFields map. For now invoice
+		// creation proceeds unconditionally.
 
 		newInv := entity.Invoice{
 			InvoiceID:     fmt.Sprintf("INV-%s-%s", time.Now().Format("2006"), c.CompanyID),

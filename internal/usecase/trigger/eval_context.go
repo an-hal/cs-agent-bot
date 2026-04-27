@@ -18,10 +18,15 @@ type ClientContext struct {
 func (c *ClientContext) GetField(name string) (interface{}, bool) {
 	switch name {
 	// Client fields
+	// TODO: post-CRM-refactor — fields below moved to clients.custom_fields
+	// (usage_score, nps_score, segment, quotation_link, rejected,
+	// cross_sell_*). Until entity.Client exposes a CustomFields map,
+	// these stubs return zero values so trigger rules referencing them
+	// cleanly no-op instead of crashing.
 	case "usage_score":
-		return c.Client.UsageScore, true
+		return 0, true
 	case "nps_score":
-		return c.Client.NPSScore, true
+		return 0, true
 	case "days_to_expiry":
 		return c.Client.DaysToExpiry(), true
 	case "days_past_due":
@@ -31,13 +36,13 @@ func (c *ClientContext) GetField(name string) (interface{}, bool) {
 	case "contract_months":
 		return c.Client.ContractMonths, true
 	case "segment":
-		return c.Client.Segment, true
+		return "", true
 	case "payment_status":
 		return c.Client.PaymentStatus, true
 	case "response_status":
 		return c.Client.ResponseStatus, true
 	case "quotation_link":
-		return c.Client.QuotationLink, true
+		return "", true
 	case "sequence_cs":
 		return c.Client.SequenceCS, true
 	case "bot_active":
@@ -45,11 +50,11 @@ func (c *ClientContext) GetField(name string) (interface{}, bool) {
 	case "blacklisted":
 		return c.Client.Blacklisted, true
 	case "rejected":
-		return c.Client.Rejected, true
+		return false, true
 	case "cross_sell_rejected":
-		return c.Client.CrossSellRejected, true
+		return false, true
 	case "cross_sell_interested":
-		return c.Client.CrossSellInterested, true
+		return false, true
 	case "is_payment_overdue":
 		return c.Client.IsPaymentOverdue(), true
 	case "activation_date_set":

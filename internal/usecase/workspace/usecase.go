@@ -20,6 +20,7 @@ import (
 // Usecase exposes workspace business operations.
 type Usecase interface {
 	List(ctx context.Context, callerEmail string) ([]entity.Workspace, error)
+	ListMine(ctx context.Context, callerEmail string) ([]entity.Workspace, error)
 	Get(ctx context.Context, id, callerEmail string) (*WorkspaceDetail, error)
 	Create(ctx context.Context, callerEmail string, req CreateRequest) (*entity.Workspace, error)
 	Update(ctx context.Context, id, callerEmail string, req UpdateRequest) (*entity.Workspace, error)
@@ -37,15 +38,19 @@ type usecase struct {
 	workspaceRepo  repository.WorkspaceRepository
 	memberRepo     repository.WorkspaceMemberRepository
 	invitationRepo repository.WorkspaceInvitationRepository
+	permRepo       repository.RolePermissionRepository // optional; may be nil in tests
 	now            func() time.Time
 	tokenGen       func() (string, error)
 }
 
-// New constructs a workspace usecase. Pass nil for nowFn / tokenFn to use defaults.
+// New constructs a workspace usecase. Pass nil for nowFn / tokenFn to use
+// defaults; pass nil for permRepo to skip auto-seeding role_permissions on
+// workspace creation (useful in tests).
 func New(
 	wsRepo repository.WorkspaceRepository,
 	memberRepo repository.WorkspaceMemberRepository,
 	invitationRepo repository.WorkspaceInvitationRepository,
+	permRepo repository.RolePermissionRepository,
 	nowFn func() time.Time,
 	tokenFn func() (string, error),
 ) Usecase {
@@ -59,6 +64,7 @@ func New(
 		workspaceRepo:  wsRepo,
 		memberRepo:     memberRepo,
 		invitationRepo: invitationRepo,
+		permRepo:       permRepo,
 		now:            nowFn,
 		tokenGen:       tokenFn,
 	}
@@ -143,6 +149,16 @@ func (u *usecase) List(ctx context.Context, callerEmail string) ([]entity.Worksp
 	return u.workspaceRepo.ListForUser(ctx, callerEmail)
 }
 
+// ListMine returns only workspaces the caller has actual membership in
+// (via workspace_members or team_members + assignment). Unlike List, it does
+// NOT include holding workspaces by default.
+func (u *usecase) ListMine(ctx context.Context, callerEmail string) ([]entity.Workspace, error) {
+	if callerEmail == "" {
+		return nil, apperror.Unauthorized("caller email missing")
+	}
+	return u.workspaceRepo.ListForMember(ctx, callerEmail)
+}
+
 // Get returns a workspace plus members, after verifying caller membership.
 func (u *usecase) Get(ctx context.Context, id, callerEmail string) (*WorkspaceDetail, error) {
 	if _, err := u.assertMembership(ctx, id, callerEmail); err != nil {
@@ -213,6 +229,12 @@ func (u *usecase) Create(ctx context.Context, callerEmail string, req CreateRequ
 		InvitedBy:   callerEmail,
 	}); err != nil {
 		return nil, err
+	}
+	// Seed default role_permissions matrix so /team/permissions/me works
+	// for every role in this new workspace. Failure here doesn't abort the
+	// create — caller can re-seed later via admin endpoint or migration.
+	if u.permRepo != nil {
+		_ = u.permRepo.SeedDefaultsForWorkspace(ctx, created.ID)
 	}
 	return created, nil
 }

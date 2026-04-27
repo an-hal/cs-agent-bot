@@ -21,6 +21,17 @@ type ApprovalRequestRepository interface {
 	Create(ctx context.Context, a *entity.ApprovalRequest) (*entity.ApprovalRequest, error)
 	GetByID(ctx context.Context, workspaceID, id string) (*entity.ApprovalRequest, error)
 	UpdateStatus(ctx context.Context, workspaceID, id, newStatus, checkerEmail, reason string) error
+	List(ctx context.Context, workspaceID string, filter ApprovalFilter) ([]entity.ApprovalRequest, int64, error)
+}
+
+// ApprovalFilter is the workspace-scoped query for listing approval requests.
+// Empty values are treated as "no filter".
+type ApprovalFilter struct {
+	Status      string // pending | approved | rejected | expired
+	RequestType string // bulk_import_master_data | delete_client_record | ...
+	MakerEmail  string
+	Limit       int
+	Offset      int
 }
 
 type approvalRequestRepo struct {
@@ -118,6 +129,60 @@ func (r *approvalRequestRepo) GetByID(ctx context.Context, workspaceID, id strin
 		return nil, fmt.Errorf("query: %w", err)
 	}
 	return out, nil
+}
+
+func (r *approvalRequestRepo) List(ctx context.Context, workspaceID string, f ApprovalFilter) ([]entity.ApprovalRequest, int64, error) {
+	ctx, span := r.tracer.Start(ctx, "approval_request.repository.List")
+	defer span.End()
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	conds := sq.And{sq.Expr("workspace_id::text = ?", workspaceID)}
+	if f.Status != "" {
+		conds = append(conds, sq.Eq{"status": f.Status})
+	}
+	if f.RequestType != "" {
+		conds = append(conds, sq.Eq{"request_type": f.RequestType})
+	}
+	if f.MakerEmail != "" {
+		conds = append(conds, sq.Eq{"maker_email": f.MakerEmail})
+	}
+
+	if f.Limit <= 0 || f.Limit > 200 {
+		f.Limit = 50
+	}
+	if f.Offset < 0 {
+		f.Offset = 0
+	}
+
+	q := database.PSQL.Select(arColumns).From("approval_requests").
+		Where(conds).
+		OrderBy("created_at DESC").
+		Limit(uint64(f.Limit)).
+		Offset(uint64(f.Offset))
+	query, args, err := q.ToSql()
+	if err != nil {
+		return nil, 0, fmt.Errorf("build list: %w", err)
+	}
+	rows, err := r.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("query list: %w", err)
+	}
+	defer rows.Close()
+
+	var out []entity.ApprovalRequest
+	for rows.Next() {
+		ar, err := scanAR(rows)
+		if err != nil {
+			return nil, 0, fmt.Errorf("scan: %w", err)
+		}
+		out = append(out, *ar)
+	}
+
+	cq, cArgs, _ := database.PSQL.Select("COUNT(*)").From("approval_requests").Where(conds).ToSql()
+	var total int64
+	_ = r.db.QueryRowContext(ctx, cq, cArgs...).Scan(&total)
+	return out, total, rows.Err()
 }
 
 func (r *approvalRequestRepo) UpdateStatus(ctx context.Context, workspaceID, id, newStatus, checkerEmail, reason string) error {

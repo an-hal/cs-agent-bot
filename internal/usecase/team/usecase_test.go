@@ -570,3 +570,11 @@ func TestGetMyPermissions_FillsMissingModules(t *testing.T) {
 		t.Errorf("Team view_list should default to false")
 	}
 }
+
+func (s *stubPermRepo) SeedDefaultsForWorkspace(ctx context.Context, workspaceID string) error {
+	return nil
+}
+
+func (s *stubApprovalRepo) List(ctx context.Context, ws string, f repository.ApprovalFilter) ([]entity.ApprovalRequest, int64, error) {
+	return nil, 0, nil
+}

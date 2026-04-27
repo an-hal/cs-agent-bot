@@ -405,3 +405,11 @@ func TestUpdate_StripsPaymentStatusFromPatch(t *testing.T) {
 		t.Errorf("expected notes to be written, got %v", upd["notes"])
 	}
 }
+
+func (s *stubApprovalRepo) List(ctx context.Context, ws string, f repository.ApprovalFilter) ([]entity.ApprovalRequest, int64, error) {
+	return nil, 0, nil
+}
+
+func (s *stubWorkspaceRepo) ListForMember(ctx context.Context, email string) ([]entity.Workspace, error) {
+	return nil, nil
+}

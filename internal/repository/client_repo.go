@@ -63,7 +63,7 @@ func (r *clientRepo) withTimeout(ctx context.Context) (context.Context, context.
 // This constant is used for SELECT queries to avoid SELECT *.
 // Nullable columns that use Go pointer types (e.g. owner_wa, last_interaction_date) have no COALESCE.
 // Nullable columns that use Go value types still use COALESCE for zero-value defaults.
-const clientColumns = `company_id, company_name, pic_name, pic_wa, owner_name, owner_wa, owner_telegram_id, COALESCE(segment, '') as segment, contract_months, contract_start, contract_end, activation_date, COALESCE(payment_status, 'Paid') as payment_status, COALESCE(nps_score, 0) as nps_score, COALESCE(usage_score, 0) as usage_score, COALESCE(bot_active, true) as bot_active, COALESCE(blacklisted, false) as blacklisted, COALESCE(renewed, false) as renewed, COALESCE(rejected, false) as rejected, COALESCE(quotation_link, '') as quotation_link, COALESCE(sequence_cs, 'ACTIVE') as sequence_cs, COALESCE(cross_sell_rejected, false) as cross_sell_rejected, COALESCE(cross_sell_interested, false) as cross_sell_interested, COALESCE(checkin_replied, false) as checkin_replied, COALESCE(response_status, 'Pending') as response_status, COALESCE(pre14_sent, false) as pre14_sent, COALESCE(pre7_sent, false) as pre7_sent, COALESCE(pre3_sent, false) as pre3_sent, COALESCE(post1_sent, false) as post1_sent, COALESCE(post4_sent, false) as post4_sent, COALESCE(post8_sent, false) as post8_sent, COALESCE(post15_sent, false) as post15_sent, last_interaction_date, COALESCE(pic_email, '') as pic_email, COALESCE(pic_role, '') as pic_role, COALESCE(hc_size, '') as hc_size, COALESCE(plan_type, '') as plan_type, COALESCE(payment_terms, '') as payment_terms, COALESCE(final_price, 0) as final_price, last_payment_date, COALESCE(notes, '') as notes, cross_sell_resume_date, renewal_date, created_at, COALESCE(churn_reason, '') as churn_reason, COALESCE(wa_undeliverable, false) as wa_undeliverable, COALESCE(feature_update_sent, false) as feature_update_sent, COALESCE(days_since_cs_last_sent, 0) as days_since_cs_last_sent, COALESCE(first_time_discount_pct, 0) as first_time_discount_pct, COALESCE(next_discount_pct_manual, 0) as next_discount_pct_manual, quotation_link_expires, COALESCE(ae_assigned, false) as ae_assigned, COALESCE(usage_score_avg_30d, 0) as usage_score_avg_30d, COALESCE(backup_owner_telegram_id, '') as backup_owner_telegram_id, COALESCE(ae_telegram_id, '') as ae_telegram_id, COALESCE(bd_prospect_id, '') as bd_prospect_id, COALESCE(risk_flag, false) as risk_flag, COALESCE(workspace_id::text, '') as workspace_id`
+const clientColumns = `company_id, company_name, pic_name, pic_wa, owner_name, owner_wa, owner_telegram_id, contract_months, contract_start, contract_end, activation_date, COALESCE(payment_status, 'Paid') as payment_status, COALESCE(bot_active, true) as bot_active, COALESCE(blacklisted, false) as blacklisted, COALESCE(sequence_cs, 'ACTIVE') as sequence_cs, COALESCE(checkin_replied, false) as checkin_replied, COALESCE(response_status, 'Pending') as response_status, COALESCE(pre14_sent, false) as pre14_sent, COALESCE(pre7_sent, false) as pre7_sent, COALESCE(pre3_sent, false) as pre3_sent, COALESCE(post1_sent, false) as post1_sent, COALESCE(post4_sent, false) as post4_sent, COALESCE(post8_sent, false) as post8_sent, COALESCE(post15_sent, false) as post15_sent, last_interaction_date, COALESCE(pic_email, '') as pic_email, COALESCE(pic_role, '') as pic_role, COALESCE(payment_terms, '') as payment_terms, COALESCE(final_price, 0) as final_price, last_payment_date, COALESCE(notes, '') as notes, created_at, COALESCE(feature_update_sent, false) as feature_update_sent, COALESCE(days_since_cs_last_sent, 0) as days_since_cs_last_sent, COALESCE(ae_assigned, false) as ae_assigned, COALESCE(backup_owner_telegram_id, '') as backup_owner_telegram_id, COALESCE(ae_telegram_id, '') as ae_telegram_id, COALESCE(workspace_id::text, '') as workspace_id`
 
 // invoiceColumns lists every column read from the invoices table.
 const invoiceColumns = "invoice_id, company_id, due_date, amount, payment_status"
@@ -81,22 +81,14 @@ func scanClient(scanner interface {
 		&c.OwnerName,
 		&c.OwnerWA,
 		&c.OwnerTelegramID,
-		&c.Segment,
 		&c.ContractMonths,
 		&c.ContractStart,
 		&c.ContractEnd,
 		&c.ActivationDate,
 		&c.PaymentStatus,
-		&c.NPSScore,
-		&c.UsageScore,
 		&c.BotActive,
 		&c.Blacklisted,
-		&c.Renewed,
-		&c.Rejected,
-		&c.QuotationLink,
 		&c.SequenceCS,
-		&c.CrossSellRejected,
-		&c.CrossSellInterested,
 		&c.CheckinReplied,
 		&c.ResponseStatus,
 		&c.Pre14Sent,
@@ -109,28 +101,16 @@ func scanClient(scanner interface {
 		&c.LastInteractionDate,
 		&c.PICEmail,
 		&c.PICRole,
-		&c.HCSize,
-		&c.PlanType,
 		&c.PaymentTerms,
 		&c.FinalPrice,
 		&c.LastPaymentDate,
 		&c.Notes,
-		&c.CrossSellResumeDate,
-		&c.RenewalDate,
 		&c.CreatedAt,
-		&c.ChurnReason,
-		&c.WAUndeliverable,
 		&c.FeatureUpdateSent,
 		&c.DaysSinceCSLastSent,
-		&c.FirstTimeDiscountPct,
-		&c.NextDiscountPctManual,
-		&c.QuotationLinkExpires,
 		&c.AEAssigned,
-		&c.UsageScoreAvg30d,
 		&c.BackupOwnerTelegramID,
 		&c.AETelegramID,
-		&c.BDProspectID,
-		&c.RiskFlag,
 		&c.WorkspaceID,
 	)
 	if err != nil {
@@ -389,36 +369,22 @@ func (r *clientRepo) CreateClient(ctx context.Context, client entity.Client) err
 			"pic_wa = EXCLUDED.pic_wa, " +
 			"pic_email = EXCLUDED.pic_email, " +
 			"pic_role = EXCLUDED.pic_role, " +
-			"hc_size = EXCLUDED.hc_size, " +
 			"owner_name = EXCLUDED.owner_name, " +
 			"owner_wa = EXCLUDED.owner_wa, " +
 			"owner_telegram_id = EXCLUDED.owner_telegram_id, " +
-			"segment = EXCLUDED.segment, " +
-			"plan_type = EXCLUDED.plan_type, " +
 			"payment_terms = EXCLUDED.payment_terms, " +
 			"contract_months = EXCLUDED.contract_months, " +
 			"contract_start = EXCLUDED.contract_start, " +
 			"contract_end = EXCLUDED.contract_end, " +
 			"activation_date = EXCLUDED.activation_date, " +
 			"final_price = EXCLUDED.final_price, " +
-			"quotation_link = EXCLUDED.quotation_link, " +
-			"renewal_date = EXCLUDED.renewal_date, " +
 			"notes = EXCLUDED.notes, " +
 			"payment_status = EXCLUDED.payment_status, " +
 			"last_payment_date = EXCLUDED.last_payment_date, " +
-			"nps_score = EXCLUDED.nps_score, " +
-			"usage_score = EXCLUDED.usage_score, " +
-			"churn_reason = EXCLUDED.churn_reason, " +
 			"bot_active = EXCLUDED.bot_active, " +
 			"blacklisted = EXCLUDED.blacklisted, " +
-			"wa_undeliverable = EXCLUDED.wa_undeliverable, " +
 			"response_status = EXCLUDED.response_status, " +
-			"renewed = EXCLUDED.renewed, " +
-			"rejected = EXCLUDED.rejected, " +
 			"sequence_cs = EXCLUDED.sequence_cs, " +
-			"cross_sell_rejected = EXCLUDED.cross_sell_rejected, " +
-			"cross_sell_interested = EXCLUDED.cross_sell_interested, " +
-			"cross_sell_resume_date = EXCLUDED.cross_sell_resume_date, " +
 			"feature_update_sent = EXCLUDED.feature_update_sent, " +
 			"days_since_cs_last_sent = EXCLUDED.days_since_cs_last_sent, " +
 			"checkin_replied = EXCLUDED.checkin_replied, " +
@@ -436,19 +402,15 @@ func (r *clientRepo) CreateClient(ctx context.Context, client entity.Client) err
 	query, args, err := database.PSQL.
 		Insert("clients").
 		Columns(
-			"company_id", "company_name", "pic_name", "pic_wa", "pic_email", "pic_role", "hc_size",
+			"company_id", "company_name", "pic_name", "pic_wa", "pic_email", "pic_role",
 			"owner_name", "owner_wa", "owner_telegram_id",
-			"segment", "plan_type", "payment_terms",
+			"payment_terms",
 			"contract_months", "contract_start", "contract_end",
 			"activation_date", "payment_status",
-			"final_price", "quotation_link", "renewal_date", "notes",
+			"final_price", "notes",
 			"last_payment_date",
-			"nps_score", "usage_score",
-			"churn_reason",
-			"bot_active", "blacklisted", "wa_undeliverable",
-			"renewed", "rejected",
+			"bot_active", "blacklisted",
 			"sequence_cs",
-			"cross_sell_rejected", "cross_sell_interested", "cross_sell_resume_date",
 			"feature_update_sent", "days_since_cs_last_sent",
 			"checkin_replied", "response_status",
 			"pre14_sent", "pre7_sent", "pre3_sent",
@@ -457,19 +419,15 @@ func (r *clientRepo) CreateClient(ctx context.Context, client entity.Client) err
 			"workspace_id",
 		).
 		Values(
-			client.CompanyID, client.CompanyName, client.PICName, client.PICWA, client.PICEmail, client.PICRole, client.HCSize,
+			client.CompanyID, client.CompanyName, client.PICName, client.PICWA, client.PICEmail, client.PICRole,
 			client.OwnerName, client.OwnerWA, client.OwnerTelegramID,
-			client.Segment, client.PlanType, client.PaymentTerms,
+			client.PaymentTerms,
 			client.ContractMonths, client.ContractStart, client.ContractEnd,
 			client.ActivationDate, client.PaymentStatus,
-			client.FinalPrice, client.QuotationLink, client.RenewalDate, client.Notes,
+			client.FinalPrice, client.Notes,
 			client.LastPaymentDate,
-			client.NPSScore, client.UsageScore,
-			client.ChurnReason,
-			client.BotActive, client.Blacklisted, client.WAUndeliverable,
-			client.Renewed, client.Rejected,
+			client.BotActive, client.Blacklisted,
 			client.SequenceCS,
-			client.CrossSellRejected, client.CrossSellInterested, client.CrossSellResumeDate,
 			client.FeatureUpdateSent, client.DaysSinceCSLastSent,
 			client.CheckinReplied, client.ResponseStatus,
 			client.Pre14Sent, client.Pre7Sent, client.Pre3Sent,
@@ -699,14 +657,13 @@ func buildClientFilter(filter entity.ClientFilter) sq.And {
 var validUpdateColumns = map[string]bool{
 	"pic_name": true, "pic_wa": true, "pic_email": true, "pic_role": true,
 	"owner_name": true, "owner_wa": true, "owner_telegram_id": true,
-	"segment": true, "plan_type": true, "hc_size": true,
 	"payment_terms": true, "contract_months": true,
 	"contract_start": true, "contract_end": true,
 	"activation_date": true, "payment_status": true,
-	"final_price": true, "quotation_link": true, "renewal_date": true,
-	"notes": true, "nps_score": true, "usage_score": true,
-	"bot_active": true, "blacklisted": true, "renewed": true,
-	"rejected": true, "sequence_cs": true,
+	"final_price": true,
+	"notes":         true,
+	"bot_active":    true, "blacklisted": true,
+	"sequence_cs": true,
 }
 
 // UpdateClientFields dynamically updates specified fields for a client.

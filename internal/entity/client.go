@@ -11,23 +11,15 @@ type Client struct {
 	PICWA               string     `json:"pic_wa"`
 	OwnerName           string     `json:"owner_name"`
 	OwnerWA             *string    `json:"owner_wa"`
-	Segment             string     `json:"segment"`
 	ContractMonths      int        `json:"contract_months"`
 	ContractStart       time.Time  `json:"contract_start"`
 	ContractEnd         time.Time  `json:"contract_end"`
 	ActivationDate      time.Time  `json:"activation_date"`
 	PaymentStatus       string     `json:"payment_status"`
-	NPSScore            int        `json:"nps_score"`
-	UsageScore          int        `json:"usage_score"`
 	BotActive           bool       `json:"bot_active"`
 	Blacklisted         bool       `json:"blacklisted"`
-	Renewed             bool       `json:"renewed"`
-	Rejected            bool       `json:"rejected"`
-	QuotationLink       string     `json:"quotation_link"`
 	OwnerTelegramID     string     `json:"owner_telegram_id"`
 	SequenceCS          string     `json:"sequence_cs"`
-	CrossSellRejected   bool       `json:"cross_sell_rejected"`
-	CrossSellInterested bool       `json:"cross_sell_interested"`
 	CheckinReplied      bool       `json:"checkin_replied"`
 	ResponseStatus      string     `json:"response_status"`
 	LastInteractionDate *time.Time `json:"last_interaction_date"`
@@ -44,28 +36,16 @@ type Client struct {
 	// Fields from existing DB columns previously not mapped
 	PICEmail              string     `json:"pic_email"`
 	PICRole               string     `json:"pic_role"`
-	HCSize                string     `json:"hc_size"`
-	PlanType              string     `json:"plan_type"`
 	PaymentTerms          string     `json:"payment_terms"`
 	FinalPrice            float64    `json:"final_price"`
 	LastPaymentDate       *time.Time `json:"last_payment_date"`
 	Notes                 string     `json:"notes"`
-	CrossSellResumeDate   *time.Time `json:"cross_sell_resume_date"`
-	RenewalDate           *time.Time `json:"renewal_date"`
 	CreatedAt             time.Time  `json:"created_at"`
-	ChurnReason           string     `json:"churn_reason"`
-	WAUndeliverable       bool       `json:"wa_undeliverable"`
 	FeatureUpdateSent     bool       `json:"feature_update_sent"`
 	DaysSinceCSLastSent   int        `json:"days_since_cs_last_sent"`
-	FirstTimeDiscountPct  float64    `json:"first_time_discount_pct"`
-	NextDiscountPctManual float64    `json:"next_discount_pct_manual"`
-	QuotationLinkExpires  *time.Time `json:"quotation_link_expires"`
 	AEAssigned            bool       `json:"ae_assigned"`
-	UsageScoreAvg30d      int        `json:"usage_score_avg_30d"`
 	BackupOwnerTelegramID string     `json:"backup_owner_telegram_id"`
 	AETelegramID          string     `json:"ae_telegram_id"`
-	BDProspectID          string     `json:"bd_prospect_id"`
-	RiskFlag              bool       `json:"risk_flag"`
 	WorkspaceID           string     `json:"workspace_id"`
 }
 

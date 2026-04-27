@@ -20,6 +20,7 @@ type RolePermissionRepository interface {
 	ListByRoleWorkspace(ctx context.Context, roleID, workspaceID string) ([]entity.RolePermission, error)
 	GetOne(ctx context.Context, roleID, workspaceID, moduleID string) (*entity.RolePermission, error)
 	Upsert(ctx context.Context, p *entity.RolePermission) (*entity.RolePermission, error)
+	SeedDefaultsForWorkspace(ctx context.Context, workspaceID string) error
 }
 
 type rolePermissionRepo struct {

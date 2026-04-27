@@ -42,7 +42,9 @@ var variableProviders = map[string]VariableProvider{
 		return c.GetOwnerWA()
 	},
 	"link_quotation": func(c entity.Client, _ *entity.Invoice, _ TemplateConfig) string {
-		return c.QuotationLink
+		// quotation_link moved to clients.custom_fields. Template engine
+		// reads from custom_fields if needed; kept stub returns empty.
+		return ""
 	},
 	"link_survey": func(c entity.Client, _ *entity.Invoice, cfg TemplateConfig) string {
 		if cfg.SurveyPlatformURL == "" {

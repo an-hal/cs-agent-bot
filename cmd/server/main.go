@@ -12,554 +12,297 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"database/sql"
 	"log"
-	"net/http"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
+
+	"github.com/redis/go-redis/v9"
+	"github.com/rs/zerolog"
 
 	"github.com/Sejutacita/cs-agent-bot/config"
 	_ "github.com/Sejutacita/cs-agent-bot/docs"
 	deliveryHttp "github.com/Sejutacita/cs-agent-bot/internal/delivery/http"
 	deliveryHttpDeps "github.com/Sejutacita/cs-agent-bot/internal/delivery/http/deps"
 	"github.com/Sejutacita/cs-agent-bot/internal/delivery/response"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/conditiondsl"
 	pkgDatabase "github.com/Sejutacita/cs-agent-bot/internal/pkg/database"
 	"github.com/Sejutacita/cs-agent-bot/internal/pkg/jobstore"
 	pkgLogger "github.com/Sejutacita/cs-agent-bot/internal/pkg/logger"
-	"github.com/Sejutacita/cs-agent-bot/internal/pkg/conditiondsl"
-	"github.com/Sejutacita/cs-agent-bot/internal/pkg/workday"
-	pkgValidator "github.com/Sejutacita/cs-agent-bot/internal/pkg/validator"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/rediscache"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/secretvault"
 	"github.com/Sejutacita/cs-agent-bot/internal/repository"
+	pkgValidator "github.com/Sejutacita/cs-agent-bot/internal/pkg/validator"
+	"github.com/Sejutacita/cs-agent-bot/internal/pkg/workday"
 	appTracer "github.com/Sejutacita/cs-agent-bot/internal/tracer"
+	analyticsuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/analytics"
+	approvaluc "github.com/Sejutacita/cs-agent-bot/internal/usecase/approval"
+	auditwsuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/audit_workspace_access"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/auth"
+	automationrule "github.com/Sejutacita/cs-agent-bot/internal/usecase/automation_rule"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/classifier"
+	claudeextractionuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/claude_extraction"
+	coachinguc "github.com/Sejutacita/cs-agent-bot/internal/usecase/coaching"
 	collectionuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/collection"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/cron"
 	customfielduc "github.com/Sejutacita/cs-agent-bot/internal/usecase/custom_field"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/dashboard"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/escalation"
-	"github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai"
-	analyticsuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/analytics"
-	approvaluc "github.com/Sejutacita/cs-agent-bot/internal/usecase/approval"
-	auditwsuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/audit_workspace_access"
-	claudeclient "github.com/Sejutacita/cs-agent-bot/internal/usecase/claude_client"
-	claudeextractionuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/claude_extraction"
-	coachinguc "github.com/Sejutacita/cs-agent-bot/internal/usecase/coaching"
 	firefliesuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/fireflies"
-	pdpuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/pdp"
-	"github.com/Sejutacita/cs-agent-bot/internal/pkg/rediscache"
-	"github.com/Sejutacita/cs-agent-bot/internal/pkg/secretvault"
-	firefliesclient "github.com/Sejutacita/cs-agent-bot/internal/usecase/fireflies_client"
-	haloaimock "github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai_mock"
-	mockoutboxpkg "github.com/Sejutacita/cs-agent-bot/internal/usecase/mockoutbox"
-	reactivationuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/reactivation"
-	rejectionanalysisuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/rejection_analysis"
-	smtpclient "github.com/Sejutacita/cs-agent-bot/internal/usecase/smtp_client"
+	"github.com/Sejutacita/cs-agent-bot/internal/usecase/haloai"
 	invoiceuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/invoice"
 	manualactionuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/manual_action"
-	reportsuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/reports"
 	masterdatauc "github.com/Sejutacita/cs-agent-bot/internal/usecase/master_data"
-	automationrule "github.com/Sejutacita/cs-agent-bot/internal/usecase/automation_rule"
 	messaginguc "github.com/Sejutacita/cs-agent-bot/internal/usecase/messaging"
 	notificationuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/notification"
-	pipelineview "github.com/Sejutacita/cs-agent-bot/internal/usecase/pipeline_view"
-	teamuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/team"
-	userpreferencesuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/user_preferences"
-	workspaceintegrationuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/workspace_integration"
 	usecasePayment "github.com/Sejutacita/cs-agent-bot/internal/usecase/payment"
+	pdpuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/pdp"
+	pipelineview "github.com/Sejutacita/cs-agent-bot/internal/usecase/pipeline_view"
+	reactivationuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/reactivation"
+	rejectionanalysisuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/rejection_analysis"
+	reportsuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/reports"
+	teamuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/team"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/telegram"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/template"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/trigger"
+	userpreferencesuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/user_preferences"
 	"github.com/Sejutacita/cs-agent-bot/internal/usecase/webhook"
 	workflowuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/workflow"
 	workspaceuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/workspace"
+	workspaceintegrationuc "github.com/Sejutacita/cs-agent-bot/internal/usecase/workspace_integration"
 	"github.com/joho/godotenv"
-	"github.com/redis/go-redis/v9"
-	"github.com/rs/zerolog"
 )
 
 const LiveFile = "/tmp/app_server_live"
 const version = "v1.0.0"
 
 func main() {
-	_, err := os.Create(LiveFile)
-	if err != nil {
+	if _, err := os.Create(LiveFile); err != nil {
 		log.Fatal("fail to create live file :: ", err)
 	}
-
 	_ = godotenv.Load()
 
 	cfg := config.LoadConfig()
-
 	if cfg.TracerServiceVersion == "" {
 		cfg.TracerServiceVersion = version
 	}
 
 	logger := pkgLogger.InitLogger(cfg.Env, cfg.LogLevel)
 
-	tracerInstance, err := appTracer.New(cfg)
-	if err != nil {
-		logger.Fatal().Err(err).Msg("Failed to initialize tracer")
-	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		if err := tracerInstance.Shutdown(ctx); err != nil {
-			logger.Error().Err(err).Msg("Failed to shutdown tracer")
-		}
-	}()
+	tracerInstance := mustInitTracer(cfg, logger)
+	defer shutdownTracer(tracerInstance, logger)
 
 	redisClient := pkgDatabase.NewRedisClient(cfg, logger)
 	rdb := redisClient.InitRedis()
+	db := mustOpenPostgres(cfg, logger)
 
-	pgClient := pkgDatabase.NewPostgresClient(cfg, logger)
-	db := pgClient.InitPostgresDB()
-	if db == nil {
-		logger.Fatal().Msg("PostgreSQL connection required. Set DB_ENABLED=true")
-	}
-
-	pgCtx, pgCancel := context.WithCancel(context.Background())
-	defer pgCancel()
-	if pgClient.IsStatsLoggingEnabled() {
-		pgClient.StartStatsLogger(pgCtx, db)
-	}
-
-	queryTimeout := cfg.DBQueryTimeout
-
-	// Hydrate config from system_config table. DB-sourced values override env vars
-	// when non-empty, preserving env-var fallback for backward compatibility.
-	systemConfigRepo := repository.NewSystemConfigRepo(db, queryTimeout, tracerInstance, logger)
-	if dbValues, err := systemConfigRepo.GetAll(context.Background()); err != nil {
-		logger.Warn().Err(err).Msg("Failed to load system_config from DB; using env vars only")
-	} else {
-		cfg.HydrateFromDB(dbValues)
-		logger.Info().Msg("Config hydrated from system_config table")
-	}
-	cfg.ValidateCriticalAfterHydration()
-
-	clientRepo := repository.NewClientRepo(db, queryTimeout, tracerInstance, logger)
-	invoiceRepo := repository.NewInvoiceRepo(db, queryTimeout, tracerInstance, logger)
-	invoiceLineItemRepo := repository.NewInvoiceLineItemRepo(db, queryTimeout, tracerInstance, logger)
-	paymentLogRepo := repository.NewPaymentLogRepo(db, queryTimeout, tracerInstance, logger)
-	invoiceSeqRepo := repository.NewInvoiceSequenceRepo(db, queryTimeout, tracerInstance, logger)
-	flagsRepo := repository.NewFlagsRepo(db, queryTimeout, tracerInstance, logger)
-	convStateRepo := repository.NewConversationStateRepo(db, queryTimeout, tracerInstance, logger)
-	logRepo := repository.NewLogRepo(db, queryTimeout, tracerInstance, logger)
-	escalationRepo := repository.NewEscalationRepo(db, queryTimeout, tracerInstance, logger)
-	configRepo := repository.NewConfigRepo(db, queryTimeout, tracerInstance, logger)
-	workspaceRepo := repository.NewWorkspaceRepo(db, queryTimeout, tracerInstance, logger)
-	workspaceMemberRepo := repository.NewWorkspaceMemberRepo(db, queryTimeout, tracerInstance, logger)
-	workspaceInvitationRepo := repository.NewWorkspaceInvitationRepo(db, queryTimeout, tracerInstance, logger)
-	notificationRepo := repository.NewNotificationRepo(db, queryTimeout, tracerInstance, logger)
-	templateRepo := repository.NewTemplateRepo(db, queryTimeout, tracerInstance)
-	bgJobRepo := repository.NewBackgroundJobRepo(db, queryTimeout, tracerInstance, logger)
-	whitelistRepo := repository.NewWhitelistRepo(db, queryTimeout, tracerInstance, logger)
-	masterDataRepo := repository.NewMasterDataRepo(db, queryTimeout, tracerInstance, logger)
-	customFieldRepo := repository.NewCustomFieldDefinitionRepo(db, queryTimeout, tracerInstance, logger)
-	masterDataMutationRepo := repository.NewMasterDataMutationRepo(db, queryTimeout, tracerInstance, logger)
-	approvalRequestRepo := repository.NewApprovalRequestRepo(db, queryTimeout, tracerInstance, logger)
-	roleRepo := repository.NewRoleRepo(db, queryTimeout, tracerInstance, logger)
-	rolePermissionRepo := repository.NewRolePermissionRepo(db, queryTimeout, tracerInstance, logger)
-	teamMemberRepo := repository.NewTeamMemberRepo(db, queryTimeout, tracerInstance, logger)
-	memberWorkspaceAssignmentRepo := repository.NewMemberWorkspaceAssignmentRepo(db, queryTimeout, tracerInstance, logger)
-	messageTemplateRepo := repository.NewMessageTemplateRepo(db, queryTimeout, tracerInstance, logger)
-	emailTemplateRepo := repository.NewEmailTemplateRepo(db, queryTimeout, tracerInstance, logger)
-	templateVariableRepo := repository.NewTemplateVariableRepo(db, queryTimeout, tracerInstance, logger)
-	templateEditLogRepo := repository.NewTemplateEditLogRepo(db, queryTimeout, tracerInstance, logger)
-	userPreferencesRepo := repository.NewUserPreferencesRepo(db, queryTimeout, tracerInstance, logger)
 	// Optional secret vault for workspace_integrations.config. Absent key →
 	// plaintext (dev default); set CONFIG_ENCRYPTION_KEY in prod.
-	configVault, vaultErr := secretvault.New(cfg.ConfigEncryptionKey)
-	if vaultErr != nil {
-		logger.Warn().Err(vaultErr).Msg("CONFIG_ENCRYPTION_KEY invalid — falling back to plaintext storage")
-		configVault = nil
-	} else if configVault == nil {
-		logger.Info().Msg("CONFIG_ENCRYPTION_KEY not set — workspace integration secrets stored in plaintext (dev mode)")
-	}
-	workspaceIntegrationRepo := repository.NewWorkspaceIntegrationRepoWithVault(db, queryTimeout, tracerInstance, logger, configVault)
-	manualActionRepo := repository.NewManualActionRepo(db, queryTimeout, tracerInstance, logger)
-	auditWsAccessRepo := repository.NewAuditWorkspaceAccessRepo(db, queryTimeout, tracerInstance, logger)
-	firefliesRepo := repository.NewFirefliesTranscriptRepo(db, queryTimeout, tracerInstance, logger)
-	claudeExtractionRepo := repository.NewClaudeExtractionRepo(db, queryTimeout, tracerInstance, logger)
-	reactivationRepo := repository.NewReactivationRepo(db, queryTimeout, tracerInstance, logger)
-	coachingRepo := repository.NewCoachingSessionRepo(db, queryTimeout, tracerInstance, logger)
-	rejectionAnalysisRepo := repository.NewRejectionAnalysisRepo(db, queryTimeout, tracerInstance, logger)
-	pdpRepo := repository.NewPDPRepo(db, queryTimeout, tracerInstance, logger)
-	workspaceThemeRepo := repository.NewWorkspaceThemeRepo(db, queryTimeout, tracerInstance, logger)
-	activityFeedRepo := repository.NewActivityFeedRepo(db, queryTimeout, tracerInstance, logger)
-	teamActivityRepo := repository.NewTeamActivityLogRepo(db, queryTimeout, tracerInstance, logger)
-	revokedSessionsRepo := repository.NewRevokedSessionsRepo(db, queryTimeout, tracerInstance, logger)
+	configVault := buildSecretVault(cfg, logger)
+
+	repos := wireRepositories(db, cfg.DBQueryTimeout, tracerInstance, logger, configVault)
+	hydrateConfigFromDB(cfg, repos.systemConfig, logger)
+	cfg.ValidateCriticalAfterHydration()
 
 	fileStore, err := jobstore.NewLocalFileStore(cfg.ExportStoragePath)
 	if err != nil {
 		logger.Fatal().Err(err).Msg("Failed to initialize file store")
 	}
-
-	// Mark any jobs that were left in 'processing' by a previous crash.
-	if markErr := bgJobRepo.MarkOrphansFailed(context.Background()); markErr != nil {
+	if markErr := repos.bgJob.MarkOrphansFailed(context.Background()); markErr != nil {
 		logger.Warn().Err(markErr).Msg("Failed to mark orphaned jobs as failed")
 	}
 
-	templateResolver := template.NewTemplateResolver(configRepo, logger)
+	mocks := buildMockClients(cfg, logger)
+	deps := assembleDeps(cfg, db, rdb, repos, mocks, fileStore, tracerInstance, logger)
 
+	runHTTPServer(cfg.Port, deliveryHttp.SetupHandler(deps), rdb, logger)
+}
+
+// mustInitTracer fails fast on tracer init errors — the service can't run
+// without observability.
+func mustInitTracer(cfg *config.AppConfig, logger zerolog.Logger) appTracer.Tracer {
+	tr, err := appTracer.New(cfg)
+	if err != nil {
+		logger.Fatal().Err(err).Msg("Failed to initialize tracer")
+	}
+	return tr
+}
+
+func shutdownTracer(tr appTracer.Tracer, logger zerolog.Logger) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := tr.Shutdown(ctx); err != nil {
+		logger.Error().Err(err).Msg("Failed to shutdown tracer")
+	}
+}
+
+func mustOpenPostgres(cfg *config.AppConfig, logger zerolog.Logger) *sql.DB {
+	pgClient := pkgDatabase.NewPostgresClient(cfg, logger)
+	db := pgClient.InitPostgresDB()
+	if db == nil {
+		logger.Fatal().Msg("PostgreSQL connection required. Set DB_ENABLED=true")
+	}
+	pgCtx, pgCancel := context.WithCancel(context.Background())
+	_ = pgCancel // intentionally leaked — process-lifetime context
+	if pgClient.IsStatsLoggingEnabled() {
+		pgClient.StartStatsLogger(pgCtx, db)
+	}
+	return db
+}
+
+func buildSecretVault(cfg *config.AppConfig, logger zerolog.Logger) *secretvault.Vault {
+	v, err := secretvault.New(cfg.ConfigEncryptionKey)
+	if err != nil {
+		logger.Warn().Err(err).Msg("CONFIG_ENCRYPTION_KEY invalid — falling back to plaintext storage")
+		return nil
+	}
+	if v == nil {
+		logger.Info().Msg("CONFIG_ENCRYPTION_KEY not set — workspace integration secrets stored in plaintext (dev mode)")
+	}
+	return v
+}
+
+// hydrateConfigFromDB pulls overrides from the system_config table; falls
+// back to env-var defaults on error so the service still starts.
+func hydrateConfigFromDB(cfg *config.AppConfig, sysRepo repository.SystemConfigRepository, logger zerolog.Logger) {
+	dbValues, err := sysRepo.GetAll(context.Background())
+	if err != nil {
+		logger.Warn().Err(err).Msg("Failed to load system_config from DB; using env vars only")
+		return
+	}
+	cfg.HydrateFromDB(dbValues)
+	logger.Info().Msg("Config hydrated from system_config table")
+}
+
+// assembleDeps stitches every concrete dependency into the HTTP Deps struct.
+// Big function but flat — no logic, just dependency wiring.
+func assembleDeps(
+	cfg *config.AppConfig,
+	db *sql.DB,
+	rdb *redis.Client,
+	repos *repositories,
+	mocks *mockClients,
+	fileStore jobstore.FileStore,
+	tr appTracer.Tracer,
+	logger zerolog.Logger,
+) deliveryHttpDeps.Deps {
+	templateResolver := template.NewTemplateResolver(repos.systemConfigKV, logger)
 	haloaiClient := haloai.NewHaloAIClient(cfg.HaloAIAPIURL, cfg.WAAPIToken, cfg.HaloAIBusinessID, cfg.HaloAIChannelID, logger)
 	telegramNotifier := telegram.NewTelegramNotifier(cfg.TelegramBotToken, cfg.TelegramAELeadID, templateResolver, logger)
 
-	paymentVerifier := usecasePayment.NewPaymentVerifier(
-		clientRepo,
-		flagsRepo,
-		logRepo,
-		escalationRepo,
-		telegramNotifier,
-		haloaiClient,
-		templateResolver,
-		logger,
-	)
+	paymentVerifier := usecasePayment.NewPaymentVerifier(repos.client, repos.flags, repos.log, repos.escalation, telegramNotifier, haloaiClient, templateResolver, logger)
+	escalationHandler := escalation.NewEscalationHandler(repos.flags, repos.log, repos.escalation, telegramNotifier, logger)
+	triggerService := trigger.NewTriggerService(repos.client, repos.invoice, repos.flags, repos.convState, repos.log, repos.systemConfigKV, repos.escalation, templateResolver, haloaiClient, telegramNotifier, escalationHandler, cfg, logger)
+	actionExecutor := trigger.NewActionExecutor(repos.client, repos.invoice, repos.flags, repos.convState, repos.log, repos.systemConfigKV, templateResolver, haloaiClient, telegramNotifier, escalationHandler, cfg, logger)
+	ruleEngine := trigger.NewRuleEngine(repos.triggerRule, actionExecutor, logger)
 
-	replyClassifier := classifier.NewReplyClassifier()
-
-	escalationHandler := escalation.NewEscalationHandler(
-		flagsRepo,
-		logRepo,
-		escalationRepo,
-		telegramNotifier,
-		logger,
-	)
-
-	triggerService := trigger.NewTriggerService(
-		clientRepo,
-		invoiceRepo,
-		flagsRepo,
-		convStateRepo,
-		logRepo,
-		configRepo,
-		escalationRepo,
-		templateResolver,
-		haloaiClient,
-		telegramNotifier,
-		escalationHandler,
-		cfg,
-		logger,
-	)
-
-	triggerRuleRepo := repository.NewTriggerRuleRepo(db, queryTimeout, tracerInstance, logger)
-
-	actionExecutor := trigger.NewActionExecutor(
-		clientRepo,
-		invoiceRepo,
-		flagsRepo,
-		convStateRepo,
-		logRepo,
-		configRepo,
-		templateResolver,
-		haloaiClient,
-		telegramNotifier,
-		escalationHandler,
-		cfg,
-		logger,
-	)
-
-	ruleEngine := trigger.NewRuleEngine(triggerRuleRepo, actionExecutor, logger)
-
-	cronRunner := cron.NewCronRunner(
-		clientRepo,
-		flagsRepo,
-		convStateRepo,
-		invoiceRepo,
-		logRepo,
-		bgJobRepo,
-		workspaceRepo,
-		triggerService,
-		logger,
-	)
-
-	// Enable dynamic rule engine if configured
+	cronRunner := cron.NewCronRunner(repos.client, repos.flags, repos.convState, repos.invoice, repos.log, repos.bgJob, repos.workspace, triggerService, logger)
 	cronRunner.(cron.CronRunnerWithRuleEngine).WithRuleEngine(ruleEngine, cfg.UseDynamicRules)
 
-	replyHandler := webhook.NewReplyHandler(
-		invoiceRepo,
-		clientRepo,
-		flagsRepo,
-		convStateRepo,
-		logRepo,
-		replyClassifier,
-		escalationHandler,
-		haloaiClient,
-		telegramNotifier,
-		logger,
-	)
+	replyHandler := webhook.NewReplyHandler(repos.invoice, repos.client, repos.flags, repos.convState, repos.log, classifier.NewReplyClassifier(), escalationHandler, haloaiClient, telegramNotifier, logger)
+	checkinHandler := webhook.NewCheckinFormHandler(repos.client, repos.flags, repos.log, telegramNotifier, logger)
+	handoffHandler := webhook.NewHandoffHandler(repos.client, repos.flags, repos.log, logger)
 
-	checkinHandler := webhook.NewCheckinFormHandler(
-		clientRepo,
-		flagsRepo,
-		logRepo,
-		telegramNotifier,
-		logger,
-	)
+	dashboardUsecase := dashboard.NewDashboardUsecase(repos.workspace, repos.client, repos.invoice, repos.escalation, repos.log, repos.template, repos.bgJob, fileStore, tr, logger)
+	authUsecase := auth.NewAuthUsecase(repos.whitelist, auth.NewAuthProxyClient(cfg.AuthProxyURL), auth.NewGoogleTokenVerifier(cfg.GoogleClientID), cfg.SessionSecret, logger)
+	workspaceUsecase := workspaceuc.New(repos.workspace, repos.workspaceMember, repos.workspaceInvitation, repos.rolePermission, nil, nil)
+	notificationUsecase := notificationuc.New(repos.notification)
+	userPreferencesUsecase := userpreferencesuc.New(repos.userPreferences)
+	workspaceIntegrationUsecase := workspaceintegrationuc.NewWithApproval(repos.workspaceIntegration, repos.approvalRequest)
+	// Manual action queue — Telegram/Activity/MasterData hooks degrade gracefully with nil.
+	manualActionUsecase := manualactionuc.New(repos.manualAction, nil, nil, nil, logger)
+	auditWsAccessUsecase := auditwsuc.New(repos.auditWsAccess)
 
-	handoffHandler := webhook.NewHandoffHandler(
-		clientRepo,
-		flagsRepo,
-		logRepo,
-		logger,
-	)
+	claudeExtractionUsecase := claudeextractionuc.New(repos.claudeExtraction, mocks.claude, logger)
+	firefliesBridge := claudeextractionuc.NewFirefliesBridge(claudeExtractionUsecase, repos.fireflies, logger)
+	firefliesUsecase := firefliesuc.New(repos.fireflies, firefliesBridge, logger)
+	reactivationUsecase := reactivationuc.NewWithMutation(repos.reactivation, repos.masterDataMutation)
+	coachingUsecase := coachinguc.New(repos.coaching)
+	rejectionAnalysisUsecase := rejectionanalysisuc.New(repos.rejectionAnalysis)
+	// PDP: real DB-backed enforcer + executor. Retention deletes/anonymizes;
+	// erasure scrubs subject-owned rows across the scope whitelist.
+	pdpUsecase := pdpuc.New(repos.pdp, pdpuc.NewSQLEnforcer(db, logger), pdpuc.NewSQLErasureExecutor(db, logger))
+	masterDataUsecase := masterdatauc.New(repos.masterData, repos.customField, repos.masterDataMutation, repos.approvalRequest)
+	customFieldUsecase := customfielduc.New(repos.customField)
+	teamUsecase := teamuc.New(repos.role, repos.rolePermission, repos.teamMember, repos.memberWsAssignment, repos.approvalRequest, repos.whitelist, teamuc.Options{})
+	messagingUsecase := messaginguc.New(repos.messageTemplate, repos.emailTemplate, repos.templateVariable, repos.templateEditLog, logger)
 
-	dashboardUsecase := dashboard.NewDashboardUsecase(
-		workspaceRepo,
-		clientRepo,
-		invoiceRepo,
-		escalationRepo,
-		logRepo,
-		templateRepo,
-		bgJobRepo,
-		fileStore,
-		tracerInstance,
-		logger,
-	)
+	workflowUsecase := workflowuc.New(repos.workflow, logger)
+	automationRuleUsecase := automationrule.New(repos.automationRule, repos.approvalRequest, logger)
+	pipelineViewUsecase := pipelineview.New(repos.pipelineView, logger)
 
-	authProxyClient := auth.NewAuthProxyClient(cfg.AuthProxyURL)
-	googleVerifier := auth.NewGoogleTokenVerifier(cfg.GoogleClientID)
-	authUsecase := auth.NewAuthUsecase(whitelistRepo, authProxyClient, googleVerifier, cfg.SessionSecret, logger)
-	workspaceUsecase := workspaceuc.New(workspaceRepo, workspaceMemberRepo, workspaceInvitationRepo, nil, nil)
-	notificationUsecase := notificationuc.New(notificationRepo)
-	userPreferencesUsecase := userpreferencesuc.New(userPreferencesRepo)
-	workspaceIntegrationUsecase := workspaceintegrationuc.NewWithApproval(workspaceIntegrationRepo, approvalRequestRepo)
-	// Manual action queue — Telegram/Activity/MasterData hooks not wired yet;
-	// the usecase degrades gracefully with nil hooks.
-	manualActionUsecase := manualactionuc.New(manualActionRepo, nil, nil, nil, logger)
-	auditWsAccessUsecase := auditwsuc.New(auditWsAccessRepo)
-
-	// Shared mock outbox (in-memory ring buffer, viewable at /mock/outbox).
-	mockOutbox := mockoutboxpkg.New(200)
-
-	// External API clients — use mock impls when MOCK_EXTERNAL_APIS=true OR
-	// when the corresponding API key is absent (keeps dev + staging working
-	// without real credentials). Real clients are wired in when creds exist
-	// and the mock flag is off.
-	useMockClaude := cfg.MockExternalAPIs || cfg.ClaudeAPIKey == ""
-	useMockFireflies := cfg.MockExternalAPIs || cfg.FirefliesAPIKey == ""
-	useMockSMTP := cfg.MockExternalAPIs || cfg.SMTPHost == ""
-	useMockHaloAI := cfg.MockExternalAPIs || cfg.WAAPIToken == ""
-
-	var claudeAPIClient claudeextractionuc.Client
-	if useMockClaude {
-		claudeAPIClient = claudeclient.NewMockClient(claudeclient.MockConfig{Outbox: mockOutbox}, logger)
-	} else {
-		claudeAPIClient = claudeclient.NewClient(claudeclient.Config{
-			APIKey:              cfg.ClaudeAPIKey,
-			Model:               cfg.ClaudeModel,
-			ExtractionPromptKey: cfg.ClaudeExtractPrompt,
-			BANTSPromptKey:      cfg.ClaudeBANTSPrompt,
-			Timeout:             cfg.ClaudeTimeoutSecs,
-		}, logger)
-	}
-
-	// Fireflies + SMTP clients reserved for pull-mode transcript fetch and
-	// email template delivery. Mock impls record to the outbox.
-	if useMockFireflies {
-		_ = firefliesclient.NewMockClient(firefliesclient.MockConfig{Outbox: mockOutbox}, logger)
-	} else {
-		_ = firefliesclient.NewClient(firefliesclient.Config{
-			APIKey:     cfg.FirefliesAPIKey,
-			GraphQLURL: cfg.FirefliesGraphQLURL,
-		}, logger)
-	}
-	if useMockSMTP {
-		_ = smtpclient.NewMockClient(smtpclient.MockConfig{Outbox: mockOutbox}, logger)
-	} else {
-		_ = smtpclient.NewClient(smtpclient.Config{
-			Host:     cfg.SMTPHost,
-			Port:     cfg.SMTPPort,
-			Username: cfg.SMTPUsername,
-			Password: cfg.SMTPPassword,
-			FromAddr: cfg.SMTPFromAddr,
-			UseTLS:   cfg.SMTPUseTLS,
-		}, logger)
-	}
-
-	// HaloAI WA sender for the cron dispatcher — mock records to outbox, real
-	// one would use the existing haloai.Client (not wired here; see TODO).
-	var waSenderForCron cron.WASender
-	var mockWAForHandler haloaimock.Sender
-	if useMockHaloAI {
-		mockWAForHandler = haloaimock.NewSender(mockOutbox, logger)
-		waSenderForCron = &mockWASenderAdapter{mock: mockWAForHandler}
-	}
-
-	// Standalone mock clients for the /mock HTTP endpoints (FE QA). Always
-	// mock regardless of MOCK_EXTERNAL_APIS so the /mock surface still works
-	// when production mode is on — real calls go via real clients elsewhere.
-	mockClaudeForHandler := claudeclient.NewMockClient(claudeclient.MockConfig{Outbox: mockOutbox}, logger)
-	mockFFForHandler := firefliesclient.NewMockClient(firefliesclient.MockConfig{Outbox: mockOutbox}, logger)
-	if mockWAForHandler == nil {
-		mockWAForHandler = haloaimock.NewSender(mockOutbox, logger)
-	}
-	mockSMTPForHandler := smtpclient.NewMockClient(smtpclient.MockConfig{Outbox: mockOutbox}, logger)
-
-	claudeExtractionUsecase := claudeextractionuc.New(claudeExtractionRepo, claudeAPIClient, logger)
-	firefliesBridge := claudeextractionuc.NewFirefliesBridge(claudeExtractionUsecase, firefliesRepo, logger)
-	firefliesUsecase := firefliesuc.New(firefliesRepo, firefliesBridge, logger)
-	reactivationUsecase := reactivationuc.NewWithMutation(reactivationRepo, masterDataMutationRepo)
-	coachingUsecase := coachinguc.New(coachingRepo)
-	rejectionAnalysisUsecase := rejectionanalysisuc.New(rejectionAnalysisRepo)
-	// PDP: real DB-backed enforcer + executor. Retention policies actually
-	// delete/anonymize rows; erasure requests scrub all subject-owned rows
-	// across the scope whitelist.
-	pdpUsecase := pdpuc.New(pdpRepo,
-		pdpuc.NewSQLEnforcer(db, logger),
-		pdpuc.NewSQLErasureExecutor(db, logger),
-	)
-	masterDataUsecase := masterdatauc.New(masterDataRepo, customFieldRepo, masterDataMutationRepo, approvalRequestRepo)
-	customFieldUsecase := customfielduc.New(customFieldRepo)
-	teamUsecase := teamuc.New(
-		roleRepo,
-		rolePermissionRepo,
-		teamMemberRepo,
-		memberWorkspaceAssignmentRepo,
-		approvalRequestRepo,
-		whitelistRepo,
-		teamuc.Options{},
-	)
-	messagingUsecase := messaginguc.New(
-		messageTemplateRepo,
-		emailTemplateRepo,
-		templateVariableRepo,
-		templateEditLogRepo,
-		logger,
-	)
-
-	// Workflow engine (feat/06) — gated by USE_WORKFLOW_ENGINE.
-	workflowRepo := repository.NewWorkflowRepo(db, queryTimeout, tracerInstance, logger)
-	automationRuleRepo := repository.NewAutomationRuleRepo(db, queryTimeout, tracerInstance, logger)
-	pipelineViewRepo := repository.NewPipelineViewRepo(db, queryTimeout, tracerInstance, logger)
-
-	workflowUsecase := workflowuc.New(workflowRepo, logger)
-	automationRuleUsecase := automationrule.New(automationRuleRepo, approvalRequestRepo, logger)
-	pipelineViewUsecase := pipelineview.New(pipelineViewRepo, logger)
-
-	// Invoice billing (feat/07).
-	invoiceUsecase := invoiceuc.New(
-		db,
-		invoiceRepo,
-		invoiceLineItemRepo,
-		paymentLogRepo,
-		invoiceSeqRepo,
-		approvalRequestRepo,
-		workspaceRepo,
-		nil, // paperidSvc wired after invoiceUsecase (circular dep avoidance).
-		tracerInstance,
-		logger,
-	)
+	invoiceUsecase := invoiceuc.New(db, repos.invoice, repos.invoiceLineItem, repos.paymentLog, repos.invoiceSeq, repos.approvalRequest, repos.workspace, nil, tr, logger)
 	invoicePaperIDSvc := invoiceuc.NewPaperIDService(invoiceUsecase)
 	invoiceCron := invoiceuc.NewCronInvoice(invoiceUsecase)
 
-	// Analytics & Reports (feat/09).
-	analyticsRepo := repository.NewAnalyticsRepo(db, queryTimeout, tracerInstance, logger)
-	revenueTargetRepo := repository.NewRevenueTargetRepo(db, queryTimeout, tracerInstance, logger)
-	revenueSnapshotRepo := repository.NewRevenueSnapshotRepo(db, queryTimeout, tracerInstance, logger)
-	analyticsUsecase := analyticsuc.New(analyticsRepo, revenueTargetRepo, revenueSnapshotRepo, workspaceRepo, logger)
-	reportsUsecase := reportsuc.New(analyticsRepo, revenueTargetRepo, workspaceRepo, logger)
+	analyticsUsecase := analyticsuc.New(repos.analytics, repos.revenueTarget, repos.revenueSnapshot, repos.workspace, logger)
+	reportsUsecase := reportsuc.New(repos.analytics, repos.revenueTarget, repos.workspace, logger)
+	collectionUsecase := collectionuc.New(repos.collection, repos.collectionField, repos.collectionRecord, repos.approvalRequest, repos.log, repos.masterData, tr, logger)
 
-	// Collections (feat/10) — user-defined generic tables.
-	collectionRepo := repository.NewCollectionRepo(db, queryTimeout, tracerInstance, logger)
-	collectionFieldRepo := repository.NewCollectionFieldRepo(db, queryTimeout, tracerInstance, logger)
-	collectionRecordRepo := repository.NewCollectionRecordRepo(db, queryTimeout, tracerInstance, logger)
-	collectionUsecase := collectionuc.New(
-		collectionRepo,
-		collectionFieldRepo,
-		collectionRecordRepo,
-		approvalRequestRepo,
-		logRepo,
-		masterDataRepo,
-		tracerInstance,
-		logger,
-	)
-
-	// Attach workflow runner to cron runner when USE_WORKFLOW_ENGINE is enabled.
-	actionLogWorkflowRepo := repository.NewActionLogWorkflowRepo(db, queryTimeout, tracerInstance, logger)
+	// Workflow + maintenance runners aren't wired into the cron path yet —
+	// constructed here so DI surface and tests stay aligned with main wiring.
 	workdayProvider := workday.NewProvider(cfg.GoogleCalendarAPIKey)
-	conditionEvaluator := conditiondsl.NewEvaluator(workdayProvider)
-	stageHandler := cron.NewStageHandler(masterDataRepo, actionLogWorkflowRepo, logger)
-	// Wire manual-flow enqueuer so manual-flow trigger_ids go to the queue
-	// instead of being bot-sent. Adapter shim converts cron's DTO into the
-	// manual_action usecase input without introducing a cross-package import.
+	stageHandler := cron.NewStageHandler(repos.masterData, repos.actionLogWorkflow, logger)
 	manualEnq := &cronManualActionAdapter{uc: manualActionUsecase}
 	actionDispatcher := cron.NewChannelDispatcherWith(stageHandler, cron.DispatcherOptions{
 		ManualEnqueuer: manualEnq,
-		WASender:       waSenderForCron,
+		WASender:       mocks.waSenderForCron,
 	}, logger)
-	workflowRunner := cron.NewWorkflowRunner(
-		workflowUsecase,
-		automationRuleUsecase,
-		conditionEvaluator,
-		actionLogWorkflowRepo,
-		masterDataRepo,
-		actionDispatcher,
-		stageHandler,
-		workdayProvider,
-		cfg.UseWorkflowEngine,
-		logger,
-	)
-	maintenanceRunner := cron.NewMaintenanceRunner(masterDataRepo, logger)
-	_ = maintenanceRunner // wired to HTTP endpoints below
+	_ = cron.NewWorkflowRunner(workflowUsecase, automationRuleUsecase, conditiondsl.NewEvaluator(workdayProvider), repos.actionLogWorkflow, repos.masterData, actionDispatcher, stageHandler, workdayProvider, cfg.UseWorkflowEngine, logger)
+	_ = cron.NewMaintenanceRunner(repos.masterData, logger)
 	if cfg.UseWorkflowEngine {
 		logger.Info().Msg("Workflow engine enabled (USE_WORKFLOW_ENGINE=true)")
 	}
-	_ = workflowRunner
 
-	validate := pkgValidator.New()
+	approvalDispatcher := approvaluc.NewWithExtras(
+		repos.approvalRequest,
+		invoiceUsecase,
+		masterDataUsecase,
+		collectionUsecase,
+		automationRuleUsecase,
+		&stageApproverAdapter{uc: masterDataUsecase},
+		&integrationApproverAdapter{uc: workspaceIntegrationUsecase},
+		logger,
+	)
 
-	exceptionHandler := response.NewHTTPExceptionHandler(logger, cfg.EnableStackTrace)
-
-	handler := deliveryHttp.SetupHandler(deliveryHttpDeps.Deps{
-		Cfg:              cfg,
-		Logger:           logger,
-		Validator:        validate,
-		Tracer:           tracerInstance,
-		ExceptionHandler: exceptionHandler,
-		CronRunner:       cronRunner,
-		ReplyHandler:     replyHandler,
-		CheckinHandler:   checkinHandler,
-		HandoffHandler:   handoffHandler,
-		PaymentVerifier:  paymentVerifier,
-		DashboardUsecase: dashboardUsecase,
-		LogRepo:          logRepo,
-		TriggerRuleRepo:  triggerRuleRepo,
-		SystemConfigRepo: systemConfigRepo,
-		RuleEngine:       ruleEngine,
-		AuthUsecase:      authUsecase,
-		WorkspaceUC:      workspaceUsecase,
-		NotificationUC:   notificationUsecase,
-		MasterDataUC:     masterDataUsecase,
-		CustomFieldUC:    customFieldUsecase,
-		TeamUC:           teamUsecase,
-		MessagingUC:      messagingUsecase,
-		WorkflowUC:       workflowUsecase,
-		AutomationRuleUC: automationRuleUsecase,
-		PipelineViewUC:   pipelineViewUsecase,
-		InvoiceUC:        invoiceUsecase,
-		InvoiceCron:         invoiceCron,
-		PaperIDSvc:          invoicePaperIDSvc,
-		AnalyticsUC:         analyticsUsecase,
-		ReportsUC:           reportsUsecase,
-		RevenueTargetRepo:   revenueTargetRepo,
-		RevenueSnapshotRepo: revenueSnapshotRepo,
-		WorkspaceRepo:       workspaceRepo,
-		CollectionUC:        collectionUsecase,
-		UserPreferencesUC:   userPreferencesUsecase,
+	return deliveryHttpDeps.Deps{
+		Cfg:                    cfg,
+		Logger:                 logger,
+		Validator:              pkgValidator.New(),
+		Tracer:                 tr,
+		ExceptionHandler:       response.NewHTTPExceptionHandler(logger, cfg.EnableStackTrace),
+		CronRunner:             cronRunner,
+		ReplyHandler:           replyHandler,
+		CheckinHandler:         checkinHandler,
+		HandoffHandler:         handoffHandler,
+		PaymentVerifier:        paymentVerifier,
+		DashboardUsecase:       dashboardUsecase,
+		LogRepo:                repos.log,
+		TriggerRuleRepo:        repos.triggerRule,
+		SystemConfigRepo:       repos.systemConfig,
+		RuleEngine:             ruleEngine,
+		AuthUsecase:            authUsecase,
+		WorkspaceUC:            workspaceUsecase,
+		NotificationUC:         notificationUsecase,
+		MasterDataUC:           masterDataUsecase,
+		CustomFieldUC:          customFieldUsecase,
+		TeamUC:                 teamUsecase,
+		MessagingUC:            messagingUsecase,
+		WorkflowUC:             workflowUsecase,
+		AutomationRuleUC:       automationRuleUsecase,
+		PipelineViewUC:         pipelineViewUsecase,
+		InvoiceUC:              invoiceUsecase,
+		InvoiceCron:            invoiceCron,
+		PaperIDSvc:             invoicePaperIDSvc,
+		AnalyticsUC:            analyticsUsecase,
+		ReportsUC:              reportsUsecase,
+		RevenueTargetRepo:      repos.revenueTarget,
+		RevenueSnapshotRepo:    repos.revenueSnapshot,
+		WorkspaceRepo:          repos.workspace,
+		CollectionUC:           collectionUsecase,
+		UserPreferencesUC:      userPreferencesUsecase,
 		WorkspaceIntegrationUC: workspaceIntegrationUsecase,
-		ApprovalDispatcher: approvaluc.NewWithExtras(
-			approvalRequestRepo,
-			invoiceUsecase,
-			masterDataUsecase,
-			collectionUsecase,
-			automationRuleUsecase,
-			&stageApproverAdapter{uc: masterDataUsecase},
-			&integrationApproverAdapter{uc: workspaceIntegrationUsecase},
-			logger,
-		),
+		ApprovalDispatcher:     approvalDispatcher,
 		ManualActionUC:         manualActionUsecase,
 		AuditWorkspaceAccessUC: auditWsAccessUsecase,
 		FirefliesUC:            firefliesUsecase,
@@ -567,129 +310,16 @@ func main() {
 		ReactivationUC:         reactivationUsecase,
 		CoachingUC:             coachingUsecase,
 		RejectionAnalysisUC:    rejectionAnalysisUsecase,
-
-		// Mock plumbing
-		MockOutbox:       mockOutbox,
-		MockClaudeClient: mockClaudeForHandler,
-		MockFFClient:     mockFFForHandler,
-		MockWASender:     mockWAForHandler,
-		MockSMTPClient:   mockSMTPForHandler,
-
-		PDPUC: pdpUsecase,
-
-		// Analytics cache — backed by Redis when available, nil-safe noop otherwise.
-		AnalyticsCache: rediscache.New(rdb, "csagent:analytics", logger),
-
-		WorkspaceThemeRepo:  workspaceThemeRepo,
-		ActivityFeedRepo:    activityFeedRepo,
-		TeamActivityRepo:    teamActivityRepo,
-		RevokedSessionsRepo: revokedSessionsRepo,
-	})
-
-	server := &http.Server{
-		Addr:    fmt.Sprintf(":%s", cfg.Port),
-		Handler: handler,
-	}
-
-	go func() {
-		logger.Info().Msgf("Server running on http://localhost:%s", cfg.Port)
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal().Err(err).Msgf("Server failed: %v", err)
-		}
-	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
-
-	logger.Info().Msg("Gracefully shutting down server...")
-
-	if removeLivenessErr := os.Remove(LiveFile); removeLivenessErr != nil {
-		log.Fatal(removeLivenessErr)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	if err := server.Shutdown(ctx); err != nil {
-		logger.Fatal().Err(err).Msgf("Server shutdown failed: %v", err)
-	}
-
-	closeRedis(rdb, logger)
-	logger.Info().Msg("Server shutdown completed.")
-}
-
-// stageApproverAdapter wraps master_data.Usecase.ApplyApprovedStageTransition
-// into the narrow `(any, error)` shape the central approval dispatcher expects.
-type stageApproverAdapter struct{ uc masterdatauc.Usecase }
-
-func (a *stageApproverAdapter) ApplyApprovedStageTransition(ctx context.Context, workspaceID, approvalID, checkerEmail string) (any, error) {
-	return a.uc.ApplyApprovedStageTransition(ctx, workspaceID, approvalID, checkerEmail)
-}
-
-// integrationApproverAdapter wraps workspace_integration.Usecase similarly.
-type integrationApproverAdapter struct{ uc workspaceintegrationuc.Usecase }
-
-func (a *integrationApproverAdapter) ApplyApprovedKeyChange(ctx context.Context, workspaceID, approvalID, checkerEmail string) (any, error) {
-	return a.uc.ApplyApprovedKeyChange(ctx, workspaceID, approvalID, checkerEmail)
-}
-
-// mockWASenderAdapter bridges cron.WASendRequest → haloaimock.SendRequest so
-// the cron dispatcher's narrow port doesn't depend on the mock package. In
-// production, a real HaloAI adapter would sit here instead.
-type mockWASenderAdapter struct {
-	mock haloaimock.Sender
-}
-
-func (a *mockWASenderAdapter) Send(ctx context.Context, req cron.WASendRequest) (string, error) {
-	resp, err := a.mock.Send(ctx, haloaimock.SendRequest{
-		WorkspaceID: req.WorkspaceID,
-		To:          req.To,
-		TemplateID:  req.TemplateID,
-		Body:        req.Body,
-		Variables:   req.Variables,
-	})
-	if err != nil {
-		return "", err
-	}
-	return resp.MessageID, nil
-}
-
-// cronManualActionAdapter bridges cron.ManualActionEnqueueInput (what the
-// dispatcher speaks) to manualactionuc.CreatePendingInput (what the usecase
-// accepts). Same field names; kept in main.go so neither package imports
-// the other.
-type cronManualActionAdapter struct {
-	uc manualactionuc.Usecase
-}
-
-func (a *cronManualActionAdapter) Enqueue(ctx context.Context, in cron.ManualActionEnqueueInput) error {
-	if a == nil || a.uc == nil {
-		return nil
-	}
-	_, err := a.uc.CreatePending(ctx, manualactionuc.CreatePendingInput{
-		WorkspaceID:    in.WorkspaceID,
-		MasterDataID:   in.MasterDataID,
-		TriggerID:      in.TriggerID,
-		FlowCategory:   in.FlowCategory,
-		Role:           in.Role,
-		AssignedToUser: in.AssignedToUser,
-		Priority:       in.Priority,
-		DueAt:          in.DueAt,
-		SuggestedDraft: in.SuggestedDraft,
-		ContextSummary: in.ContextSummary,
-	})
-	return err
-}
-
-func closeRedis(rdb *redis.Client, logger zerolog.Logger) {
-	if rdb == nil {
-		return
-	}
-
-	if err := rdb.Close(); err != nil {
-		logger.Info().Msgf("Failed to close Redis connection: %v", err)
-	} else {
-		logger.Info().Msg("Redis connection closed.")
+		MockOutbox:             mocks.outbox,
+		MockClaudeClient:       mocks.claudeForHandler,
+		MockFFClient:           mocks.firefliesForHandler,
+		MockWASender:           mocks.waForHandler,
+		MockSMTPClient:         mocks.smtpForHandler,
+		PDPUC:                  pdpUsecase,
+		AnalyticsCache:         rediscache.New(rdb, "csagent:analytics", logger),
+		WorkspaceThemeRepo:     repos.workspaceTheme,
+		ActivityFeedRepo:       repos.activityFeed,
+		TeamActivityRepo:       repos.teamActivity,
+		RevokedSessionsRepo:    repos.revokedSessions,
 	}
 }

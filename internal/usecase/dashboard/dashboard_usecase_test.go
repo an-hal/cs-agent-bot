@@ -440,3 +440,7 @@ func TestGetActivityLogs_PropagatesError(t *testing.T) {
 		t.Error("expected error")
 	}
 }
+
+func (s *mockWorkspaceRepo) ListForMember(ctx context.Context, email string) ([]entity.Workspace, error) {
+	return nil, nil
+}

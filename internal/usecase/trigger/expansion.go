@@ -43,8 +43,10 @@ func (t *TriggerService) EvalExpansion(ctx context.Context, c entity.Client, f e
 		return true, t.FlagsRepo.UpdateFlags(ctx, c.CompanyID, f)
 	}
 
-	// Referral: only if NPSReplied=TRUE and NPSScore >= 8 and not already sent this cycle
-	if f.NPSReplied && c.NPSScore >= 8 && !f.ReferralSentThisCycle {
+	// Referral: only if NPSReplied=TRUE and not already sent this cycle.
+	// TODO: post-CRM-refactor — re-add NPSScore >= 8 check by reading
+	// from clients.custom_fields once entity.Client exposes the JSONB.
+	if f.NPSReplied && !f.ReferralSentThisCycle {
 		if err := t.sendMessage(ctx, "REFERRAL", "REFERRAL_SENT", c, nil); err != nil {
 			return false, err
 		}

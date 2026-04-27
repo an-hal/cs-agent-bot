@@ -14,16 +14,16 @@ import (
 const sheetName = "Clients"
 
 var exportHeaders = []string{
-	"Company ID", "Company Name", "Stage", "HC Size", "Plan Type",
+	"Company ID", "Company Name", "Stage",
 	"PIC Name", "PIC Role", "PIC WA", "PIC Email",
 	"Contract Start", "Contract End", "Contract Months",
-	"Payment Terms", "Renewed", "Final Price", "Payment Status",
-	"Last Payment Date", "Quotation Link",
-	"NPS Score", "Usage Score", "Last Interaction",
-	"Checkin Replied", "Cross Sell Interested", "Cross Sell Rejected", "Cross Sell Resume Date",
+	"Payment Terms", "Final Price", "Payment Status",
+	"Last Payment Date",
+	"Last Interaction",
+	"Checkin Replied",
 	"Bot Active", "Blacklisted", "Sequence CS",
 	"Owner Name", "Owner WA", "Owner Telegram ID",
-	"Risk Flag", "Notes",
+	"Notes",
 }
 
 // WriteClientSheet writes clients to a new XLSX workbook and streams it to w.
@@ -59,8 +59,6 @@ func clientRowValues(c entity.Client) []interface{} {
 		c.CompanyID,
 		c.CompanyName,
 		c.SequenceCS,
-		c.HCSize,
-		c.PlanType,
 		c.PICName,
 		c.PICRole,
 		c.PICWA,
@@ -69,25 +67,17 @@ func clientRowValues(c entity.Client) []interface{} {
 		fmtDate(c.ContractEnd),
 		strconv.Itoa(c.ContractMonths),
 		c.PaymentTerms,
-		boolToYesNo(c.Renewed),
 		c.FinalPrice,
 		c.PaymentStatus,
 		fmtNullableDate(c.LastPaymentDate),
-		c.QuotationLink,
-		strconv.Itoa(c.NPSScore),
-		strconv.Itoa(c.UsageScore),
 		fmtNullableDate(c.LastInteractionDate),
 		boolToYesNo(c.CheckinReplied),
-		boolToYesNo(c.CrossSellInterested),
-		boolToYesNo(c.CrossSellRejected),
-		fmtNullableDate(c.CrossSellResumeDate),
 		boolToYesNo(c.BotActive),
 		boolToYesNo(c.Blacklisted),
 		c.SequenceCS,
 		c.OwnerName,
 		c.GetOwnerWA(),
 		c.OwnerTelegramID,
-		c.Segment,
 		c.Notes,
 	}
 }

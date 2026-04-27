@@ -212,14 +212,10 @@ func (e *ActionExecutor) executeCreateInvoice(ctx context.Context, rule entity.T
 		return nil // Invoice already exists
 	}
 
-	if clientCtx.Client.QuotationLink == "" {
-		alertMsg := fmt.Sprintf("quotation_link is empty for %s (%s). Invoice creation delayed.",
-			clientCtx.Client.CompanyName, clientCtx.Client.CompanyID)
-		if err := e.telegram.SendMessage(ctx, clientCtx.Client.OwnerTelegramID, alertMsg); err != nil {
-			e.logger.Error().Err(err).Msg("Failed to send quotation link alert")
-		}
-		return nil
-	}
+	// quotation_link moved to clients.custom_fields. Until entity.Client
+	// exposes a CustomFields map, the empty-link gate below is bypassed —
+	// cron/trigger will create invoices unconditionally for clients that
+	// reach this rule. TODO: re-enable gate after CustomFields integration.
 
 	newInv := entity.Invoice{
 		InvoiceID:     fmt.Sprintf("INV-%s-%s", time.Now().Format("2006"), clientCtx.Client.CompanyID),

@@ -138,6 +138,9 @@ func (s *stubAR) UpdateStatus(ctx context.Context, ws, id, status, checker, reas
 	s.updateAR = id
 	return nil
 }
+func (s *stubAR) List(ctx context.Context, ws string, f repository.ApprovalFilter) ([]entity.ApprovalRequest, int64, error) {
+	return nil, 0, nil
+}
 
 func newUC(md *stubMDRepo, cfd *stubCFDRepo, mr *stubMutRepo, ar *stubAR) Usecase {
 	return New(md, cfd, mr, ar)
