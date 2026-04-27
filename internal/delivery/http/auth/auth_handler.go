@@ -56,21 +56,21 @@ func NewAuthHandler(uc auth.AuthUsecase, env string, logger zerolog.Logger, tr t
 	}
 }
 
-type loginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
 
-type googleRequest struct {
-	Credential string `json:"credential"`
-}
-
-type addWhitelistRequest struct {
-	Email string `json:"email"`
-	Notes string `json:"notes"`
-}
-
-// Login handles POST /auth/login (email/password).
+// Login godoc
+// @Summary      Email/password login
+// @Description  Authenticates a user with email and password via ms-auth-proxy. On success, sets an httpOnly session cookie and returns an access token. Rate-limited to 5 req/min per IP and 3 req/min per email.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        payload  body      LoginRequest                                        true  "Login credentials"
+// @Success      200      {object}  response.StandardResponse{data=LoginResponse}       "Login successful"
+// @Failure      400      {object}  response.StandardResponse                           "Validation error"
+// @Failure      401      {object}  response.StandardResponse                           "Invalid credentials"
+// @Failure      403      {object}  response.StandardResponse                           "Email not in whitelist"
+// @Failure      429      {object}  response.StandardResponse                           "Rate limit exceeded"
+// @Failure      500      {object}  response.StandardResponse                           "Internal server error"
+// @Router       /auth/login [post]
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "auth.handler.Login")
 	defer span.End()
@@ -80,7 +80,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 		return apperror.TooManyRequests("rate_limited")
 	}
 
-	var body loginRequest
+	var body LoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return apperror.ValidationError("Invalid request body")
 	}
@@ -108,7 +108,20 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 	})
 }
 
-// LoginGoogle handles POST /auth/google.
+// LoginGoogle godoc
+// @Summary      Google OAuth login
+// @Description  Authenticates a user with a Google ID token (credential from Google Sign-In). Sets an httpOnly session cookie on success. Rate-limited to 10 req/min per IP.
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        payload  body      GoogleLoginRequest                                        true  "Google credential token"
+// @Success      200      {object}  response.StandardResponse{data=GoogleLoginResponse}       "Google login successful"
+// @Failure      400      {object}  response.StandardResponse                                 "Validation error"
+// @Failure      401      {object}  response.StandardResponse                                 "Invalid or expired Google token"
+// @Failure      403      {object}  response.StandardResponse                                 "Email not in whitelist"
+// @Failure      429      {object}  response.StandardResponse                                 "Rate limit exceeded"
+// @Failure      500      {object}  response.StandardResponse                                 "Internal server error"
+// @Router       /auth/google [post]
 func (h *AuthHandler) LoginGoogle(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "auth.handler.LoginGoogle")
 	defer span.End()
@@ -118,7 +131,7 @@ func (h *AuthHandler) LoginGoogle(w http.ResponseWriter, r *http.Request) error 
 		return apperror.TooManyRequests("rate_limited")
 	}
 
-	var body googleRequest
+	var body GoogleLoginRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return apperror.ValidationError("Invalid request body")
 	}
@@ -140,7 +153,13 @@ func (h *AuthHandler) LoginGoogle(w http.ResponseWriter, r *http.Request) error 
 	})
 }
 
-// Logout handles POST /auth/logout. It clears the session cookie and is idempotent.
+// Logout godoc
+// @Summary      Logout
+// @Description  Clears the session cookie. Idempotent — always returns 200 regardless of whether the caller was logged in.
+// @Tags         auth
+// @Produce      json
+// @Success      200  {object}  response.StandardResponse  "Logged out"
+// @Router       /auth/logout [post]
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) error {
 	http.SetCookie(w, &http.Cookie{
 		Name:     CookieName,
@@ -154,8 +173,17 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) error {
 	return response.StandardSuccess(w, r, http.StatusOK, "Logged out", nil)
 }
 
-// ListWhitelist handles GET /whitelist (admin only — JWT middleware applied at the route level).
-// Returns full email entries; must NOT be exposed publicly to prevent account enumeration.
+// ListWhitelist godoc
+// @Summary      List whitelist entries
+// @Description  Returns all whitelisted email entries. Admin only — requires a valid session cookie (JWT middleware). Must NOT be cached or exposed publicly to prevent email enumeration.
+// @Tags         whitelist
+// @Produce      json
+// @Security     CookieAuth
+// @Success      200  {object}  response.StandardResponse{data=[]WhitelistEntry}  "Whitelist retrieved"
+// @Failure      401  {object}  response.StandardResponse                                "Unauthorized"
+// @Failure      429  {object}  response.StandardResponse                                "Rate limit exceeded"
+// @Failure      500  {object}  response.StandardResponse                                "Internal server error"
+// @Router       /whitelist [get]
 func (h *AuthHandler) ListWhitelist(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "auth.handler.ListWhitelist")
 	defer span.End()
@@ -171,8 +199,16 @@ func (h *AuthHandler) ListWhitelist(w http.ResponseWriter, r *http.Request) erro
 	return response.StandardSuccess(w, r, http.StatusOK, "Whitelist retrieved", entries)
 }
 
-// CheckWhitelist handles GET /whitelist/check?email=... — public probe that returns
-// only {allowed: bool}. Constant-shape response to avoid enumeration via timing/error.
+// CheckWhitelist godoc
+// @Summary      Check whitelist status
+// @Description  Public probe that returns only {allowed: bool} for a given email. Response shape is constant regardless of whether the email exists, preventing account enumeration via timing or error differences.
+// @Tags         whitelist
+// @Produce      json
+// @Param        email  query     string                                                 false  "Email address to check"
+// @Success      200    {object}  response.StandardResponse{data=WhitelistCheckResponse} "Check result"
+// @Failure      429    {object}  response.StandardResponse                              "Rate limit exceeded"
+// @Failure      500    {object}  response.StandardResponse                              "Internal server error"
+// @Router       /whitelist/check [get]
 func (h *AuthHandler) CheckWhitelist(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "auth.handler.CheckWhitelist")
 	defer span.End()
@@ -193,12 +229,25 @@ func (h *AuthHandler) CheckWhitelist(w http.ResponseWriter, r *http.Request) err
 	return response.StandardSuccess(w, r, http.StatusOK, "ok", map[string]bool{"allowed": allowed})
 }
 
-// AddWhitelist handles POST /whitelist (admin only — JWT middleware applied at the route level).
+// AddWhitelist godoc
+// @Summary      Add email to whitelist
+// @Description  Adds an email to the access whitelist. Admin only — requires a valid session cookie. Returns 409 if the email is already present.
+// @Tags         whitelist
+// @Accept       json
+// @Produce      json
+// @Security     CookieAuth
+// @Param        payload  body      AddWhitelistRequest                                       true  "Email to whitelist"
+// @Success      201      {object}  response.StandardResponse{data=WhitelistEntry}     "Whitelist entry created"
+// @Failure      400      {object}  response.StandardResponse                                 "Validation error"
+// @Failure      401      {object}  response.StandardResponse                                 "Unauthorized"
+// @Failure      409      {object}  response.StandardResponse                                 "Email already in whitelist"
+// @Failure      500      {object}  response.StandardResponse                                 "Internal server error"
+// @Router       /whitelist [post]
 func (h *AuthHandler) AddWhitelist(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "auth.handler.AddWhitelist")
 	defer span.End()
 
-	var body addWhitelistRequest
+	var body AddWhitelistRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return apperror.ValidationError("Invalid request body")
 	}
@@ -217,7 +266,18 @@ func (h *AuthHandler) AddWhitelist(w http.ResponseWriter, r *http.Request) error
 	return response.StandardSuccess(w, r, http.StatusCreated, "Whitelist created", entry)
 }
 
-// DeleteWhitelist handles DELETE /whitelist/{id} (admin only).
+// DeleteWhitelist godoc
+// @Summary      Remove email from whitelist
+// @Description  Removes a whitelist entry by ID. Admin only — requires a valid session cookie.
+// @Tags         whitelist
+// @Produce      json
+// @Security     CookieAuth
+// @Param        id   path      string                                                  true  "Whitelist entry ID"
+// @Success      200  {object}  response.StandardResponse{data=DeleteWhitelistResponse} "Entry removed"
+// @Failure      401  {object}  response.StandardResponse                               "Unauthorized"
+// @Failure      404  {object}  response.StandardResponse                               "Whitelist entry not found"
+// @Failure      500  {object}  response.StandardResponse                               "Internal server error"
+// @Router       /whitelist/{id} [delete]
 func (h *AuthHandler) DeleteWhitelist(w http.ResponseWriter, r *http.Request) error {
 	ctx, span := h.tracer.Start(r.Context(), "auth.handler.DeleteWhitelist")
 	defer span.End()

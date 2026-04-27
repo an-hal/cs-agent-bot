@@ -8,6 +8,11 @@
 // @host      api-dev.sejutacita.id
 // @BasePath  /v1/cs-agent-bot
 
+// @securityDefinitions.apikey CookieAuth
+// @in cookie
+// @name auth_session
+// @description Session cookie set by POST /auth/login or POST /auth/google. Required for admin-only endpoints.
+
 package main
 
 import (

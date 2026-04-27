@@ -7,6 +7,81 @@ definitions:
       message:
         type: string
     type: object
+  auth.AddWhitelistRequest:
+    properties:
+      email:
+        example: user@dealls.com
+        type: string
+      notes:
+        example: Added by admin
+        type: string
+    type: object
+  auth.DeleteWhitelistResponse:
+    properties:
+      id:
+        example: abc123
+        type: string
+    type: object
+  auth.GoogleLoginRequest:
+    properties:
+      credential:
+        example: eyJhbGci...
+        type: string
+    type: object
+  auth.GoogleLoginResponse:
+    properties:
+      admin:
+        type: boolean
+      provider:
+        example: google
+        type: string
+      user: {}
+    type: object
+  auth.LoginRequest:
+    properties:
+      email:
+        example: user@dealls.com
+        type: string
+      password:
+        example: secret123
+        type: string
+    type: object
+  auth.LoginResponse:
+    properties:
+      access_token:
+        example: eyJhbGci...
+        type: string
+      admin:
+        type: boolean
+      expires:
+        type: string
+      provider:
+        example: email
+        type: string
+      user: {}
+    type: object
+  auth.WhitelistCheckResponse:
+    properties:
+      allowed:
+        type: boolean
+    type: object
+  auth.WhitelistEntry:
+    properties:
+      added_by:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      is_active:
+        type: boolean
+      notes:
+        type: string
+      updated_at:
+        type: string
+    type: object
   coaching.CreateRequest:
     properties:
       bd_email:
@@ -184,6 +259,11 @@ definitions:
         type: integer
       visible_in_table:
         type: boolean
+    type: object
+  dashboard.ApprovalRejectRequest:
+    properties:
+      reason:
+        type: string
     type: object
   dashboard.CreateClientRequest:
     properties:
@@ -775,16 +855,12 @@ definitions:
         type: string
       backup_owner_telegram_id:
         type: string
-      bd_prospect_id:
-        type: string
       blacklisted:
         type: boolean
       bot_active:
         type: boolean
       checkin_replied:
         type: boolean
-      churn_reason:
-        type: string
       company_id:
         type: string
       company_name:
@@ -797,32 +873,18 @@ definitions:
         type: string
       created_at:
         type: string
-      cross_sell_interested:
-        type: boolean
-      cross_sell_rejected:
-        type: boolean
-      cross_sell_resume_date:
-        type: string
       days_since_cs_last_sent:
         type: integer
       feature_update_sent:
         type: boolean
       final_price:
         type: number
-      first_time_discount_pct:
-        type: number
-      hc_size:
-        type: string
       last_interaction_date:
         type: string
       last_payment_date:
         type: string
-      next_discount_pct_manual:
-        type: number
       notes:
         type: string
-      nps_score:
-        type: integer
       owner_name:
         type: string
       owner_telegram_id:
@@ -842,8 +904,6 @@ definitions:
         type: string
       pic_wa:
         type: string
-      plan_type:
-        type: string
       post1_sent:
         type: boolean
       post4_sent:
@@ -859,30 +919,10 @@ definitions:
       pre14_sent:
         description: Invoice reminder flags (from Master Client sheet columns 27-33)
         type: boolean
-      quotation_link:
-        type: string
-      quotation_link_expires:
-        type: string
-      rejected:
-        type: boolean
-      renewal_date:
-        type: string
-      renewed:
-        type: boolean
       response_status:
-        type: string
-      risk_flag:
-        type: boolean
-      segment:
         type: string
       sequence_cs:
         type: string
-      usage_score:
-        type: integer
-      usage_score_avg_30d:
-        type: integer
-      wa_undeliverable:
-        type: boolean
       workspace_id:
         type: string
     type: object
@@ -2610,10 +2650,6 @@ definitions:
         type: boolean
       logo:
         type: string
-      member_ids:
-        items:
-          type: string
-        type: array
       name:
         type: string
       plan:
@@ -3452,10 +3488,6 @@ definitions:
         type: boolean
       logo:
         type: string
-      member_ids:
-        items:
-          type: string
-        type: array
       members:
         items:
           $ref: '#/definitions/entity.WorkspaceMember'
@@ -3715,14 +3747,81 @@ paths:
       summary: Today's unified activity (action + mutations + activity_log)
       tags:
       - ActivityLogs
+  /api/approvals:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: pending | approved | rejected | expired
+        in: query
+        name: status
+        type: string
+      - description: Filter by approval type
+        in: query
+        name: request_type
+        type: string
+      - description: Filter by maker
+        in: query
+        name: maker_email
+        type: string
+      - description: Default 50, max 200
+        in: query
+        name: limit
+        type: integer
+      - description: Default 0
+        in: query
+        name: offset
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: List approval requests for the current workspace
+      tags:
+      - Approvals
+  /api/approvals/{id}:
+    get:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Approval request UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ApprovalRequest'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get a single approval request
+      tags:
+      - Approvals
   /api/approvals/{id}/apply:
     post:
       description: |-
         Routes by request_type: create_invoice, mark_invoice_paid,
         collection_schema_change, delete_client_record,
-        toggle_automation_rule.
-        bulk_import_master_data requires the row payload — use
-        POST /data-master/import/commit/{approval_id} instead.
+        toggle_automation_rule, bulk_import_master_data,
+        stage_transition, integration_key_change.
+        For bulk_import the xlsx is rehydrated from the approval
+        payload (file_b64) — no second upload needed.
       parameters:
       - description: Workspace ID
         in: header
@@ -3747,6 +3846,40 @@ paths:
       security:
       - BearerAuth: []
       summary: Apply a pending approval (central dispatcher)
+      tags:
+      - Approvals
+  /api/approvals/{id}/reject:
+    post:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Approval request UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rejection reason
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dashboard.ApprovalRejectRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ApprovalRequest'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Reject a pending approval (sets status=rejected)
       tags:
       - Approvals
   /api/audit-logs/workspace-access:
@@ -9363,6 +9496,143 @@ paths:
       summary: Accept a workspace invitation
       tags:
       - Workspace
+  /api/workspaces/mine:
+    get:
+      description: Strict membership listing — checks workspace_members and team_members
+        ACL paths. No holding-bypass.
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.Workspace'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: List workspaces the caller has actual membership in
+      tags:
+      - Workspace
+  /auth/google:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user with a Google ID token (credential from Google
+        Sign-In). Sets an httpOnly session cookie on success. Rate-limited to 10 req/min
+        per IP.
+      parameters:
+      - description: Google credential token
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/auth.GoogleLoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Google login successful
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.GoogleLoginResponse'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "401":
+          description: Invalid or expired Google token
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "403":
+          description: Email not in whitelist
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Google OAuth login
+      tags:
+      - auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticates a user with email and password via ms-auth-proxy.
+        On success, sets an httpOnly session cookie and returns an access token. Rate-limited
+        to 5 req/min per IP and 3 req/min per email.
+      parameters:
+      - description: Login credentials
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.LoginResponse'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "403":
+          description: Email not in whitelist
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Email/password login
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Clears the session cookie. Idempotent — always returns 200 regardless
+        of whether the caller was logged in.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logged out
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Logout
+      tags:
+      - auth
   /cron/analytics/rebuild-snapshots:
     get:
       description: Recomputes revenue_snapshots from invoices for all workspaces.
@@ -9846,4 +10116,164 @@ paths:
       summary: Receive WhatsApp Webhook
       tags:
       - webhook
+  /whitelist:
+    get:
+      description: Returns all whitelisted email entries. Admin only — requires a
+        valid session cookie (JWT middleware). Must NOT be cached or exposed publicly
+        to prevent email enumeration.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Whitelist retrieved
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/auth.WhitelistEntry'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - CookieAuth: []
+      summary: List whitelist entries
+      tags:
+      - whitelist
+    post:
+      consumes:
+      - application/json
+      description: Adds an email to the access whitelist. Admin only — requires a
+        valid session cookie. Returns 409 if the email is already present.
+      parameters:
+      - description: Email to whitelist
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/auth.AddWhitelistRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Whitelist entry created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.WhitelistEntry'
+              type: object
+        "400":
+          description: Validation error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "409":
+          description: Email already in whitelist
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - CookieAuth: []
+      summary: Add email to whitelist
+      tags:
+      - whitelist
+  /whitelist/{id}:
+    delete:
+      description: Removes a whitelist entry by ID. Admin only — requires a valid
+        session cookie.
+      parameters:
+      - description: Whitelist entry ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Entry removed
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.DeleteWhitelistResponse'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "404":
+          description: Whitelist entry not found
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - CookieAuth: []
+      summary: Remove email from whitelist
+      tags:
+      - whitelist
+  /whitelist/check:
+    get:
+      description: 'Public probe that returns only {allowed: bool} for a given email.
+        Response shape is constant regardless of whether the email exists, preventing
+        account enumeration via timing or error differences.'
+      parameters:
+      - description: Email address to check
+        in: query
+        name: email
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Check result
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.WhitelistCheckResponse'
+              type: object
+        "429":
+          description: Rate limit exceeded
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+        "500":
+          description: Internal server error
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      summary: Check whitelist status
+      tags:
+      - whitelist
+securityDefinitions:
+  CookieAuth:
+    description: Session cookie set by POST /auth/login or POST /auth/google. Required
+      for admin-only endpoints.
+    in: cookie
+    name: auth_session
+    type: apiKey
 swagger: "2.0"
