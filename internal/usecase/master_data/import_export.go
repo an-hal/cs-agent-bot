@@ -266,10 +266,12 @@ func (u *usecase) ApplyApprovedImport(
 		cid := strings.TrimSpace(row.CompanyID)
 		existingID, isDup := existing[cid]
 		req := CreateRequest{
-			CompanyID:       cid,
-			CompanyName:     row.CompanyName,
-			Stage:           row.Stage,
-			PICName:         row.PICName,
+			CompanyID:   cid,
+			CompanyName: row.CompanyName,
+			Stage:       row.Stage,
+			Industry:    row.Industry,
+			ValueTier:   row.ValueTier,
+			PICName:     row.PICName,
 			PICNickname:     row.PICNickname,
 			PICRole:         row.PICRole,
 			PICWA:           row.PICWA,

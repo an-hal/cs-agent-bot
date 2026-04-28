@@ -18,6 +18,8 @@ type ClientImportRow struct {
 	CompanyID   string
 	CompanyName string
 	Stage       string // LEAD|PROSPECT|CLIENT|DORMANT (Phase B mapping path)
+	Industry    string // Migration 1300 — CRM core demographic
+	ValueTier   string // Migration 1300 — HIGH/MID/LOW ACV tier
 
 	// Contact
 	PICName         string

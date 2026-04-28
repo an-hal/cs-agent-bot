@@ -77,10 +77,13 @@ func CoreFieldDefinitions() []ImportFieldDef {
 	billing := []string{"monthly", "quarterly", "annual", "one_time", "perpetual"}
 	yesno := []string{"Yes", "No"}
 
+	valueTier := []string{"HIGH", "MID", "LOW"}
 	return []ImportFieldDef{
 		{Key: "company_id", Label: "Company ID", Type: "text", Required: true, Description: "Unique business key (max 20 chars)"},
 		{Key: "company_name", Label: "Company Name", Type: "text", Required: true},
 		{Key: "stage", Label: "Stage", Type: "enum", Options: stages, Description: "Default: LEAD"},
+		{Key: "industry", Label: "Industry", Type: "text", Description: "Retail / F&B / Manufaktur / Jasa / etc."},
+		{Key: "value_tier", Label: "Value Tier", Type: "enum", Options: valueTier, Description: "ACV-based segmentation"},
 		{Key: "pic_name", Label: "PIC Name", Type: "text", Required: true},
 		{Key: "pic_nickname", Label: "PIC Nickname", Type: "text"},
 		{Key: "pic_role", Label: "PIC Role", Type: "text"},

@@ -59,6 +59,9 @@ type MasterData struct {
 	CompanyID   string `json:"company_id"`
 	CompanyName string `json:"company_name"`
 	Stage       string `json:"stage"`
+	// CRM-core demographic fields (Migration 1300, per spec Table 1).
+	Industry  string `json:"industry"`
+	ValueTier string `json:"value_tier"` // HIGH | MID | LOW (ACV-based)
 
 	PICName     string `json:"pic_name"`
 	PICNickname string `json:"pic_nickname"`
