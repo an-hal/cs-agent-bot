@@ -55,8 +55,14 @@ type Usecase interface {
 	ListMutations(ctx context.Context, workspaceID string, since *time.Time, limit int) ([]entity.MasterDataMutation, error)
 
 	RequestImport(ctx context.Context, workspaceID, actorEmail, fileName string, mode ImportMode, rowCount int, preview []map[string]any, fileRef string) (*entity.ApprovalRequest, error)
+	// RequestImportWithMapping creates an approval like RequestImport but stashes
+	// the OneSchema-style source→target mapping + sheet name in the payload so
+	// ApplyApprovedImport reparses with the same intent.
+	RequestImportWithMapping(ctx context.Context, workspaceID, actorEmail, fileName string, mode ImportMode, rowCount int, preview []map[string]any, fileB64 string, sheetName string, mapping map[string]string) (*entity.ApprovalRequest, error)
 	// ParseImportRows parses an xlsx with workspace-aware custom field extraction.
 	ParseImportRows(ctx context.Context, workspaceID string, r io.Reader) ([]xlsximport.ClientImportRow, []xlsximport.ParseError, error)
+	// ParseImportRowsWithMapping parses with caller-provided source→target mapping.
+	ParseImportRowsWithMapping(ctx context.Context, workspaceID string, r io.Reader, opts xlsximport.MappingParseOptions) ([]xlsximport.ClientImportRow, []xlsximport.CellError, error)
 	// PreviewImport parses rows + runs dedup lookup, no DB writes.
 	PreviewImport(ctx context.Context, workspaceID string, rows []xlsximport.ClientImportRow, mode ImportMode) (*ImportPreview, error)
 	// ApplyApprovedImport applies an approved bulk_import_master_data request.
@@ -73,6 +79,21 @@ type Usecase interface {
 	ApplyApprovedStageTransition(ctx context.Context, workspaceID, approvalID, checkerEmail string) (*TransitionResult, error)
 	Export(ctx context.Context, workspaceID string, w io.Writer) error
 	Template(ctx context.Context, workspaceID string, w io.Writer) error
+	// Schema returns the OneSchema-style target schema (core + custom fields)
+	// for FE to render a column-mapping wizard.
+	Schema(ctx context.Context, workspaceID string) (*ImportSchema, error)
+	// Detect inspects an uploaded xlsx and proposes source→target mappings.
+	Detect(ctx context.Context, workspaceID string, r io.Reader) (*ImportDetectResult, error)
+	// CreateSession persists a wizard scratchpad (file + mapping + overrides)
+	// and returns the initial preview.
+	CreateSession(ctx context.Context, workspaceID, actorEmail string, in CreateSessionInput) (*SessionPreview, error)
+	// GetSession re-parses the stored file with the latest mapping + overrides.
+	GetSession(ctx context.Context, workspaceID, sessionID string) (*SessionPreview, error)
+	// PatchCell upserts a single cell override and returns refreshed preview.
+	PatchCell(ctx context.Context, workspaceID, sessionID string, in PatchCellInput) (*SessionPreview, error)
+	// SubmitSession converts a pending session to a bulk_import_master_data
+	// approval; the apply path reads file+mapping+overrides from the payload.
+	SubmitSession(ctx context.Context, workspaceID, sessionID, actorEmail string) (*entity.ApprovalRequest, error)
 }
 
 // CreateRequest is the payload for POST /master-data/clients.
@@ -157,20 +178,25 @@ type usecase struct {
 	cfdRepo      repository.CustomFieldDefinitionRepository
 	mutationRepo repository.MasterDataMutationRepository
 	approvalRepo repository.ApprovalRequestRepository
+	sessionRepo  repository.ImportSessionRepository // optional; nil disables Phase C wizard endpoints
 }
 
-// New constructs a master_data usecase.
+// New constructs a master_data usecase. sessionRepo is optional (Phase C
+// wizard endpoints are disabled when nil) — callers that don't need import
+// sessions can pass nil.
 func New(
 	repo repository.MasterDataRepository,
 	cfdRepo repository.CustomFieldDefinitionRepository,
 	mutationRepo repository.MasterDataMutationRepository,
 	approvalRepo repository.ApprovalRequestRepository,
+	sessionRepo repository.ImportSessionRepository,
 ) Usecase {
 	return &usecase{
 		repo:         repo,
 		cfdRepo:      cfdRepo,
 		mutationRepo: mutationRepo,
 		approvalRepo: approvalRepo,
+		sessionRepo:  sessionRepo,
 	}
 }
 

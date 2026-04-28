@@ -222,7 +222,7 @@ func assembleDeps(
 	// PDP: real DB-backed enforcer + executor. Retention deletes/anonymizes;
 	// erasure scrubs subject-owned rows across the scope whitelist.
 	pdpUsecase := pdpuc.New(repos.pdp, pdpuc.NewSQLEnforcer(db, logger), pdpuc.NewSQLErasureExecutor(db, logger))
-	masterDataUsecase := masterdatauc.New(repos.masterData, repos.customField, repos.masterDataMutation, repos.approvalRequest)
+	masterDataUsecase := masterdatauc.New(repos.masterData, repos.customField, repos.masterDataMutation, repos.approvalRequest, repos.importSession)
 	customFieldUsecase := customfielduc.New(repos.customField)
 	teamUsecase := teamuc.New(repos.role, repos.rolePermission, repos.teamMember, repos.memberWsAssignment, repos.approvalRequest, repos.whitelist, teamuc.Options{})
 	messagingUsecase := messaginguc.New(repos.messageTemplate, repos.emailTemplate, repos.templateVariable, repos.templateEditLog, logger)

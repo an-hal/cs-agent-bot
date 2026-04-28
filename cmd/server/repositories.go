@@ -36,6 +36,7 @@ type repositories struct {
 	customField          repository.CustomFieldDefinitionRepository
 	masterDataMutation   repository.MasterDataMutationRepository
 	approvalRequest      repository.ApprovalRequestRepository
+	importSession        repository.ImportSessionRepository
 	role                 repository.RoleRepository
 	rolePermission       repository.RolePermissionRepository
 	teamMember           repository.TeamMemberRepository
@@ -95,6 +96,7 @@ func wireRepositories(db *sql.DB, qt time.Duration, tr appTracer.Tracer, logger 
 		customField:          repository.NewCustomFieldDefinitionRepo(db, qt, tr, logger),
 		masterDataMutation:   repository.NewMasterDataMutationRepo(db, qt, tr, logger),
 		approvalRequest:      repository.NewApprovalRequestRepo(db, qt, tr, logger),
+		importSession:        repository.NewImportSessionRepo(db, qt, tr, logger),
 		role:                 repository.NewRoleRepo(db, qt, tr, logger),
 		rolePermission:       repository.NewRolePermissionRepo(db, qt, tr, logger),
 		teamMember:           repository.NewTeamMemberRepo(db, qt, tr, logger),
