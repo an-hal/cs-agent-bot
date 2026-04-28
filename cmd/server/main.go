@@ -1,6 +1,6 @@
 // @title           Customer Service Agent Bot API
 // @version         1.0
-// @description     WhatsApp automation bot for Kantorku.id HRIS SaaS
+// @description      WhatsApp automation bot for Kantorku.id HRIS SaaS
 
 // @contact.name   Dealls Engineering
 // @contact.url    https://github.com/Sejutacita
