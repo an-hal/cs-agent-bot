@@ -112,6 +112,8 @@ type CreateRequest struct {
 	BotActive       *bool          `json:"bot_active"`
 	Blacklisted     *bool          `json:"blacklisted"`
 	SequenceStatus  string         `json:"sequence_status"`
+	SnoozeUntil     *time.Time     `json:"snooze_until,omitempty"`
+	SnoozeReason    string         `json:"snooze_reason"`
 	RiskFlag        string         `json:"risk_flag"`
 	ContractStart   *time.Time     `json:"contract_start"`
 	ContractEnd     *time.Time     `json:"contract_end"`
@@ -119,8 +121,17 @@ type CreateRequest struct {
 	PaymentStatus   string         `json:"payment_status"`
 	PaymentTerms    string         `json:"payment_terms"`
 	FinalPrice      int64          `json:"final_price"`
-	Notes           string         `json:"notes"`
-	CustomFields    map[string]any `json:"custom_fields"`
+	LastPaymentDate *time.Time     `json:"last_payment_date,omitempty"`
+	// Phase 5 generic billing model.
+	BillingPeriod string   `json:"billing_period"` // monthly|quarterly|annual|one_time|perpetual
+	Quantity      *int     `json:"quantity,omitempty"`
+	UnitPrice     *float64 `json:"unit_price,omitempty"`
+	Currency      string   `json:"currency"` // ISO 4217
+	// Phase 6 message-state companion field surfaced through Create so a
+	// dashboard create can also seed last_interaction_date in cms.
+	LastInteractionDate *time.Time     `json:"last_interaction_date,omitempty"`
+	Notes               string         `json:"notes"`
+	CustomFields        map[string]any `json:"custom_fields"`
 }
 
 // PatchRequest is the payload for PUT /master-data/clients/{id}.
@@ -282,6 +293,8 @@ func (u *usecase) createWithDefs(
 		BotActive:       boolOr(req.BotActive, true),
 		Blacklisted:     boolOr(req.Blacklisted, false),
 		SequenceStatus:  defaultIfEmpty(req.SequenceStatus, entity.SeqStatusActive),
+		SnoozeUntil:     req.SnoozeUntil,
+		SnoozeReason:    req.SnoozeReason,
 		RiskFlag:        defaultIfEmpty(req.RiskFlag, entity.RiskNone),
 		ContractStart:   req.ContractStart,
 		ContractEnd:     req.ContractEnd,
@@ -289,8 +302,15 @@ func (u *usecase) createWithDefs(
 		PaymentStatus:   defaultIfEmpty(req.PaymentStatus, "Pending"),
 		PaymentTerms:    req.PaymentTerms,
 		FinalPrice:      req.FinalPrice,
-		Notes:           req.Notes,
-		CustomFields:    req.CustomFields,
+		LastPaymentDate: req.LastPaymentDate,
+		// Phase 5 generic billing — entity owns these directly.
+		BillingPeriod:       req.BillingPeriod,
+		Quantity:            req.Quantity,
+		UnitPrice:           req.UnitPrice,
+		Currency:            req.Currency,
+		LastInteractionDate: req.LastInteractionDate,
+		Notes:               req.Notes,
+		CustomFields:        req.CustomFields,
 	}
 	created, err := u.repo.Create(ctx, workspaceID, m)
 	if err != nil {
