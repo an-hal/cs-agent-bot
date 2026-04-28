@@ -260,6 +260,13 @@ func registerMasterDataRoutes(api *router.Router, h *handlers, mw authBundle) {
 	g.Handle(http.MethodGet, "/clients/template", mw.jws(h.masterData.Template))
 	g.Handle(http.MethodPost, "/clients/import", mw.jws(h.masterData.Import))
 	g.Handle(http.MethodPost, "/clients/import/preview", mw.jws(h.masterData.ImportPreview))
+	// OneSchema-style import wizard endpoints (Phase A + C).
+	g.Handle(http.MethodGet, "/import/schema", mw.jws(h.masterData.ImportSchema))
+	g.Handle(http.MethodPost, "/import/detect", mw.jws(h.masterData.ImportDetect))
+	g.Handle(http.MethodPost, "/import/sessions", mw.jws(h.masterData.CreateImportSession))
+	g.Handle(http.MethodGet, "/import/sessions/{id}", mw.jws(h.masterData.GetImportSession))
+	g.Handle(http.MethodPatch, "/import/sessions/{id}/cell", mw.jws(h.masterData.PatchImportSessionCell))
+	g.Handle(http.MethodPost, "/import/sessions/{id}/submit", mw.jws(h.masterData.SubmitImportSession))
 	g.Handle(http.MethodPost, "/clients", mw.jws(h.masterData.Create))
 	g.Handle(http.MethodGet, "/clients/{id}", mw.jws(h.masterData.Get))
 	g.Handle(http.MethodPut, "/clients/{id}", mw.jws(h.masterData.Patch))

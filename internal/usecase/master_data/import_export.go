@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -45,12 +46,13 @@ type ImportRowError struct {
 // ImportPreview summarizes a dedup-preview run — parse + lookup, no writes.
 // FE shows this in a modal before asking the user to confirm the actual import.
 type ImportPreview struct {
-	Mode       ImportMode         `json:"mode"`
-	TotalRows  int                `json:"total_rows"`
-	New        int                `json:"new"`
-	Duplicates int                `json:"duplicates"`
-	Invalid    int                `json:"invalid"`
-	Rows       []ImportPreviewRow `json:"rows"`
+	Mode       ImportMode             `json:"mode"`
+	TotalRows  int                    `json:"total_rows"`
+	New        int                    `json:"new"`
+	Duplicates int                    `json:"duplicates"`
+	Invalid    int                    `json:"invalid"`
+	Rows       []ImportPreviewRow     `json:"rows"`
+	CellErrors []xlsximport.CellError `json:"cell_errors,omitempty"`
 }
 
 // ImportPreviewRow is one line in the preview table.
@@ -102,6 +104,50 @@ func (u *usecase) RequestImport(
 	})
 }
 
+// RequestImportWithMapping is RequestImport plus mapping/sheet metadata so the
+// apply step reparses identically. Empty mapping → falls back to legacy parser.
+func (u *usecase) RequestImportWithMapping(
+	ctx context.Context,
+	workspaceID, actorEmail, fileName string,
+	mode ImportMode,
+	rowCount int,
+	preview []map[string]any,
+	fileB64 string,
+	sheetName string,
+	mapping map[string]string,
+) (*entity.ApprovalRequest, error) {
+	if workspaceID == "" {
+		return nil, apperror.ValidationError("workspace_id required")
+	}
+	if mode != ImportModeAddNew && mode != ImportModeUpdateExisting {
+		return nil, apperror.ValidationError("invalid import mode")
+	}
+	if fileB64 == "" {
+		return nil, apperror.ValidationError("file content required")
+	}
+	payload := map[string]any{
+		"file_name": fileName,
+		"file_b64":  fileB64,
+		"mode":      string(mode),
+		"row_count": rowCount,
+		"preview":   preview,
+	}
+	if sheetName != "" {
+		payload["sheet_name"] = sheetName
+	}
+	if len(mapping) > 0 {
+		payload["mapping"] = mapping
+	}
+	desc := fmt.Sprintf("Bulk import master data: %s (%d rows, mode=%s)", fileName, rowCount, mode)
+	return u.approvalRepo.Create(ctx, &entity.ApprovalRequest{
+		WorkspaceID: workspaceID,
+		RequestType: entity.ApprovalTypeBulkImport,
+		Description: desc,
+		Payload:     payload,
+		MakerEmail:  actorEmail,
+	})
+}
+
 // ParseImportRows parses an xlsx into raw rows for preview / dry-run inspection.
 // The actual master_data inserts are deferred until approval. When workspaceID
 // is non-empty, custom field definitions are loaded so columns matching a
@@ -116,6 +162,26 @@ func (u *usecase) ParseImportRows(ctx context.Context, workspaceID string, r io.
 		}
 	}
 	return xlsximport.ParseClientSheetWithDefs(r, defs)
+}
+
+// ParseImportRowsWithMapping is the OneSchema-style entry point: caller supplies
+// the source-header → target-key mapping (and optional sheet name) so the
+// uploaded xlsx need not match any predefined template. Returns parsed rows
+// plus per-cell errors.
+func (u *usecase) ParseImportRowsWithMapping(
+	ctx context.Context,
+	workspaceID string,
+	r io.Reader,
+	opts xlsximport.MappingParseOptions,
+) ([]xlsximport.ClientImportRow, []xlsximport.CellError, error) {
+	if workspaceID == "" {
+		return nil, nil, apperror.ValidationError("workspace_id required")
+	}
+	defs, err := u.cfdRepo.List(ctx, workspaceID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("load custom field defs: %w", err)
+	}
+	return xlsximport.ParseClientSheetWithMapping(r, opts, defs)
 }
 
 // ApplyApprovedImport applies an approved bulk import. The xlsx file was
@@ -149,7 +215,21 @@ func (u *usecase) ApplyApprovedImport(
 	if err != nil {
 		return nil, apperror.BadRequest("invalid base64 in approval payload: " + err.Error())
 	}
-	rows, _, err := u.ParseImportRows(ctx, workspaceID, bytes.NewReader(fileBytes))
+	// Re-parse using the same mapping + overrides the maker submitted so the
+	// apply step matches what was previewed in the wizard.
+	mapping, _ := stringMap(ar.Payload["mapping"])
+	sheetName, _ := ar.Payload["sheet_name"].(string)
+	overrides := nestedStringMap(ar.Payload["cell_overrides"])
+	var rows []xlsximport.ClientImportRow
+	if len(mapping) > 0 {
+		rows, _, err = u.ParseImportRowsWithMapping(ctx, workspaceID, bytes.NewReader(fileBytes), xlsximport.MappingParseOptions{
+			SheetName: sheetName,
+			Mapping:   mapping,
+			Overrides: overrides,
+		})
+	} else {
+		rows, _, err = u.ParseImportRows(ctx, workspaceID, bytes.NewReader(fileBytes))
+	}
 	if err != nil {
 		return nil, fmt.Errorf("reparse xlsx from approval: %w", err)
 	}
@@ -188,13 +268,19 @@ func (u *usecase) ApplyApprovedImport(
 		req := CreateRequest{
 			CompanyID:       cid,
 			CompanyName:     row.CompanyName,
+			Stage:           row.Stage,
 			PICName:         row.PICName,
+			PICNickname:     row.PICNickname,
 			PICRole:         row.PICRole,
 			PICWA:           row.PICWA,
 			PICEmail:        row.PICEmail,
 			OwnerName:       row.OwnerName,
 			OwnerWA:         row.OwnerWA,
 			OwnerTelegramID: row.OwnerTelegramID,
+			BotActive:       boolPtrIfSet(row.BotActive),
+			Blacklisted:     boolPtrIfSet(row.Blacklisted),
+			SequenceStatus:  row.SequenceStatus,
+			RiskFlag:        row.RiskFlag,
 			ContractStart:   ptrTime(row.ContractStart),
 			ContractEnd:     ptrTime(row.ContractEnd),
 			ContractMonths:  row.ContractMonths,
@@ -253,7 +339,19 @@ func (u *usecase) ApplyApprovedImport(
 		res.Imported++
 	}
 
-	_ = u.approvalRepo.UpdateStatus(ctx, workspaceID, approvalID, entity.ApprovalStatusApproved, checkerEmail, "")
+	// If every attempted row failed, refuse to mark the approval approved and
+	// surface the first error to the caller. Previously this swallowed both the
+	// per-row errors and the UpdateStatus error, returning HTTP 200 for an
+	// import that did nothing.
+	attempted := len(rows) - res.Skipped
+	if attempted > 0 && res.Imported == 0 && len(res.Errors) > 0 {
+		return res, fmt.Errorf("bulk import failed: %d/%d rows errored, first: row %d (%s) %s",
+			len(res.Errors), attempted, res.Errors[0].Row, res.Errors[0].CompanyID, res.Errors[0].Error)
+	}
+
+	if err := u.approvalRepo.UpdateStatus(ctx, workspaceID, approvalID, entity.ApprovalStatusApproved, checkerEmail, ""); err != nil {
+		return res, fmt.Errorf("import applied but mark-approved failed: %w", err)
+	}
 	return res, nil
 }
 
@@ -308,7 +406,9 @@ func (u *usecase) Export(ctx context.Context, workspaceID string, w io.Writer) e
 	return f.Write(w)
 }
 
-// Template writes a 2-sheet xlsx template (Template + Reference).
+// Template writes a 2-sheet xlsx template (Template Import + Reference). The
+// data sheet name MUST match xlsximport.ParseClientSheet's expected sheet so a
+// downloaded template can be filled and re-uploaded without manual rename.
 func (u *usecase) Template(ctx context.Context, workspaceID string, w io.Writer) error {
 	if workspaceID == "" {
 		return apperror.ValidationError("workspace_id required")
@@ -319,7 +419,7 @@ func (u *usecase) Template(ctx context.Context, workspaceID string, w io.Writer)
 	}
 	f := excelize.NewFile()
 	defer f.Close()
-	tplSheet := "Template"
+	tplSheet := "Template Import"
 	refSheet := "Reference"
 	f.SetSheetName(f.GetSheetName(0), tplSheet)
 	if _, err := f.NewSheet(refSheet); err != nil {
@@ -334,7 +434,7 @@ func (u *usecase) Template(ctx context.Context, workspaceID string, w io.Writer)
 		cell, _ := excelize.CoordinatesToCellName(col+1, 1)
 		_ = f.SetCellValue(tplSheet, cell, h)
 	}
-	example := []any{"DE-EXAMPLE", "PT Example", "LEAD", "John", "PIC Role", "628100000000", "ex@example.com"}
+	example := exampleRow(defs)
 	for col, v := range example {
 		cell, _ := excelize.CoordinatesToCellName(col+1, 2)
 		_ = f.SetCellValue(tplSheet, cell, v)
@@ -358,22 +458,65 @@ func (u *usecase) Template(ctx context.Context, workspaceID string, w io.Writer)
 }
 
 // CoreExportHeaders returns the canonical core column headers (exported for tests).
+// Order MUST stay aligned with coreExportValues and exampleRow.
 func CoreExportHeaders() []string {
 	return []string{
-		"Company ID", "Company Name", "Stage", "PIC Name", "PIC Role", "PIC WA", "PIC Email",
-		"Owner Name", "Owner WA", "Bot Active", "Blacklisted", "Risk Flag",
+		"Company ID", "Company Name", "Stage",
+		"PIC Name", "PIC Nickname", "PIC Role", "PIC WA", "PIC Email",
+		"Owner Name", "Owner WA", "Owner Telegram ID",
+		"Bot Active", "Blacklisted", "Sequence Status", "Snooze Until", "Snooze Reason",
 		"Contract Start", "Contract End", "Contract Months",
-		"Payment Status", "Payment Terms", "Final Price", "Notes",
+		"Payment Status", "Payment Terms", "Final Price", "Last Payment Date",
+		"Billing Period", "Quantity", "Unit Price", "Currency",
+		"Last Interaction Date", "Notes",
 	}
 }
 
 func coreExportValues(m *entity.MasterData) []any {
 	return []any{
-		m.CompanyID, m.CompanyName, m.Stage, m.PICName, m.PICRole, m.PICWA, m.PICEmail,
-		m.OwnerName, m.OwnerWA, boolStr(m.BotActive), boolStr(m.Blacklisted), m.RiskFlag,
+		m.CompanyID, m.CompanyName, m.Stage,
+		m.PICName, m.PICNickname, m.PICRole, m.PICWA, m.PICEmail,
+		m.OwnerName, m.OwnerWA, m.OwnerTelegramID,
+		boolStr(m.BotActive), boolStr(m.Blacklisted), m.SequenceStatus,
+		formatNullableTime(m.SnoozeUntil), m.SnoozeReason,
 		formatNullableTime(m.ContractStart), formatNullableTime(m.ContractEnd), m.ContractMonths,
-		m.PaymentStatus, m.PaymentTerms, m.FinalPrice, m.Notes,
+		m.PaymentStatus, m.PaymentTerms, m.FinalPrice, formatNullableTime(m.LastPaymentDate),
+		m.BillingPeriod, intPtrStr(m.Quantity), floatPtrStr(m.UnitPrice), m.Currency,
+		formatNullableTime(m.LastInteractionDate), m.Notes,
 	}
+}
+
+// exampleRow returns one fully-populated example row demonstrating the expected
+// format for every core column plus a sensible empty for each custom column.
+func exampleRow(defs []entity.CustomFieldDefinition) []any {
+	core := []any{
+		"DE-EXAMPLE", "PT Example", entity.StageLead,
+		"John Doe", "John", "Sales Manager", "628100000000", "john@example.com",
+		"Jane Owner", "628100000001", "",
+		"Yes", "No", entity.SeqStatusActive, "", "",
+		"2026-01-01", "2027-01-01", 12,
+		"Pending", "Net 30", 12000000, "",
+		"monthly", 10, 1200000, "IDR",
+		"", "Sample notes",
+	}
+	for range defs {
+		core = append(core, "")
+	}
+	return core
+}
+
+func intPtrStr(p *int) any {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+func floatPtrStr(p *float64) any {
+	if p == nil {
+		return ""
+	}
+	return *p
 }
 
 func boolStr(b bool) string {
@@ -419,6 +562,67 @@ func ptrIfNonZero64(v int64) *int64 {
 		return nil
 	}
 	return &v
+}
+
+// boolPtrIfSet returns nil for the zero false (so import keeps the column's
+// DB default) and a pointer otherwise. Used in ApplyApprovedImport to avoid
+// blasting "false" over rows where the operator never mapped a bot_active
+// column at all.
+func boolPtrIfSet(b bool) *bool {
+	if !b {
+		return nil
+	}
+	return &b
+}
+
+// nestedStringMap coerces a JSON-decoded map[string]any whose values are
+// themselves maps into the parser's int-keyed override shape. Used to read
+// cell_overrides from approval payloads.
+func nestedStringMap(v any) map[int]map[string]string {
+	outer, ok := v.(map[string]any)
+	if !ok || len(outer) == 0 {
+		return nil
+	}
+	out := make(map[int]map[string]string, len(outer))
+	for rowKey, raw := range outer {
+		n, err := strconv.Atoi(rowKey)
+		if err != nil {
+			continue
+		}
+		inner, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		row := make(map[string]string, len(inner))
+		for k, vv := range inner {
+			if s, ok := vv.(string); ok {
+				row[k] = s
+			}
+		}
+		if len(row) > 0 {
+			out[n] = row
+		}
+	}
+	return out
+}
+
+// stringMap coerces a JSON-decoded map[string]any into map[string]string,
+// silently dropping non-string values. Approval payloads are stored as
+// JSONB and rehydrate with `any` values.
+func stringMap(v any) (map[string]string, bool) {
+	m, ok := v.(map[string]any)
+	if !ok {
+		return nil, false
+	}
+	out := make(map[string]string, len(m))
+	for k, raw := range m {
+		s, isStr := raw.(string)
+		if !isStr {
+			continue
+		}
+		out[k] = s
+	}
+	return out, true
 }
 
 // PreviewImport runs a dry-run over parsed rows: normalizes company_id,
