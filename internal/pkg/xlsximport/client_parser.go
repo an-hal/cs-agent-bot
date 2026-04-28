@@ -17,9 +17,11 @@ type ClientImportRow struct {
 	// Core identity
 	CompanyID   string
 	CompanyName string
+	Stage       string // LEAD|PROSPECT|CLIENT|DORMANT (Phase B mapping path)
 
 	// Contact
 	PICName         string
+	PICNickname     string // Phase B
 	PICRole         string
 	PICWA           string
 	PICEmail        string
@@ -39,6 +41,12 @@ type ClientImportRow struct {
 	LastPaymentDate *time.Time
 	QuotationLink   string
 
+	// Generic billing model (Phase 5 / Phase B mapping path)
+	BillingPeriod string
+	Quantity      *int
+	UnitPrice     *float64
+	Currency      string
+
 	// Scores
 	NPSScore   int
 	UsageScore int
@@ -47,6 +55,10 @@ type ClientImportRow struct {
 	HCSize              string
 	PlanType            string
 	SequenceCS          string
+	SequenceStatus      string // Phase B
+	SnoozeUntil         *time.Time
+	SnoozeReason        string
+	RiskFlag            string // Phase B (separate from legacy Segment)
 	Renewed             bool
 	BotActive           bool
 	Blacklisted         bool
@@ -55,7 +67,7 @@ type ClientImportRow struct {
 	CrossSellRejected   bool
 	CrossSellResumeDate *time.Time
 	LastInteractionDate *time.Time
-	Segment             string // mapped from Risk Flag: High/Mid/Low
+	Segment             string // legacy: mapped from Risk Flag: High/Mid/Low
 	Notes               string
 
 	// Custom — populated when caller passes field definitions to

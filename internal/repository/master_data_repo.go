@@ -119,6 +119,7 @@ const masterDataColumns = `
     contract_start, contract_end, COALESCE(contract_months,0), days_to_expiry,
     COALESCE(payment_status,'Pending'), COALESCE(payment_terms,''),
     COALESCE(final_price,0)::bigint, last_payment_date,
+    COALESCE(billing_period,'monthly'), quantity, unit_price, COALESCE(currency,'IDR'),
     last_interaction_date, COALESCE(notes,''),
     COALESCE(custom_fields,'{}'::jsonb), created_at, updated_at`
 
@@ -140,6 +141,7 @@ func scanMasterData(scanner interface {
 		&m.ContractStart, &m.ContractEnd, &m.ContractMonths, &m.DaysToExpiry,
 		&m.PaymentStatus, &m.PaymentTerms,
 		&m.FinalPrice, &m.LastPaymentDate,
+		&m.BillingPeriod, &m.Quantity, &m.UnitPrice, &m.Currency,
 		&m.LastInteractionDate, &m.Notes,
 		&customRaw, &m.CreatedAt, &m.UpdatedAt,
 	)
@@ -319,13 +321,16 @@ func (r *masterDataRepo) Create(ctx context.Context, workspaceID string, m *enti
 		return nil, fmt.Errorf("marshal custom_fields: %w", err)
 	}
 
-	// We INSERT into the underlying clients table, not the view.
+	// Phase 6 split: clients holds CRM core; bot_active/sequence_status/snooze*
+	// live in client_message_state. We insert the core row, then upsert the
+	// companion message-state row so reads via the master_data view return the
+	// caller's intended values.
 	insertQ := `
 INSERT INTO clients (
     workspace_id, company_id, company_name, stage,
     pic_name, pic_nickname, pic_role, pic_wa, pic_email,
     owner_name, owner_wa, owner_telegram_id,
-    bot_active, blacklisted, sequence_status,
+    blacklisted,
     risk_flag_text, contract_start, contract_end, contract_months,
     payment_status, payment_terms, final_price, last_payment_date,
     notes, custom_fields,
@@ -334,11 +339,11 @@ INSERT INTO clients (
     $1::uuid, $2, $3, $4,
     NULLIF($5,''), NULLIF($6,''), NULLIF($7,''), $8, NULLIF($9,''),
     $10, NULLIF($11,''), $12,
-    $13, $14, $15,
-    $16, $17, $18, $19,
-    $20, NULLIF($21,''), $22, $23,
-    NULLIF($24,''), $25::jsonb,
-    COALESCE($17, NOW()::date)
+    $13,
+    $14, $15, $16, $17,
+    $18, NULLIF($19,''), $20, $21,
+    NULLIF($22,''), $23::jsonb,
+    COALESCE($15, NOW()::date)
 )
 RETURNING master_id::text`
 
@@ -347,13 +352,32 @@ RETURNING master_id::text`
 		workspaceID, m.CompanyID, m.CompanyName, m.Stage,
 		m.PICName, m.PICNickname, m.PICRole, m.PICWA, m.PICEmail,
 		m.OwnerName, m.OwnerWA, m.OwnerTelegramID,
-		m.BotActive, m.Blacklisted, m.SequenceStatus,
+		m.Blacklisted,
 		m.RiskFlag, m.ContractStart, m.ContractEnd, m.ContractMonths,
 		m.PaymentStatus, m.PaymentTerms, m.FinalPrice, m.LastPaymentDate,
 		m.Notes, string(cfRaw),
 	)
 	if err := row.Scan(&newID); err != nil {
 		return nil, fmt.Errorf("insert client: %w", err)
+	}
+
+	// Upsert companion message-state row. ON CONFLICT keeps the call idempotent
+	// in case a previous partial insert left a stale row.
+	if _, err := r.db.ExecContext(ctx, `
+INSERT INTO client_message_state (
+    master_id, workspace_id,
+    bot_active, sequence_status, snooze_until, snooze_reason
+) VALUES ($1::uuid, $2::uuid, $3, $4, $5, NULLIF($6,''))
+ON CONFLICT (master_id) DO UPDATE SET
+    bot_active = EXCLUDED.bot_active,
+    sequence_status = EXCLUDED.sequence_status,
+    snooze_until = EXCLUDED.snooze_until,
+    snooze_reason = EXCLUDED.snooze_reason,
+    updated_at = NOW()`,
+		newID, workspaceID,
+		m.BotActive, m.SequenceStatus, m.SnoozeUntil, m.SnoozeReason,
+	); err != nil {
+		return nil, fmt.Errorf("upsert client_message_state: %w", err)
 	}
 	return r.GetByID(ctx, workspaceID, newID)
 }
@@ -391,14 +415,31 @@ func (r *masterDataRepo) Patch(ctx context.Context, workspaceID, id string, patc
 	setStr("owner_name", patch.OwnerName)
 	setStr("owner_wa", patch.OwnerWA)
 	setStr("owner_telegram_id", patch.OwnerTelegramID)
-	setBool("bot_active", patch.BotActive)
-	setBool("blacklisted", patch.Blacklisted)
-	setStr("sequence_status", patch.SequenceStatus)
-	if patch.SnoozeUntil != nil {
-		upd = upd.Set("snooze_until", *patch.SnoozeUntil)
-		dirty = true
+	// bot_active/sequence_status/snooze_* now live in client_message_state.
+	// Collected here, applied after the clients UPDATE in a separate UPSERT so
+	// the patch is atomic-per-table and idempotent on missing companion rows.
+	cmsUpd := database.PSQL.Update("client_message_state").Where(sq.And{
+		sq.Expr("workspace_id::text = ?", workspaceID),
+		sq.Expr("master_id::text = ?", id),
+	})
+	cmsDirty := false
+	if patch.BotActive != nil {
+		cmsUpd = cmsUpd.Set("bot_active", *patch.BotActive)
+		cmsDirty = true
 	}
-	setStr("snooze_reason", patch.SnoozeReason)
+	if patch.SequenceStatus != nil {
+		cmsUpd = cmsUpd.Set("sequence_status", *patch.SequenceStatus)
+		cmsDirty = true
+	}
+	if patch.SnoozeUntil != nil {
+		cmsUpd = cmsUpd.Set("snooze_until", *patch.SnoozeUntil)
+		cmsDirty = true
+	}
+	if patch.SnoozeReason != nil {
+		cmsUpd = cmsUpd.Set("snooze_reason", *patch.SnoozeReason)
+		cmsDirty = true
+	}
+	setBool("blacklisted", patch.Blacklisted)
 	setStr("risk_flag_text", patch.RiskFlag)
 	if patch.ContractStart != nil {
 		upd = upd.Set("contract_start", *patch.ContractStart)
@@ -435,16 +476,43 @@ func (r *masterDataRepo) Patch(ctx context.Context, workspaceID, id string, patc
 		upd = upd.Set("custom_fields", sq.Expr("COALESCE(custom_fields,'{}'::jsonb) || ?::jsonb", string(raw)))
 		dirty = true
 	}
-	if !dirty {
+	if !dirty && !cmsDirty {
 		return r.GetByID(ctx, workspaceID, id)
 	}
 
-	query, args, err := upd.ToSql()
-	if err != nil {
-		return nil, fmt.Errorf("build patch: %w", err)
+	if dirty {
+		query, args, err := upd.ToSql()
+		if err != nil {
+			return nil, fmt.Errorf("build patch: %w", err)
+		}
+		if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
+			return nil, fmt.Errorf("exec patch: %w", err)
+		}
 	}
-	if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
-		return nil, fmt.Errorf("exec patch: %w", err)
+
+	if cmsDirty {
+		// Try UPDATE first; if no companion row exists yet (legacy data), insert
+		// one and re-apply. master_data view's COALESCE keeps reads safe even
+		// if cms is missing, but writes need an actual row.
+		query, args, err := cmsUpd.ToSql()
+		if err != nil {
+			return nil, fmt.Errorf("build cms patch: %w", err)
+		}
+		res, err := r.db.ExecContext(ctx, query, args...)
+		if err != nil {
+			return nil, fmt.Errorf("exec cms patch: %w", err)
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			if _, err := r.db.ExecContext(ctx,
+				`INSERT INTO client_message_state (master_id, workspace_id) VALUES ($1::uuid, $2::uuid) ON CONFLICT (master_id) DO NOTHING`,
+				id, workspaceID,
+			); err != nil {
+				return nil, fmt.Errorf("seed cms row: %w", err)
+			}
+			if _, err := r.db.ExecContext(ctx, query, args...); err != nil {
+				return nil, fmt.Errorf("retry cms patch: %w", err)
+			}
+		}
 	}
 	return r.GetByID(ctx, workspaceID, id)
 }

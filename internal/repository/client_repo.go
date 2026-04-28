@@ -63,7 +63,14 @@ func (r *clientRepo) withTimeout(ctx context.Context) (context.Context, context.
 // This constant is used for SELECT queries to avoid SELECT *.
 // Nullable columns that use Go pointer types (e.g. owner_wa, last_interaction_date) have no COALESCE.
 // Nullable columns that use Go value types still use COALESCE for zero-value defaults.
-const clientColumns = `company_id, company_name, pic_name, pic_wa, owner_name, owner_wa, owner_telegram_id, contract_months, contract_start, contract_end, activation_date, COALESCE(payment_status, 'Paid') as payment_status, COALESCE(bot_active, true) as bot_active, COALESCE(blacklisted, false) as blacklisted, COALESCE(sequence_cs, 'ACTIVE') as sequence_cs, COALESCE(checkin_replied, false) as checkin_replied, COALESCE(response_status, 'Pending') as response_status, COALESCE(pre14_sent, false) as pre14_sent, COALESCE(pre7_sent, false) as pre7_sent, COALESCE(pre3_sent, false) as pre3_sent, COALESCE(post1_sent, false) as post1_sent, COALESCE(post4_sent, false) as post4_sent, COALESCE(post8_sent, false) as post8_sent, COALESCE(post15_sent, false) as post15_sent, last_interaction_date, COALESCE(pic_email, '') as pic_email, COALESCE(pic_role, '') as pic_role, COALESCE(payment_terms, '') as payment_terms, COALESCE(final_price, 0) as final_price, last_payment_date, COALESCE(notes, '') as notes, created_at, COALESCE(feature_update_sent, false) as feature_update_sent, COALESCE(days_since_cs_last_sent, 0) as days_since_cs_last_sent, COALESCE(ae_assigned, false) as ae_assigned, COALESCE(backup_owner_telegram_id, '') as backup_owner_telegram_id, COALESCE(ae_telegram_id, '') as ae_telegram_id, COALESCE(workspace_id::text, '') as workspace_id`
+// clientColumns lists every field of entity.Client. Bot/CS state lives in
+// client_message_state (1:1 by master_id) since Phase 6, so the SELECT
+// LEFT JOINs that table to keep entity.Client backward-compatible.
+const clientColumns = `c.company_id, c.company_name, c.pic_name, COALESCE(c.pic_wa, '') as pic_wa, c.owner_name, c.owner_wa, COALESCE(c.owner_telegram_id, '') as owner_telegram_id, c.contract_months, c.contract_start, COALESCE(c.contract_end, '9999-12-31'::date) as contract_end, c.activation_date, COALESCE(c.payment_status, 'Paid') as payment_status, COALESCE(cms.bot_active, true) as bot_active, COALESCE(c.blacklisted, false) as blacklisted, COALESCE(cms.sequence_cs, 'ACTIVE') as sequence_cs, COALESCE(cms.checkin_replied, false) as checkin_replied, COALESCE(cms.response_status, 'Pending') as response_status, COALESCE(cms.pre14_sent, false) as pre14_sent, COALESCE(cms.pre7_sent, false) as pre7_sent, COALESCE(cms.pre3_sent, false) as pre3_sent, COALESCE(cms.post1_sent, false) as post1_sent, COALESCE(cms.post4_sent, false) as post4_sent, COALESCE(cms.post8_sent, false) as post8_sent, COALESCE(cms.post15_sent, false) as post15_sent, cms.last_interaction_date, COALESCE(c.pic_email, '') as pic_email, COALESCE(c.pic_role, '') as pic_role, COALESCE(c.payment_terms, '') as payment_terms, COALESCE(c.final_price, 0) as final_price, c.last_payment_date, COALESCE(c.notes, '') as notes, c.created_at, COALESCE(cms.feature_update_sent, false) as feature_update_sent, COALESCE(cms.days_since_cs_last_sent, 0) as days_since_cs_last_sent, COALESCE(c.ae_assigned, false) as ae_assigned, COALESCE(c.backup_owner_telegram_id, '') as backup_owner_telegram_id, COALESCE(c.ae_telegram_id, '') as ae_telegram_id, COALESCE(c.workspace_id::text, '') as workspace_id, COALESCE(c.billing_period, 'monthly') as billing_period, c.quantity, c.unit_price, COALESCE(c.currency, 'IDR') as currency`
+
+// clientFromClause is the standard FROM ... JOIN combo. Use as
+// `FROM ` + clientFromClause + ` WHERE ...`.
+const clientFromClause = `clients c LEFT JOIN client_message_state cms ON cms.master_id = c.master_id`
 
 // invoiceColumns lists every column read from the invoices table.
 const invoiceColumns = "invoice_id, company_id, due_date, amount, payment_status"
@@ -112,6 +119,10 @@ func scanClient(scanner interface {
 		&c.BackupOwnerTelegramID,
 		&c.AETelegramID,
 		&c.WorkspaceID,
+		&c.BillingPeriod,
+		&c.Quantity,
+		&c.UnitPrice,
+		&c.Currency,
 	)
 	if err != nil {
 		return nil, err
@@ -129,10 +140,11 @@ func (r *clientRepo) GetAll(ctx context.Context) ([]entity.Client, error) {
 
 	query, args, err := database.PSQL.
 		Select(clientColumns).
-		From("clients").
+		From("clients c").
+		LeftJoin("client_message_state cms ON cms.master_id = c.master_id").
 		Where(sq.And{
-			sq.Eq{"blacklisted": false},
-			sq.Eq{"bot_active": true},
+			sq.Eq{"c.blacklisted": false},
+			sq.Eq{"cms.bot_active": true},
 		}).
 		OrderBy("company_id").
 		ToSql()
@@ -171,8 +183,9 @@ func (r *clientRepo) GetByID(ctx context.Context, companyID string) (*entity.Cli
 
 	query, args, err := database.PSQL.
 		Select(clientColumns).
-		From("clients").
-		Where(sq.Eq{"company_id": companyID}).
+		From("clients c").
+		LeftJoin("client_message_state cms ON cms.master_id = c.master_id").
+		Where(sq.Eq{"c.company_id": companyID}).
 		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("build query GetByID: %w", err)
@@ -200,8 +213,9 @@ func (r *clientRepo) GetByWANumber(ctx context.Context, waNumber string) (*entit
 
 	query, args, err := database.PSQL.
 		Select(clientColumns).
-		From("clients").
-		Where(sq.Eq{"pic_wa": waNumber}).
+		From("clients c").
+		LeftJoin("client_message_state cms ON cms.master_id = c.master_id").
+		Where(sq.Eq{"c.pic_wa": waNumber}).
 		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("build query GetByWANumber: %w", err)
@@ -492,7 +506,7 @@ func (r *clientRepo) GetAllByWorkspace(ctx context.Context, workspaceSlug string
 	defer cancel()
 
 	query := fmt.Sprintf(
-		"SELECT %s FROM clients c WHERE c.blacklisted = false AND c.workspace_id = (SELECT id FROM workspaces WHERE slug = $1) ORDER BY c.company_id",
+		"SELECT %s FROM clients c LEFT JOIN client_message_state cms ON cms.master_id = c.master_id WHERE c.blacklisted = false AND c.workspace_id = (SELECT id FROM workspaces WHERE slug = $1) ORDER BY c.company_id",
 		clientColumns,
 	)
 
@@ -525,7 +539,7 @@ func (r *clientRepo) GetAllByWorkspaceIDs(ctx context.Context, workspaceIDs []st
 	defer cancel()
 
 	query := fmt.Sprintf(
-		"SELECT %s FROM clients c WHERE c.blacklisted = false AND c.workspace_id::text = ANY($1) ORDER BY c.company_id",
+		"SELECT %s FROM clients c LEFT JOIN client_message_state cms ON cms.master_id = c.master_id WHERE c.blacklisted = false AND c.workspace_id::text = ANY($1) ORDER BY c.company_id",
 		clientColumns,
 	)
 	rows, err := r.db.QueryContext(ctx, query, pq.Array(workspaceIDs))
@@ -586,9 +600,10 @@ func (r *clientRepo) FetchByFilter(ctx context.Context, filter entity.ClientFilt
 
 	query, args, err := database.PSQL.
 		Select(clientColumns).
-		From("clients").
+		From("clients c").
+		LeftJoin("client_message_state cms ON cms.master_id = c.master_id").
 		Where(where).
-		OrderBy("company_id").
+		OrderBy("c.company_id").
 		Limit(uint64(p.Limit)).
 		Offset(uint64(p.Offset)).
 		ToSql()
@@ -616,40 +631,42 @@ func (r *clientRepo) FetchByFilter(ctx context.Context, filter entity.ClientFilt
 	return clients, nil
 }
 
-// buildClientFilter constructs a sq.And condition for client queries with workspace and optional filters.
+// buildClientFilter constructs a sq.And condition for client queries with
+// workspace and optional filters. Columns prefixed with `c.` live on
+// `clients`; `cms.` columns live on `client_message_state` and require the
+// LEFT JOIN to be present in the FROM clause. `segment` and `plan_type`
+// filters are no-ops since those columns moved to custom_fields.
 func buildClientFilter(filter entity.ClientFilter) sq.And {
 	where := sq.And{
-		sq.Eq{"blacklisted": false},
+		sq.Eq{"c.blacklisted": false},
 	}
 	if len(filter.WorkspaceIDs) > 0 {
-		where = append(where, sq.Expr("workspace_id::text = ANY(?)", pq.Array(filter.WorkspaceIDs)))
+		where = append(where, sq.Expr("c.workspace_id::text = ANY(?)", pq.Array(filter.WorkspaceIDs)))
 	}
 	if filter.Search != "" {
 		pattern := "%" + filter.Search + "%"
 		where = append(where, sq.Or{
-			sq.ILike{"company_name": pattern},
-			sq.ILike{"pic_name": pattern},
-			sq.ILike{"pic_wa": pattern},
-			sq.ILike{"pic_email": pattern},
-			sq.ILike{"owner_name": pattern},
-			sq.ILike{"company_id": pattern},
+			sq.ILike{"c.company_name": pattern},
+			sq.ILike{"c.pic_name": pattern},
+			sq.ILike{"c.pic_wa": pattern},
+			sq.ILike{"c.pic_email": pattern},
+			sq.ILike{"c.owner_name": pattern},
+			sq.ILike{"c.company_id": pattern},
 		})
 	}
-	if filter.Segment != "" {
-		where = append(where, sq.Eq{"segment": filter.Segment})
-	}
 	if filter.PaymentStatus != "" {
-		where = append(where, sq.Eq{"payment_status": filter.PaymentStatus})
+		where = append(where, sq.Eq{"c.payment_status": filter.PaymentStatus})
 	}
 	if filter.SequenceCS != "" {
-		where = append(where, sq.Eq{"sequence_cs": filter.SequenceCS})
-	}
-	if filter.PlanType != "" {
-		where = append(where, sq.Eq{"plan_type": filter.PlanType})
+		where = append(where, sq.Eq{"cms.sequence_cs": filter.SequenceCS})
 	}
 	if filter.BotActive != nil {
-		where = append(where, sq.Eq{"bot_active": *filter.BotActive})
+		where = append(where, sq.Eq{"cms.bot_active": *filter.BotActive})
 	}
+	// Segment and PlanType moved to custom_fields. Use JSONB filter via
+	// trigger_rules / FE-side query if these are needed.
+	_ = filter.Segment
+	_ = filter.PlanType
 	return where
 }
 

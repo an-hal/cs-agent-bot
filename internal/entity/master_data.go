@@ -35,13 +35,18 @@ const (
 
 // Custom field types.
 const (
-	FieldTypeText    = "text"
-	FieldTypeNumber  = "number"
-	FieldTypeDate    = "date"
-	FieldTypeBoolean = "boolean"
-	FieldTypeSelect  = "select"
-	FieldTypeURL     = "url"
-	FieldTypeEmail   = "email"
+	FieldTypeText        = "text"
+	FieldTypeNumber      = "number"
+	FieldTypeDate        = "date"
+	FieldTypeBoolean     = "boolean"
+	FieldTypeSelect      = "select"
+	FieldTypeMultiSelect = "multi_select"
+	FieldTypeURL         = "url"
+	FieldTypeEmail       = "email"
+	// Phase 5 — generic-CRM types
+	FieldTypeMoney      = "money"      // {value: number, currency: ISO4217}
+	FieldTypePhone      = "phone"      // E.164 or local format
+	FieldTypePercentage = "percentage" // number 0-100, rendered with %
 )
 
 // MasterData is the dashboard-facing client record. It is read from the
@@ -82,6 +87,12 @@ type MasterData struct {
 	FinalPrice      int64      `json:"final_price"`
 	LastPaymentDate *time.Time `json:"last_payment_date,omitempty"`
 	Renewed         bool       `json:"renewed"`
+
+	// Generic billing model (Phase 5)
+	BillingPeriod string   `json:"billing_period"` // monthly|quarterly|annual|one_time|perpetual
+	Quantity      *int     `json:"quantity,omitempty"`
+	UnitPrice     *float64 `json:"unit_price,omitempty"`
+	Currency      string   `json:"currency"` // ISO 4217 code
 
 	LastInteractionDate *time.Time `json:"last_interaction_date,omitempty"`
 
