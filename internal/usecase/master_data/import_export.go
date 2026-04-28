@@ -467,14 +467,20 @@ func (u *usecase) Template(ctx context.Context, workspaceID string, w io.Writer)
 	return f.Write(w)
 }
 
-// CoreExportHeaders returns the canonical core column headers (exported for tests).
-// Order MUST stay aligned with coreExportValues and exampleRow.
+// CoreExportHeaders returns the canonical core column headers used by both
+// /clients/template (download) and /clients/export. Order MUST stay aligned
+// with coreExportValues, exampleRow, AND CoreFieldDefinitions in
+// import_schema.go — otherwise the wizard's schema view diverges from the
+// downloadable template, and a roundtrip of export → edit → import drops
+// data silently.
 func CoreExportHeaders() []string {
 	return []string{
 		"Company ID", "Company Name", "Stage",
+		"Industry", "Value Tier",
 		"PIC Name", "PIC Nickname", "PIC Role", "PIC WA", "PIC Email",
 		"Owner Name", "Owner WA", "Owner Telegram ID",
 		"Bot Active", "Blacklisted", "Sequence Status", "Snooze Until", "Snooze Reason",
+		"Risk Flag",
 		"Contract Start", "Contract End", "Contract Months",
 		"Payment Status", "Payment Terms", "Final Price", "Last Payment Date",
 		"Billing Period", "Quantity", "Unit Price", "Currency",
@@ -485,10 +491,12 @@ func CoreExportHeaders() []string {
 func coreExportValues(m *entity.MasterData) []any {
 	return []any{
 		m.CompanyID, m.CompanyName, m.Stage,
+		m.Industry, m.ValueTier,
 		m.PICName, m.PICNickname, m.PICRole, m.PICWA, m.PICEmail,
 		m.OwnerName, m.OwnerWA, m.OwnerTelegramID,
 		boolStr(m.BotActive), boolStr(m.Blacklisted), m.SequenceStatus,
 		formatNullableTime(m.SnoozeUntil), m.SnoozeReason,
+		m.RiskFlag,
 		formatNullableTime(m.ContractStart), formatNullableTime(m.ContractEnd), m.ContractMonths,
 		m.PaymentStatus, m.PaymentTerms, m.FinalPrice, formatNullableTime(m.LastPaymentDate),
 		m.BillingPeriod, intPtrStr(m.Quantity), floatPtrStr(m.UnitPrice), m.Currency,
@@ -501,9 +509,11 @@ func coreExportValues(m *entity.MasterData) []any {
 func exampleRow(defs []entity.CustomFieldDefinition) []any {
 	core := []any{
 		"DE-EXAMPLE", "PT Example", entity.StageLead,
+		"Retail", "MID",
 		"John Doe", "John", "Sales Manager", "628100000000", "john@example.com",
 		"Jane Owner", "628100000001", "",
 		"Yes", "No", entity.SeqStatusActive, "", "",
+		entity.RiskNone,
 		"2026-01-01", "2027-01-01", 12,
 		"Pending", "Net 30", 12000000, "",
 		"monthly", 10, 1200000, "IDR",
