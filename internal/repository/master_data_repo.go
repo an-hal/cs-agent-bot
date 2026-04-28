@@ -325,6 +325,9 @@ func (r *masterDataRepo) Create(ctx context.Context, workspaceID string, m *enti
 	// live in client_message_state. We insert the core row, then upsert the
 	// companion message-state row so reads via the master_data view return the
 	// caller's intended values.
+	// Phase 5 generic billing: persist billing_period/quantity/unit_price/
+	// currency in clients (defaults applied via COALESCE so an empty
+	// string/nil from the caller doesn't override the column default).
 	insertQ := `
 INSERT INTO clients (
     workspace_id, company_id, company_name, stage,
@@ -333,6 +336,7 @@ INSERT INTO clients (
     blacklisted,
     risk_flag_text, contract_start, contract_end, contract_months,
     payment_status, payment_terms, final_price, last_payment_date,
+    billing_period, quantity, unit_price, currency,
     notes, custom_fields,
     activation_date
 ) VALUES (
@@ -342,7 +346,8 @@ INSERT INTO clients (
     $13,
     $14, $15, $16, $17,
     $18, NULLIF($19,''), $20, $21,
-    NULLIF($22,''), $23::jsonb,
+    COALESCE(NULLIF($22,''), 'monthly'), $23, $24, COALESCE(NULLIF($25,''), 'IDR'),
+    NULLIF($26,''), $27::jsonb,
     COALESCE($15, NOW()::date)
 )
 RETURNING master_id::text`
@@ -355,27 +360,32 @@ RETURNING master_id::text`
 		m.Blacklisted,
 		m.RiskFlag, m.ContractStart, m.ContractEnd, m.ContractMonths,
 		m.PaymentStatus, m.PaymentTerms, m.FinalPrice, m.LastPaymentDate,
+		m.BillingPeriod, m.Quantity, m.UnitPrice, m.Currency,
 		m.Notes, string(cfRaw),
 	)
 	if err := row.Scan(&newID); err != nil {
 		return nil, fmt.Errorf("insert client: %w", err)
 	}
 
-	// Upsert companion message-state row. ON CONFLICT keeps the call idempotent
+	// Upsert companion message-state row with last_interaction_date so
+	// dashboard creates can seed it. ON CONFLICT keeps the call idempotent
 	// in case a previous partial insert left a stale row.
 	if _, err := r.db.ExecContext(ctx, `
 INSERT INTO client_message_state (
     master_id, workspace_id,
-    bot_active, sequence_status, snooze_until, snooze_reason
-) VALUES ($1::uuid, $2::uuid, $3, $4, $5, NULLIF($6,''))
+    bot_active, sequence_status, snooze_until, snooze_reason,
+    last_interaction_date
+) VALUES ($1::uuid, $2::uuid, $3, $4, $5, NULLIF($6,''), $7)
 ON CONFLICT (master_id) DO UPDATE SET
     bot_active = EXCLUDED.bot_active,
     sequence_status = EXCLUDED.sequence_status,
     snooze_until = EXCLUDED.snooze_until,
     snooze_reason = EXCLUDED.snooze_reason,
+    last_interaction_date = COALESCE(EXCLUDED.last_interaction_date, client_message_state.last_interaction_date),
     updated_at = NOW()`,
 		newID, workspaceID,
 		m.BotActive, m.SequenceStatus, m.SnoozeUntil, m.SnoozeReason,
+		m.LastInteractionDate,
 	); err != nil {
 		return nil, fmt.Errorf("upsert client_message_state: %w", err)
 	}
