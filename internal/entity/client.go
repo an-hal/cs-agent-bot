@@ -47,7 +47,26 @@ type Client struct {
 	BackupOwnerTelegramID string     `json:"backup_owner_telegram_id"`
 	AETelegramID          string     `json:"ae_telegram_id"`
 	WorkspaceID           string     `json:"workspace_id"`
+
+	// Generic billing model — covers monthly/quarterly/annual subscriptions,
+	// one-time fees, and perpetual licences across SaaS / job-board / hardware
+	// resale verticals. Existing rows default to billing_period='monthly',
+	// currency='IDR'; quantity & unit_price are nullable (use final_price as
+	// total contract value when these are not set).
+	BillingPeriod string   `json:"billing_period"` // 'monthly'|'quarterly'|'annual'|'one_time'|'perpetual'
+	Quantity      *int     `json:"quantity"`       // HC count, posting count, seats — nullable
+	UnitPrice     *float64 `json:"unit_price"`     // price per unit per period — nullable
+	Currency      string   `json:"currency"`       // ISO 4217, e.g. IDR, USD, SGD
 }
+
+// Billing period enum for clients.billing_period.
+const (
+	BillingMonthly   = "monthly"
+	BillingQuarterly = "quarterly"
+	BillingAnnual    = "annual"
+	BillingOneTime   = "one_time"
+	BillingPerpetual = "perpetual"
+)
 
 // ClientFilter holds optional filters for listing clients.
 type ClientFilter struct {

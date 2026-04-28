@@ -193,11 +193,11 @@ func (r *approvalRequestRepo) UpdateStatus(ctx context.Context, workspaceID, id,
 
 	res, err := r.db.ExecContext(ctx,
 		`UPDATE approval_requests
-            SET status = $1,
+            SET status = $1::text,
                 checker_email = NULLIF($2,''),
                 checker_at = NOW(),
                 rejection_reason = NULLIF($3,''),
-                applied_at = CASE WHEN $1 = 'approved' THEN NOW() ELSE applied_at END,
+                applied_at = CASE WHEN $1::text = 'approved' THEN NOW() ELSE applied_at END,
                 updated_at = NOW()
             WHERE workspace_id::text = $4 AND id::text = $5`,
 		newStatus, checkerEmail, reason, workspaceID, id,
