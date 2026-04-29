@@ -928,6 +928,40 @@ definitions:
       workspace_id:
         type: string
     type: object
+  entity.ClientContact:
+    properties:
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: string
+      is_primary:
+        type: boolean
+      kind:
+        description: internal | client_side
+        type: string
+      master_data_id:
+        type: string
+      name:
+        type: string
+      notes:
+        type: string
+      role:
+        description: SDR | BD | AE | Owner | HR | Finance | …
+        type: string
+      stage:
+        description: LEAD | PROSPECT | CLIENT | DORMANT
+        type: string
+      telegram_id:
+        type: string
+      updated_at:
+        type: string
+      wa:
+        type: string
+      workspace_id:
+        type: string
+    type: object
   entity.Collection:
     properties:
       created_at:
@@ -2854,6 +2888,48 @@ definitions:
       channel:
         type: string
       notes:
+        type: string
+    type: object
+  master_data.ContactCreateRequest:
+    properties:
+      email:
+        type: string
+      is_primary:
+        type: boolean
+      kind:
+        type: string
+      name:
+        type: string
+      notes:
+        type: string
+      role:
+        type: string
+      stage:
+        type: string
+      telegram_id:
+        type: string
+      wa:
+        type: string
+    type: object
+  master_data.ContactPatchRequest:
+    properties:
+      email:
+        type: string
+      is_primary:
+        type: boolean
+      kind:
+        type: string
+      name:
+        type: string
+      notes:
+        type: string
+      role:
+        type: string
+      stage:
+        type: string
+      telegram_id:
+        type: string
+      wa:
         type: string
     type: object
   master_data.CreateRequest:
@@ -6849,6 +6925,161 @@ paths:
       security:
       - BearerAuth: []
       summary: Patch a master data record (partial)
+      tags:
+      - MasterData
+  /api/master-data/clients/{id}/contacts:
+    get:
+      description: Returns every PIC for the client across all stages and kinds. Optional
+        filter by stage / kind / only_primary.
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Client master_id (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Filter: LEAD | PROSPECT | CLIENT | DORMANT'
+        in: query
+        name: stage
+        type: string
+      - description: 'Filter: internal | client_side'
+        in: query
+        name: kind
+        type: string
+      - description: If true, return only primary contacts
+        in: query
+        name: only_primary
+        type: boolean
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/entity.ClientContact'
+                  type: array
+              type: object
+      security:
+      - BearerAuth: []
+      summary: List contacts for a client (multi-stage)
+      tags:
+      - MasterData
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Client master_id (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Contact body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/master_data.ContactCreateRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ClientContact'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Add a PIC for a stage on a client
+      tags:
+      - MasterData
+  /api/master-data/clients/{id}/contacts/{contact_id}:
+    delete:
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Client master_id (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Contact id (UUID)
+        in: path
+        name: contact_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/response.StandardResponse'
+      security:
+      - BearerAuth: []
+      summary: Remove a contact (hard delete)
+      tags:
+      - MasterData
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Workspace ID
+        in: header
+        name: X-Workspace-ID
+        required: true
+        type: string
+      - description: Client master_id (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Contact id (UUID)
+        in: path
+        name: contact_id
+        required: true
+        type: string
+      - description: Patch body
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/master_data.ContactPatchRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.StandardResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/entity.ClientContact'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Edit a contact
       tags:
       - MasterData
   /api/master-data/clients/{id}/reactivate:
