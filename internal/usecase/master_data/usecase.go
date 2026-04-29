@@ -98,9 +98,13 @@ type Usecase interface {
 
 // CreateRequest is the payload for POST /master-data/clients.
 type CreateRequest struct {
-	CompanyID       string         `json:"company_id"`
-	CompanyName     string         `json:"company_name"`
-	Stage           string         `json:"stage"`
+	CompanyID   string `json:"company_id"`
+	CompanyName string `json:"company_name"`
+	Stage       string `json:"stage"`
+	// Migration 1300 — CRM-core demographics surfaced through Create/Patch
+	// so dashboards and the OneSchema wizard can populate them.
+	Industry        string         `json:"industry"`
+	ValueTier       string         `json:"value_tier"`
 	PICName         string         `json:"pic_name"`
 	PICNickname     string         `json:"pic_nickname"`
 	PICRole         string         `json:"pic_role"`
@@ -136,9 +140,12 @@ type CreateRequest struct {
 
 // PatchRequest is the payload for PUT /master-data/clients/{id}.
 type PatchRequest struct {
-	CompanyName     *string        `json:"company_name,omitempty"`
-	Stage           *string        `json:"stage,omitempty"`
-	PICName         *string        `json:"pic_name,omitempty"`
+	CompanyName *string `json:"company_name,omitempty"`
+	Stage       *string `json:"stage,omitempty"`
+	// Migration 1300 — CRM-core demographics, patchable.
+	Industry        *string `json:"industry,omitempty"`
+	ValueTier       *string `json:"value_tier,omitempty"`
+	PICName         *string `json:"pic_name,omitempty"`
 	PICNickname     *string        `json:"pic_nickname,omitempty"`
 	PICRole         *string        `json:"pic_role,omitempty"`
 	PICWA           *string        `json:"pic_wa,omitempty"`
@@ -279,10 +286,12 @@ func (u *usecase) createWithDefs(
 	}
 
 	m := &entity.MasterData{
-		CompanyID:       strings.TrimSpace(req.CompanyID),
-		CompanyName:     strings.TrimSpace(req.CompanyName),
-		Stage:           defaultIfEmpty(req.Stage, entity.StageLead),
-		PICName:         req.PICName,
+		CompanyID:   strings.TrimSpace(req.CompanyID),
+		CompanyName: strings.TrimSpace(req.CompanyName),
+		Stage:       defaultIfEmpty(req.Stage, entity.StageLead),
+		Industry:    req.Industry,
+		ValueTier:   req.ValueTier,
+		PICName:     req.PICName,
 		PICNickname:     req.PICNickname,
 		PICRole:         req.PICRole,
 		PICWA:           req.PICWA,
@@ -628,9 +637,11 @@ func boolOr(p *bool, def bool) bool {
 
 func patchRequestToRepo(req PatchRequest) repository.MasterDataPatch {
 	return repository.MasterDataPatch{
-		CompanyName:     req.CompanyName,
-		Stage:           req.Stage,
-		PICName:         req.PICName,
+		CompanyName: req.CompanyName,
+		Stage:       req.Stage,
+		Industry:    req.Industry,
+		ValueTier:   req.ValueTier,
+		PICName:     req.PICName,
 		PICNickname:     req.PICNickname,
 		PICRole:         req.PICRole,
 		PICWA:           req.PICWA,

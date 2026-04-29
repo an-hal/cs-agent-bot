@@ -149,6 +149,8 @@ func (r *clientRepo) GetAll(ctx context.Context) ([]entity.Client, error) {
 		Select(clientColumns).
 		From("clients c").
 		LeftJoin("client_message_state cms ON cms.master_id = c.master_id").
+		From("clients c").
+		LeftJoin("client_message_state cms ON cms.master_id = c.master_id").
 		Where(sq.And{
 			sq.Eq{"c.blacklisted": false},
 			sq.Eq{"cms.bot_active": true},
@@ -193,6 +195,9 @@ func (r *clientRepo) GetByID(ctx context.Context, companyID string) (*entity.Cli
 		From("clients c").
 		LeftJoin("client_message_state cms ON cms.master_id = c.master_id").
 		Where(sq.Eq{"c.company_id": companyID}).
+		From("clients c").
+		LeftJoin("client_message_state cms ON cms.master_id = c.master_id").
+		Where(sq.Eq{"c.company_id": companyID}).
 		ToSql()
 	if err != nil {
 		return nil, fmt.Errorf("build query GetByID: %w", err)
@@ -220,6 +225,9 @@ func (r *clientRepo) GetByWANumber(ctx context.Context, waNumber string) (*entit
 
 	query, args, err := database.PSQL.
 		Select(clientColumns).
+		From("clients c").
+		LeftJoin("client_message_state cms ON cms.master_id = c.master_id").
+		Where(sq.Eq{"c.pic_wa": waNumber}).
 		From("clients c").
 		LeftJoin("client_message_state cms ON cms.master_id = c.master_id").
 		Where(sq.Eq{"c.pic_wa": waNumber}).
@@ -559,7 +567,10 @@ func (r *clientRepo) FetchByFilter(ctx context.Context, filter entity.ClientFilt
 		Select(clientColumns).
 		From("clients c").
 		LeftJoin("client_message_state cms ON cms.master_id = c.master_id").
+		From("clients c").
+		LeftJoin("client_message_state cms ON cms.master_id = c.master_id").
 		Where(where).
+		OrderBy("c.company_id").
 		OrderBy("c.company_id").
 		Limit(uint64(p.Limit)).
 		Offset(uint64(p.Offset)).
@@ -593,16 +604,28 @@ func (r *clientRepo) FetchByFilter(ctx context.Context, filter entity.ClientFilt
 // `clients`; `cms.` columns live on `client_message_state` and require the
 // LEFT JOIN to be present in the FROM clause. `segment` and `plan_type`
 // filters are no-ops since those columns moved to custom_fields.
+// buildClientFilter constructs a sq.And condition for client queries with
+// workspace and optional filters. Columns prefixed with `c.` live on
+// `clients`; `cms.` columns live on `client_message_state` and require the
+// LEFT JOIN to be present in the FROM clause. `segment` and `plan_type`
+// filters are no-ops since those columns moved to custom_fields.
 func buildClientFilter(filter entity.ClientFilter) sq.And {
 	where := sq.And{
 		sq.Eq{"c.blacklisted": false},
 	}
 	if len(filter.WorkspaceIDs) > 0 {
 		where = append(where, sq.Expr("c.workspace_id::text = ANY(?)", pq.Array(filter.WorkspaceIDs)))
+		where = append(where, sq.Expr("c.workspace_id::text = ANY(?)", pq.Array(filter.WorkspaceIDs)))
 	}
 	if filter.Search != "" {
 		pattern := "%" + filter.Search + "%"
 		where = append(where, sq.Or{
+			sq.ILike{"c.company_name": pattern},
+			sq.ILike{"c.pic_name": pattern},
+			sq.ILike{"c.pic_wa": pattern},
+			sq.ILike{"c.pic_email": pattern},
+			sq.ILike{"c.owner_name": pattern},
+			sq.ILike{"c.company_id": pattern},
 			sq.ILike{"c.company_name": pattern},
 			sq.ILike{"c.pic_name": pattern},
 			sq.ILike{"c.pic_wa": pattern},
@@ -616,6 +639,7 @@ func buildClientFilter(filter entity.ClientFilter) sq.And {
 	}
 	if filter.PaymentStatus != "" {
 		where = append(where, sq.Eq{"c.payment_status": filter.PaymentStatus})
+		where = append(where, sq.Eq{"c.payment_status": filter.PaymentStatus})
 	}
 	if filter.SequenceCS != "" {
 		where = append(where, sq.Eq{"cms.sequence_cs": filter.SequenceCS})
@@ -625,7 +649,12 @@ func buildClientFilter(filter entity.ClientFilter) sq.And {
 	}
 	if filter.BotActive != nil {
 		where = append(where, sq.Eq{"cms.bot_active": *filter.BotActive})
+		where = append(where, sq.Eq{"cms.bot_active": *filter.BotActive})
 	}
+	// Segment and PlanType moved to custom_fields. Use JSONB filter via
+	// trigger_rules / FE-side query if these are needed.
+	_ = filter.Segment
+	_ = filter.PlanType
 	// Segment and PlanType moved to custom_fields. Use JSONB filter via
 	// trigger_rules / FE-side query if these are needed.
 	_ = filter.Segment

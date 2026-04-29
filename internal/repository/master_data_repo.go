@@ -41,6 +41,8 @@ type MasterDataRepository interface {
 type MasterDataPatch struct {
 	CompanyName     *string
 	Stage           *string
+	Industry        *string // Migration 1300
+	ValueTier       *string // Migration 1300
 	PICName         *string
 	PICNickname     *string
 	PICRole         *string
@@ -69,13 +71,13 @@ type MasterDataPatch struct {
 
 // MasterDataStats is the response shape for /master-data/stats.
 type MasterDataStats struct {
-	Total           int64            `json:"total"`
-	ByStage         map[string]int64 `json:"by_stage"`
-	TotalRevenue    int64            `json:"total_revenue"`
-	HighRisk        int64            `json:"high_risk"`
-	OverduePayment  int64            `json:"overdue_payment"`
-	Expiring30d     int64            `json:"expiring_30d"`
-	BotActiveCount  int64            `json:"bot_active"`
+	Total          int64            `json:"total"`
+	ByStage        map[string]int64 `json:"by_stage"`
+	TotalRevenue   int64            `json:"total_revenue"`
+	HighRisk       int64            `json:"high_risk"`
+	OverduePayment int64            `json:"overdue_payment"`
+	Expiring30d    int64            `json:"expiring_30d"`
+	BotActiveCount int64            `json:"bot_active"`
 }
 
 // QueryCondition is one row of the flexible workflow query DSL.
@@ -110,8 +112,12 @@ func (r *masterDataRepo) withTimeout(ctx context.Context) (context.Context, cont
 	return ctx, func() {}
 }
 
+// masterDataColumns is the canonical SELECT list for the master_data view.
+// Order MUST match scanMasterData's positional Scan arguments exactly.
+// Updated by Migration 1300 to expose industry + value_tier (CRM core).
 const masterDataColumns = `
     id::text, workspace_id::text, company_id, company_name, stage,
+    COALESCE(industry,''), COALESCE(value_tier,''),
     COALESCE(pic_name,''), COALESCE(pic_nickname,''), COALESCE(pic_role,''), COALESCE(pic_wa,''), COALESCE(pic_email,''),
     COALESCE(owner_name,''), COALESCE(owner_wa,''), COALESCE(owner_telegram_id,''),
     bot_active, blacklisted, COALESCE(sequence_status,'ACTIVE'), snooze_until, COALESCE(snooze_reason,''),
@@ -127,13 +133,12 @@ func scanMasterData(scanner interface {
 	Scan(dest ...interface{}) error
 }) (*entity.MasterData, error) {
 	var (
-		m            entity.MasterData
-		customRaw    []byte
-		contractMon  sql.NullInt32
+		m         entity.MasterData
+		customRaw []byte
 	)
-	_ = contractMon
 	err := scanner.Scan(
 		&m.ID, &m.WorkspaceID, &m.CompanyID, &m.CompanyName, &m.Stage,
+		&m.Industry, &m.ValueTier,
 		&m.PICName, &m.PICNickname, &m.PICRole, &m.PICWA, &m.PICEmail,
 		&m.OwnerName, &m.OwnerWA, &m.OwnerTelegramID,
 		&m.BotActive, &m.Blacklisted, &m.SequenceStatus, &m.SnoozeUntil, &m.SnoozeReason,
@@ -325,40 +330,40 @@ func (r *masterDataRepo) Create(ctx context.Context, workspaceID string, m *enti
 	// live in client_message_state. We insert the core row, then upsert the
 	// companion message-state row so reads via the master_data view return the
 	// caller's intended values.
-	// Phase 5 generic billing: persist billing_period/quantity/unit_price/
-	// currency in clients (defaults applied via COALESCE so an empty
-	// string/nil from the caller doesn't override the column default).
+	// Migration 1100: clients holds CRM-portable + product-context fields only.
+	// Bot-state (bot_active, blacklisted, risk_flag, owner_telegram_id, etc.)
+	// goes to client_message_state via the upsert below.
 	insertQ := `
 INSERT INTO clients (
     workspace_id, company_id, company_name, stage,
+    industry, value_tier,
     pic_name, pic_nickname, pic_role, pic_wa, pic_email,
-    owner_name, owner_wa, owner_telegram_id,
-    blacklisted,
-    risk_flag_text, contract_start, contract_end, contract_months,
+    owner_name, owner_wa,
+    contract_start, contract_end, contract_months,
     payment_status, payment_terms, final_price, last_payment_date,
     billing_period, quantity, unit_price, currency,
     notes, custom_fields,
     activation_date
 ) VALUES (
     $1::uuid, $2, $3, $4,
-    NULLIF($5,''), NULLIF($6,''), NULLIF($7,''), $8, NULLIF($9,''),
-    $10, NULLIF($11,''), $12,
-    $13,
-    $14, $15, $16, $17,
-    $18, NULLIF($19,''), $20, $21,
-    COALESCE(NULLIF($22,''), 'monthly'), $23, $24, COALESCE(NULLIF($25,''), 'IDR'),
-    NULLIF($26,''), $27::jsonb,
-    COALESCE($15, NOW()::date)
+    NULLIF($5,''), NULLIF($6,''),
+    NULLIF($7,''), NULLIF($8,''), NULLIF($9,''), $10, NULLIF($11,''),
+    $12, NULLIF($13,''),
+    $14, $15, $16,
+    $17, NULLIF($18,''), $19, $20,
+    COALESCE(NULLIF($21,''), 'monthly'), $22, $23, COALESCE(NULLIF($24,''), 'IDR'),
+    NULLIF($25,''), $26::jsonb,
+    COALESCE($14, NOW()::date)
 )
 RETURNING master_id::text`
 
 	var newID string
 	row := r.db.QueryRowContext(ctx, insertQ,
 		workspaceID, m.CompanyID, m.CompanyName, m.Stage,
+		m.Industry, m.ValueTier,
 		m.PICName, m.PICNickname, m.PICRole, m.PICWA, m.PICEmail,
-		m.OwnerName, m.OwnerWA, m.OwnerTelegramID,
-		m.Blacklisted,
-		m.RiskFlag, m.ContractStart, m.ContractEnd, m.ContractMonths,
+		m.OwnerName, m.OwnerWA,
+		m.ContractStart, m.ContractEnd, m.ContractMonths,
 		m.PaymentStatus, m.PaymentTerms, m.FinalPrice, m.LastPaymentDate,
 		m.BillingPeriod, m.Quantity, m.UnitPrice, m.Currency,
 		m.Notes, string(cfRaw),
@@ -367,24 +372,35 @@ RETURNING master_id::text`
 		return nil, fmt.Errorf("insert client: %w", err)
 	}
 
-	// Upsert companion message-state row with last_interaction_date so
-	// dashboard creates can seed it. ON CONFLICT keeps the call idempotent
-	// in case a previous partial insert left a stale row.
+	// Upsert companion message-state row. blacklisted / risk_flag /
+	// owner_telegram_id were relocated here in migration 1100; they used to
+	// live on clients. ON CONFLICT keeps the call idempotent if a previous
+	// partial insert left a stale row.
 	if _, err := r.db.ExecContext(ctx, `
 INSERT INTO client_message_state (
     master_id, workspace_id,
     bot_active, sequence_status, snooze_until, snooze_reason,
+    blacklisted, risk_flag, owner_telegram_id,
     last_interaction_date
-) VALUES ($1::uuid, $2::uuid, $3, $4, $5, NULLIF($6,''), $7)
+) VALUES (
+    $1::uuid, $2::uuid,
+    $3, $4, $5, NULLIF($6,''),
+    $7, COALESCE(NULLIF($8,''), 'None'), NULLIF($9,''),
+    $10
+)
 ON CONFLICT (master_id) DO UPDATE SET
     bot_active = EXCLUDED.bot_active,
     sequence_status = EXCLUDED.sequence_status,
     snooze_until = EXCLUDED.snooze_until,
     snooze_reason = EXCLUDED.snooze_reason,
+    blacklisted = EXCLUDED.blacklisted,
+    risk_flag = EXCLUDED.risk_flag,
+    owner_telegram_id = COALESCE(EXCLUDED.owner_telegram_id, client_message_state.owner_telegram_id),
     last_interaction_date = COALESCE(EXCLUDED.last_interaction_date, client_message_state.last_interaction_date),
     updated_at = NOW()`,
 		newID, workspaceID,
 		m.BotActive, m.SequenceStatus, m.SnoozeUntil, m.SnoozeReason,
+		m.Blacklisted, m.RiskFlag, m.OwnerTelegramID,
 		m.LastInteractionDate,
 	); err != nil {
 		return nil, fmt.Errorf("upsert client_message_state: %w", err)
@@ -409,14 +425,10 @@ func (r *masterDataRepo) Patch(ctx context.Context, workspaceID, id string, patc
 			dirty = true
 		}
 	}
-	setBool := func(col string, p *bool) {
-		if p != nil {
-			upd = upd.Set(col, *p)
-			dirty = true
-		}
-	}
 	setStr("company_name", patch.CompanyName)
 	setStr("stage", patch.Stage)
+	setStr("industry", patch.Industry)
+	setStr("value_tier", patch.ValueTier)
 	setStr("pic_name", patch.PICName)
 	setStr("pic_nickname", patch.PICNickname)
 	setStr("pic_role", patch.PICRole)
@@ -424,10 +436,11 @@ func (r *masterDataRepo) Patch(ctx context.Context, workspaceID, id string, patc
 	setStr("pic_email", patch.PICEmail)
 	setStr("owner_name", patch.OwnerName)
 	setStr("owner_wa", patch.OwnerWA)
-	setStr("owner_telegram_id", patch.OwnerTelegramID)
-	// bot_active/sequence_status/snooze_* now live in client_message_state.
-	// Collected here, applied after the clients UPDATE in a separate UPSERT so
-	// the patch is atomic-per-table and idempotent on missing companion rows.
+	// Bot-state fields (Migration 1100): bot_active/sequence_status/snooze_*
+	// AND blacklisted/risk_flag/owner_telegram_id all live in
+	// client_message_state. Collected here, applied after the clients UPDATE
+	// in a separate UPSERT so the patch is atomic-per-table and idempotent on
+	// missing companion rows.
 	cmsUpd := database.PSQL.Update("client_message_state").Where(sq.And{
 		sq.Expr("workspace_id::text = ?", workspaceID),
 		sq.Expr("master_id::text = ?", id),
@@ -449,8 +462,18 @@ func (r *masterDataRepo) Patch(ctx context.Context, workspaceID, id string, patc
 		cmsUpd = cmsUpd.Set("snooze_reason", *patch.SnoozeReason)
 		cmsDirty = true
 	}
-	setBool("blacklisted", patch.Blacklisted)
-	setStr("risk_flag_text", patch.RiskFlag)
+	if patch.Blacklisted != nil {
+		cmsUpd = cmsUpd.Set("blacklisted", *patch.Blacklisted)
+		cmsDirty = true
+	}
+	if patch.RiskFlag != nil {
+		cmsUpd = cmsUpd.Set("risk_flag", *patch.RiskFlag)
+		cmsDirty = true
+	}
+	if patch.OwnerTelegramID != nil {
+		cmsUpd = cmsUpd.Set("owner_telegram_id", *patch.OwnerTelegramID)
+		cmsDirty = true
+	}
 	if patch.ContractStart != nil {
 		upd = upd.Set("contract_start", *patch.ContractStart)
 		dirty = true

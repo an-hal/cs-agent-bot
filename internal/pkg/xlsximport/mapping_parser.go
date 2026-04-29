@@ -57,6 +57,8 @@ var coreFieldType = map[string]string{
 	"company_id":            "text",
 	"company_name":          "text",
 	"stage":                 "enum",
+	"industry":              "text",
+	"value_tier":            "enum",
 	"pic_name":              "text",
 	"pic_nickname":          "text",
 	"pic_role":              "text",
@@ -94,6 +96,7 @@ var (
 	enumSequenceStatus = []string{"ACTIVE", "PAUSED", "NURTURE", "NURTURE_POOL", "SNOOZED", "DORMANT"}
 	enumRiskFlag       = []string{"None", "Low", "Mid", "High"}
 	enumBillingPeriod  = []string{"monthly", "quarterly", "annual", "one_time", "perpetual"}
+	enumValueTier      = []string{"HIGH", "MID", "LOW"} // Migration 1300
 )
 
 func enumOptionsFor(targetKey string) []string {
@@ -106,6 +109,8 @@ func enumOptionsFor(targetKey string) []string {
 		return enumRiskFlag
 	case "billing_period":
 		return enumBillingPeriod
+	case "value_tier":
+		return enumValueTier
 	}
 	return nil
 }
@@ -194,6 +199,8 @@ func ParseClientSheetWithMapping(
 			CompanyID:           ctx.text("company_id", 20, true),
 			CompanyName:         ctx.text("company_name", 0, true),
 			Stage:               ctx.enum("stage", enumStage),
+			Industry:            ctx.text("industry", 100, false),
+			ValueTier:           ctx.enum("value_tier", enumValueTier),
 			PICName:             ctx.text("pic_name", 0, true),
 			PICNickname:         ctx.text("pic_nickname", 0, false),
 			PICRole:             ctx.text("pic_role", 0, false),
