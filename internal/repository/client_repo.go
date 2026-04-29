@@ -64,19 +64,19 @@ func (r *clientRepo) withTimeout(ctx context.Context) (context.Context, context.
 // bot_active and sequence_cs live in client_message_state (joined as cms); everything
 // else comes from clients (aliased c).
 const clientColumns = `c.company_id, c.company_name, c.pic_name, COALESCE(c.pic_wa, '') as pic_wa, ` +
-	`c.owner_name, c.owner_wa, COALESCE(c.owner_telegram_id, '') as owner_telegram_id, ` +
+	`c.owner_name, c.owner_wa, COALESCE(cms.owner_telegram_id, '') as owner_telegram_id, ` +
 	`c.contract_months, c.contract_start, COALESCE(c.contract_end, '9999-12-31'::date) as contract_end, ` +
 	`c.activation_date, COALESCE(c.payment_status, 'Paid') as payment_status, ` +
 	`COALESCE(cms.bot_active, true) as bot_active, ` +
-	`COALESCE(c.blacklisted, false) as blacklisted, ` +
+	`COALESCE(cms.blacklisted, false) as blacklisted, ` +
 	`COALESCE(cms.sequence_cs, 'ACTIVE') as sequence_cs, ` +
 	`COALESCE(c.pic_email, '') as pic_email, COALESCE(c.pic_role, '') as pic_role, ` +
 	`COALESCE(c.payment_terms, '') as payment_terms, ` +
 	`COALESCE(c.final_price, 0) as final_price, c.last_payment_date, ` +
 	`COALESCE(c.notes, '') as notes, c.created_at, ` +
-	`COALESCE(c.ae_assigned, false) as ae_assigned, ` +
-	`COALESCE(c.backup_owner_telegram_id, '') as backup_owner_telegram_id, ` +
-	`COALESCE(c.ae_telegram_id, '') as ae_telegram_id, ` +
+	`COALESCE(cms.ae_assigned, false) as ae_assigned, ` +
+	`COALESCE(cms.backup_owner_telegram_id, '') as backup_owner_telegram_id, ` +
+	`COALESCE(cms.ae_telegram_id, '') as ae_telegram_id, ` +
 	`COALESCE(c.workspace_id::text, '') as workspace_id, ` +
 	`COALESCE(c.custom_fields, '{}') as custom_fields, ` +
 	`COALESCE(c.billing_period, 'monthly') as billing_period, c.quantity, c.unit_price, ` +
@@ -152,7 +152,7 @@ func (r *clientRepo) GetAll(ctx context.Context) ([]entity.Client, error) {
 		From("clients c").
 		LeftJoin("client_message_state cms ON cms.master_id = c.master_id").
 		Where(sq.And{
-			sq.Eq{"c.blacklisted": false},
+			sq.Eq{"cms.blacklisted": false},
 			sq.Eq{"cms.bot_active": true},
 		}).
 		OrderBy("company_id").
@@ -471,7 +471,7 @@ func (r *clientRepo) GetAllByWorkspace(ctx context.Context, workspaceSlug string
 	defer cancel()
 
 	query := fmt.Sprintf(
-		"SELECT %s FROM clients c LEFT JOIN client_message_state cms ON cms.master_id = c.master_id WHERE c.blacklisted = false AND c.workspace_id = (SELECT id FROM workspaces WHERE slug = $1) ORDER BY c.company_id",
+		"SELECT %s FROM clients c LEFT JOIN client_message_state cms ON cms.master_id = c.master_id WHERE cms.blacklisted = false AND c.workspace_id = (SELECT id FROM workspaces WHERE slug = $1) ORDER BY c.company_id",
 		clientColumns,
 	)
 
@@ -504,7 +504,7 @@ func (r *clientRepo) GetAllByWorkspaceIDs(ctx context.Context, workspaceIDs []st
 	defer cancel()
 
 	query := fmt.Sprintf(
-		"SELECT %s FROM clients c LEFT JOIN client_message_state cms ON cms.master_id = c.master_id WHERE c.blacklisted = false AND c.workspace_id::text = ANY($1) ORDER BY c.company_id",
+		"SELECT %s FROM clients c LEFT JOIN client_message_state cms ON cms.master_id = c.master_id WHERE cms.blacklisted = false AND c.workspace_id::text = ANY($1) ORDER BY c.company_id",
 		clientColumns,
 	)
 	rows, err := r.db.QueryContext(ctx, query, pq.Array(workspaceIDs))
@@ -611,7 +611,7 @@ func (r *clientRepo) FetchByFilter(ctx context.Context, filter entity.ClientFilt
 // filters are no-ops since those columns moved to custom_fields.
 func buildClientFilter(filter entity.ClientFilter) sq.And {
 	where := sq.And{
-		sq.Eq{"c.blacklisted": false},
+		sq.Eq{"cms.blacklisted": false},
 	}
 	if len(filter.WorkspaceIDs) > 0 {
 		where = append(where, sq.Expr("c.workspace_id::text = ANY(?)", pq.Array(filter.WorkspaceIDs)))
