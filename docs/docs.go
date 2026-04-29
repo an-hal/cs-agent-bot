@@ -4983,18 +4983,6 @@ const docTemplate = `{
                         "description": "JSON-encoded {source_column: target_key} for OneSchema-style mapping",
                         "name": "mapping",
                         "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Sheet name when using mapping (defaults to template sheet)",
-                        "name": "sheet_name",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "JSON-encoded {source_column: target_key} for OneSchema-style mapping",
-                        "name": "mapping",
-                        "in": "formData"
                     }
                 ],
                 "responses": {
@@ -5055,18 +5043,6 @@ const docTemplate = `{
                         "name": "mode",
                         "in": "formData",
                         "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Sheet name when using mapping",
-                        "name": "sheet_name",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "JSON-encoded {source_column: target_key} for OneSchema-style mapping",
-                        "name": "mapping",
-                        "in": "formData"
                     },
                     {
                         "type": "string",
@@ -5644,352 +5620,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/response.StandardResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/master-data/import/detect": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Inspects the uploaded file and returns sheet list, headers, sample rows, and a suggested source→target mapping. FE uses this to bootstrap the mapping wizard.",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "MasterData"
-                ],
-                "summary": "Detect headers + suggest column mapping from uploaded xlsx",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Workspace ID",
-                        "name": "X-Workspace-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "Excel file",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.StandardResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/master_data.ImportDetectResult"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/master-data/import/schema": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns core fields + workspace custom fields with type/required/options metadata so FE can render a column-mapping picker.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "MasterData"
-                ],
-                "summary": "Get import target schema (OneSchema-style)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Workspace ID",
-                        "name": "X-Workspace-ID",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.StandardResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/master_data.ImportSchema"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/master-data/import/sessions": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Persists file + mapping + initial parse so the maker can fix bad cells incrementally before submitting an approval. Same multipart shape as /import but stashes everything server-side.",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "MasterData"
-                ],
-                "summary": "Create wizard import session (Phase C)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Workspace ID",
-                        "name": "X-Workspace-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "Excel file",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "add_new|update_existing (default add_new)",
-                        "name": "mode",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Sheet name (defaults to first sheet)",
-                        "name": "sheet_name",
-                        "in": "formData"
-                    },
-                    {
-                        "type": "string",
-                        "description": "JSON-encoded {source_column: target_key}",
-                        "name": "mapping",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.StandardResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/master_data.SessionPreview"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/master-data/import/sessions/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "MasterData"
-                ],
-                "summary": "Get wizard import session state",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Workspace ID",
-                        "name": "X-Workspace-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Session ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.StandardResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/master_data.SessionPreview"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/master-data/import/sessions/{id}/cell": {
-            "patch": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Upserts a per-cell override and returns refreshed preview so FE can re-render. Use to fix invalid values without re-uploading the file.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "MasterData"
-                ],
-                "summary": "Edit one cell in a wizard import session",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Workspace ID",
-                        "name": "X-Workspace-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Session ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Cell patch (row is 1-based; row 1 is header)",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/master_data.PatchCellInput"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.StandardResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/master_data.SessionPreview"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/api/master-data/import/sessions/{id}/submit": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "MasterData"
-                ],
-                "summary": "Submit a wizard import session as an approval",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Workspace ID",
-                        "name": "X-Workspace-ID",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Session ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "202": {
-                        "description": "Accepted",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/response.StandardResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/entity.ApprovalRequest"
-                                        }
-                                    }
-                                }
-                            ]
                         }
                     }
                 }
@@ -12966,10 +12596,6 @@ const docTemplate = `{
                     "description": "Generic billing model — covers monthly/quarterly/annual subscriptions,\none-time fees, and perpetual licences across SaaS / job-board / hardware\nresale verticals. Existing rows default to billing_period='monthly',\ncurrency='IDR'; quantity \u0026 unit_price are nullable (use final_price as\ntotal contract value when these are not set).",
                     "type": "string"
                 },
-                "billing_period": {
-                    "description": "Generic billing model — covers monthly/quarterly/annual subscriptions,\none-time fees, and perpetual licences across SaaS / job-board / hardware\nresale verticals. Existing rows default to billing_period='monthly',\ncurrency='IDR'; quantity \u0026 unit_price are nullable (use final_price as\ntotal contract value when these are not set).",
-                    "type": "string"
-                },
                 "blacklisted": {
                     "type": "boolean"
                 },
@@ -12997,12 +12623,6 @@ const docTemplate = `{
                 "currency": {
                     "description": "ISO 4217, e.g. IDR, USD, SGD",
                     "type": "string"
-                "currency": {
-                    "description": "ISO 4217, e.g. IDR, USD, SGD",
-                    "type": "string"
-                },
-                "days_since_cs_last_sent": {
-                    "type": "integer"
                 },
                 "custom_fields": {
                     "description": "CustomFields holds values migrated from dropped native columns\n(segment, plan_type, nps_score, usage_score, hc_size, renewed,\nrejected, quotation_link, cross_sell_*). Use GetCustomField() to read.",
@@ -13050,20 +12670,12 @@ const docTemplate = `{
                     "description": "HC count, posting count, seats — nullable",
                     "type": "integer"
                 },
-                "quantity": {
-                    "description": "HC count, posting count, seats — nullable",
-                    "type": "integer"
-                },
                 "response_status": {
                     "description": "populated from conversation_states at runtime",
                     "type": "string"
                 },
                 "sequence_cs": {
                     "type": "string"
-                },
-                "unit_price": {
-                    "description": "price per unit per period — nullable",
-                    "type": "number"
                 },
                 "unit_price": {
                     "description": "price per unit per period — nullable",
@@ -13887,64 +13499,6 @@ const docTemplate = `{
                 }
             }
         },
-        "entity.ImportSession": {
-            "type": "object",
-            "properties": {
-                "approval_id": {
-                    "type": "string"
-                },
-                "cell_overrides": {
-                    "description": "{row_num_str: {target_key: corrected_value}}",
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "object",
-                        "additionalProperties": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "created_by": {
-                    "type": "string"
-                },
-                "expires_at": {
-                    "type": "string"
-                },
-                "file_b64": {
-                    "description": "omitempty so list responses don't carry full payload",
-                    "type": "string"
-                },
-                "file_name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "mapping": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "mode": {
-                    "type": "string"
-                },
-                "sheet_name": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "workspace_id": {
-                    "type": "string"
-                }
-            }
-        },
         "entity.IndustryCount": {
             "type": "object",
             "properties": {
@@ -14420,10 +13974,6 @@ const docTemplate = `{
                     "description": "Generic billing model (Phase 5)",
                     "type": "string"
                 },
-                "billing_period": {
-                    "description": "Generic billing model (Phase 5)",
-                    "type": "string"
-                },
                 "blacklisted": {
                     "type": "boolean"
                 },
@@ -14452,10 +14002,6 @@ const docTemplate = `{
                     "description": "ISO 4217 code",
                     "type": "string"
                 },
-                "currency": {
-                    "description": "ISO 4217 code",
-                    "type": "string"
-                },
                 "custom_fields": {
                     "type": "object",
                     "additionalProperties": {}
@@ -14467,6 +14013,10 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "industry": {
+                    "description": "CRM-core demographic fields (Migration 1300, per spec Table 1).",
                     "type": "string"
                 },
                 "last_interaction_date": {
@@ -14511,9 +14061,6 @@ const docTemplate = `{
                 "quantity": {
                     "type": "integer"
                 },
-                "quantity": {
-                    "type": "integer"
-                },
                 "renewed": {
                     "type": "boolean"
                 },
@@ -14535,10 +14082,11 @@ const docTemplate = `{
                 "unit_price": {
                     "type": "number"
                 },
-                "unit_price": {
-                    "type": "number"
-                },
                 "updated_at": {
+                    "type": "string"
+                },
+                "value_tier": {
+                    "description": "HIGH | MID | LOW (ACV-based)",
                     "type": "string"
                 },
                 "workspace_id": {
@@ -16035,10 +15583,6 @@ const docTemplate = `{
                     "description": "Phase 5 generic billing model.",
                     "type": "string"
                 },
-                "billing_period": {
-                    "description": "Phase 5 generic billing model.",
-                    "type": "string"
-                },
                 "blacklisted": {
                     "type": "boolean"
                 },
@@ -16064,10 +15608,6 @@ const docTemplate = `{
                     "description": "ISO 4217",
                     "type": "string"
                 },
-                "currency": {
-                    "description": "ISO 4217",
-                    "type": "string"
-                },
                 "custom_fields": {
                     "type": "object",
                     "additionalProperties": {}
@@ -16075,11 +15615,8 @@ const docTemplate = `{
                 "final_price": {
                     "type": "integer"
                 },
-                "last_interaction_date": {
-                    "description": "Phase 6 message-state companion field surfaced through Create so a\ndashboard create can also seed last_interaction_date in cms.",
-                    "type": "string"
-                },
-                "last_payment_date": {
+                "industry": {
+                    "description": "Migration 1300 — CRM-core demographics surfaced through Create/Patch\nso dashboards and the OneSchema wizard can populate them.",
                     "type": "string"
                 },
                 "last_interaction_date": {
@@ -16125,19 +15662,10 @@ const docTemplate = `{
                 "quantity": {
                     "type": "integer"
                 },
-                "quantity": {
-                    "type": "integer"
-                },
                 "risk_flag": {
                     "type": "string"
                 },
                 "sequence_status": {
-                    "type": "string"
-                },
-                "snooze_reason": {
-                    "type": "string"
-                },
-                "snooze_until": {
                     "type": "string"
                 },
                 "snooze_reason": {
@@ -16151,91 +15679,9 @@ const docTemplate = `{
                 },
                 "unit_price": {
                     "type": "number"
-                }
-            }
-        },
-        "master_data.ImportDetectResult": {
-            "type": "object",
-            "properties": {
-                "recommended_sheet": {
+                },
+                "value_tier": {
                     "type": "string"
-                },
-                "sheets": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/master_data.ImportDetectSheet"
-                    }
-                },
-                "suggested_mapping": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/master_data.MappingSuggestion"
-                    }
-                },
-                "unmapped_target_keys": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "master_data.ImportDetectSheet": {
-            "type": "object",
-            "properties": {
-                "headers": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "row_count": {
-                    "type": "integer"
-                },
-                "sample_rows": {
-                    "type": "array",
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "master_data.ImportFieldDef": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "is_custom": {
-                    "type": "boolean"
-                },
-                "key": {
-                    "type": "string"
-                },
-                "label": {
-                    "type": "string"
-                },
-                "options": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "required": {
-                    "type": "boolean"
-                },
-                "type": {
-                    "description": "text|number|date|boolean|enum|email|phone|currency",
-                    "type": "string"
-                },
-                "unit_price": {
-                    "type": "number"
                 }
             }
         },
@@ -16341,12 +15787,6 @@ const docTemplate = `{
                         "$ref": "#/definitions/xlsximport.CellError"
                     }
                 },
-                "cell_errors": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/xlsximport.CellError"
-                    }
-                },
                 "duplicates": {
                     "type": "integer"
                 },
@@ -16443,55 +15883,6 @@ const docTemplate = `{
                 }
             }
         },
-        "master_data.ImportSchema": {
-            "type": "object",
-            "properties": {
-                "core_fields": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/master_data.ImportFieldDef"
-                    }
-                },
-                "custom_fields": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/master_data.ImportFieldDef"
-                    }
-                }
-            }
-        },
-        "master_data.MappingSuggestion": {
-            "type": "object",
-            "properties": {
-                "confidence": {
-                    "description": "0.0–1.0; \u003c0.5 = no suggestion",
-                    "type": "number"
-                },
-                "source_column": {
-                    "type": "string"
-                },
-                "target_key": {
-                    "type": "string"
-                }
-            }
-        },
-        "master_data.PatchCellInput": {
-            "type": "object",
-            "properties": {
-                "row": {
-                    "description": "1-based xlsx row number (header = 1, data starts at 2)",
-                    "type": "integer"
-                },
-                "target_key": {
-                    "description": "canonical target field key",
-                    "type": "string"
-                },
-                "value": {
-                    "description": "raw string; transforms run on read",
-                    "type": "string"
-                }
-            }
-        },
         "master_data.PatchRequest": {
             "type": "object",
             "properties": {
@@ -16519,6 +15910,10 @@ const docTemplate = `{
                 },
                 "final_price": {
                     "type": "integer"
+                },
+                "industry": {
+                    "description": "Migration 1300 — CRM-core demographics, patchable.",
+                    "type": "string"
                 },
                 "last_payment_date": {
                     "type": "string"
@@ -16567,17 +15962,9 @@ const docTemplate = `{
                 },
                 "stage": {
                     "type": "string"
-                }
-            }
-        },
-        "master_data.SessionPreview": {
-            "type": "object",
-            "properties": {
-                "preview": {
-                    "$ref": "#/definitions/master_data.ImportPreview"
                 },
-                "session": {
-                    "$ref": "#/definitions/entity.ImportSession"
+                "value_tier": {
+                    "type": "string"
                 }
             }
         },
@@ -17442,30 +16829,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "xlsximport.CellError": {
-            "type": "object",
-            "properties": {
-                "column": {
-                    "description": "source header",
-                    "type": "string"
-                },
-                "error_code": {
-                    "type": "string"
-                },
-                "error_message": {
-                    "type": "string"
-                },
-                "row": {
-                    "type": "integer"
-                },
-                "source_value": {
-                    "type": "string"
-                },
-                "target_key": {
                     "type": "string"
                 }
             }
