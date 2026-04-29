@@ -143,7 +143,7 @@ func (s *stubAR) List(ctx context.Context, ws string, f repository.ApprovalFilte
 }
 
 func newUC(md *stubMDRepo, cfd *stubCFDRepo, mr *stubMutRepo, ar *stubAR) Usecase {
-	return New(md, cfd, mr, ar, nil)
+	return New(md, cfd, mr, ar, nil, nil)
 }
 
 // ──────────────────────────── ParseFilter ────────────────────────────

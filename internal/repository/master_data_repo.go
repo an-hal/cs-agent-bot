@@ -405,6 +405,37 @@ ON CONFLICT (master_id) DO UPDATE SET
 	); err != nil {
 		return nil, fmt.Errorf("upsert client_message_state: %w", err)
 	}
+
+	// Seed primary client_contacts rows at the new client's stage so the
+	// master_data view's LATERAL JOINs resolve pic_*/owner_* immediately.
+	// Multi-stage rotation is then managed via /clients/{id}/contacts.
+	// See context/new/multi-stage-pic-spec.md.
+	stage := m.Stage
+	if stage == "" {
+		stage = entity.StageLead
+	}
+	if strings.TrimSpace(m.PICName) != "" {
+		if _, err := r.db.ExecContext(ctx, `
+INSERT INTO client_contacts (workspace_id, master_id, stage, kind, role, name, wa, email, is_primary)
+VALUES ($1::uuid, $2::uuid, $3, 'client_side', NULLIF($4,''), $5, NULLIF($6,''), NULLIF($7,''), TRUE)
+ON CONFLICT DO NOTHING`,
+			workspaceID, newID, stage,
+			m.PICRole, m.PICName, m.PICWA, m.PICEmail,
+		); err != nil {
+			return nil, fmt.Errorf("seed client_side contact: %w", err)
+		}
+	}
+	if strings.TrimSpace(m.OwnerName) != "" {
+		if _, err := r.db.ExecContext(ctx, `
+INSERT INTO client_contacts (workspace_id, master_id, stage, kind, role, name, wa, telegram_id, is_primary)
+VALUES ($1::uuid, $2::uuid, $3, 'internal', 'AE', $4, NULLIF($5,''), NULLIF($6,''), TRUE)
+ON CONFLICT DO NOTHING`,
+			workspaceID, newID, stage,
+			m.OwnerName, m.OwnerWA, m.OwnerTelegramID,
+		); err != nil {
+			return nil, fmt.Errorf("seed internal contact: %w", err)
+		}
+	}
 	return r.GetByID(ctx, workspaceID, newID)
 }
 

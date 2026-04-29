@@ -272,6 +272,11 @@ func registerMasterDataRoutes(api *router.Router, h *handlers, mw authBundle) {
 	g.Handle(http.MethodPut, "/clients/{id}", mw.jws(h.masterData.Patch))
 	g.Handle(http.MethodDelete, "/clients/{id}", mw.jws(h.masterData.Delete))
 	g.Handle(http.MethodPost, "/clients/{id}/transition", mw.jws(h.masterData.Transition))
+	// Multi-stage PIC — see context/new/multi-stage-pic-spec.md.
+	g.Handle(http.MethodGet, "/clients/{id}/contacts", mw.jws(h.masterData.ListContacts))
+	g.Handle(http.MethodPost, "/clients/{id}/contacts", mw.jws(h.masterData.CreateContact))
+	g.Handle(http.MethodPatch, "/clients/{id}/contacts/{contact_id}", mw.jws(h.masterData.PatchContact))
+	g.Handle(http.MethodDelete, "/clients/{id}/contacts/{contact_id}", mw.jws(h.masterData.DeleteContact))
 	g.Handle(http.MethodPost, "/query", mw.jws(h.masterData.Query))
 	g.Handle(http.MethodGet, "/stats", mw.jws(h.masterData.Stats))
 	g.Handle(http.MethodGet, "/attention", mw.jws(h.masterData.Attention))

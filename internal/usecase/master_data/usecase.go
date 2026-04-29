@@ -94,6 +94,11 @@ type Usecase interface {
 	// SubmitSession converts a pending session to a bulk_import_master_data
 	// approval; the apply path reads file+mapping+overrides from the payload.
 	SubmitSession(ctx context.Context, workspaceID, sessionID, actorEmail string) (*entity.ApprovalRequest, error)
+	// Multi-stage PIC management — see context/new/multi-stage-pic-spec.md.
+	ListContacts(ctx context.Context, workspaceID, masterID string, filter repository.ClientContactFilter) ([]entity.ClientContact, error)
+	CreateContact(ctx context.Context, workspaceID, masterID string, req ContactCreateRequest) (*entity.ClientContact, error)
+	PatchContact(ctx context.Context, workspaceID, contactID string, req ContactPatchRequest) (*entity.ClientContact, error)
+	DeleteContact(ctx context.Context, workspaceID, contactID string) error
 }
 
 // CreateRequest is the payload for POST /master-data/clients.
@@ -196,18 +201,20 @@ type usecase struct {
 	cfdRepo      repository.CustomFieldDefinitionRepository
 	mutationRepo repository.MasterDataMutationRepository
 	approvalRepo repository.ApprovalRequestRepository
-	sessionRepo  repository.ImportSessionRepository // optional; nil disables Phase C wizard endpoints
+	sessionRepo  repository.ImportSessionRepository      // optional; nil disables Phase C wizard endpoints
+	contactRepo  repository.ClientContactRepository      // optional; nil disables /clients/{id}/contacts endpoints
 }
 
-// New constructs a master_data usecase. sessionRepo is optional (Phase C
-// wizard endpoints are disabled when nil) — callers that don't need import
-// sessions can pass nil.
+// New constructs a master_data usecase. sessionRepo and contactRepo are
+// optional (Phase C wizard / multi-stage PIC endpoints are disabled when
+// nil) — callers that don't need them can pass nil.
 func New(
 	repo repository.MasterDataRepository,
 	cfdRepo repository.CustomFieldDefinitionRepository,
 	mutationRepo repository.MasterDataMutationRepository,
 	approvalRepo repository.ApprovalRequestRepository,
 	sessionRepo repository.ImportSessionRepository,
+	contactRepo repository.ClientContactRepository,
 ) Usecase {
 	return &usecase{
 		repo:         repo,
@@ -215,6 +222,7 @@ func New(
 		mutationRepo: mutationRepo,
 		approvalRepo: approvalRepo,
 		sessionRepo:  sessionRepo,
+		contactRepo:  contactRepo,
 	}
 }
 
