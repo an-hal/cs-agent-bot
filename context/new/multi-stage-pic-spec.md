@@ -260,6 +260,37 @@ Sebelum klik "Move to PROSPECT", FE check:
 4. Activity log per contact (last contacted at, last response date)
 5. Multi-PIC per kind: 1 client di stage AE bisa punya 2 internal PICs (Anggi senior + asisten) — sudah didukung via `is_primary=false` rows; FE pickup pending
 
+## Why import template stays single-PIC
+
+The xlsx template (`GET /clients/template`) intentionally exposes only ONE
+`PIC *` and ONE `Owner *` group. On import, the BE auto-seeds two
+`client_contacts` rows (one `internal` + one `client_side`) at the new
+client's `stage`. Adding rotated PICs for other stages is done after import,
+either via:
+- Dashboard drawer "Contacts per Stage" tab → POST `/clients/{id}/contacts`
+- API directly
+
+The decision NOT to widen the template to per-stage columns
+(`LEAD PIC Name`, `PROSPECT PIC Name`, …):
+
+1. **Stage values vary per workspace.** KantorKu uses LEAD/PROSPECT/CLIENT.
+   A future workspace might use SDR/BD/AE/CHURNED; another might use
+   ONBOARDING/ACTIVE/RENEWAL/CHURNED. Hard-coding stage names in the
+   template forces every workspace into the same lifecycle vocabulary.
+2. **Most workspaces don't rotate PIC per stage.** The single-AE-owner
+   model (1 internal + 1 client-side, stable across lifecycle) covers the
+   90% case. Rotation is a power-user feature.
+3. **Schema spec already calls this out.** "Bulk import stage-keyed kontak
+   via wizard mapping" lives under "Out of scope" item 3 — explicitly
+   deferred to Phase D.
+
+If/when a workspace genuinely needs bulk multi-stage import, the path
+forward is **Option C** (multi-row per client with `Contact Stage` +
+`Contact Kind` columns) — not widening to fixed per-stage columns. That
+preserves per-workspace stage flexibility while supporting the use case.
+
+For now: **template stays simple, contacts API handles the rest**.
+
 ## End-to-end verification
 
 Tested 2026-04-29 dengan PT Dua Tiga (master_id `3871393a-…`). Setup:
