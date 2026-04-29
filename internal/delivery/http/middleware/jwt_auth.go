@@ -391,19 +391,20 @@ func introspectToken(ctx context.Context, client *http.Client, validateURL, toke
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
-	// 401/403 → token rejected; upstream is healthy. Maps to Unauthorized
-	// so isTokenRejection() returns true and the breaker stays Closed.
-	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+	// Any HTTP response (200/4xx/5xx) means the upstream is alive and
+	// reachable — the network-level call succeeded. We treat every non-200
+	// as a token rejection (Unauthorized → breaker stays Closed). Only
+	// transport errors (timeout, connection refused, DNS fail) actually
+	// indicate a broken upstream and trip the breaker; those return earlier
+	// from client.Do above.
+	//
+	// Why we used to differentiate 401/403 vs 5xx: ms-auth-proxy returns
+	// HTTP 500 with body {"message":"Authentication failed"} for tokens it
+	// can't verify. Counting that as a breaker failure caused the breaker
+	// to trip on a flood of bad tokens, locking out the entire API.
+	if resp.StatusCode != http.StatusOK {
 		logger.Warn().Int("status", resp.StatusCode).Str("body", string(body)).Msg("JWT: token rejected by auth proxy")
 		return nil, apperror.Unauthorized("unauthorized")
-	}
-	// Non-200 that isn't 401/403 → upstream is broken. Maps to InternalError
-	// so the breaker counts it. The auth proxy currently returns 500 for
-	// malformed tokens; we treat those as upstream failures rather than
-	// rejections. If that becomes too noisy, we can pattern-match the body.
-	if resp.StatusCode != http.StatusOK {
-		logger.Warn().Int("status", resp.StatusCode).Str("body", string(body)).Msg("JWT: validation returned non-200")
-		return nil, apperror.InternalError(fmt.Errorf("auth proxy returned %d", resp.StatusCode))
 	}
 
 	var meResp authMeResponse

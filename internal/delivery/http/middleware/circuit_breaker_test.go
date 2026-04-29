@@ -137,18 +137,18 @@ func TestJWTAuth_TokenRejectionsDoNotTripBreaker(t *testing.T) {
 	}
 }
 
-// TestJWTAuth_UpstreamDownTripsBreaker confirms the inverse: when the
-// upstream returns 5xx (or network errors) the breaker trips after
-// FailureThreshold and subsequent calls fail fast WITHOUT hitting upstream.
-func TestJWTAuth_UpstreamDownTripsBreaker(t *testing.T) {
+// TestJWTAuth_5xxFromUpstreamDoesNotTripBreaker — 5xx with a body means the
+// upstream is alive and just unhappy with the request. ms-auth-proxy returns
+// HTTP 500 "Authentication failed" for tokens it can't verify; counting that
+// as a breaker failure caused real production lockouts (every bad token
+// trips the breaker for the next 30s, locking out everyone). Test that 5xx
+// is now treated as a token rejection — breaker stays Closed indefinitely.
+func TestJWTAuth_5xxFromUpstreamDoesNotTripBreaker(t *testing.T) {
 	var upstreamHits int32
-	// 5xx on every call simulates a broken upstream. Slight sleep so that
-	// "fast-fail" after trip is unambiguously faster than "actually called".
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&upstreamHits, 1)
-		time.Sleep(10 * time.Millisecond)
 		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte(`{"status":"error","message":"down"}`))
+		_, _ = w.Write([]byte(`{"status":"error","message":"Authentication failed"}`))
 	}))
 	defer upstream.Close()
 
@@ -158,32 +158,51 @@ func TestJWTAuth_UpstreamDownTripsBreaker(t *testing.T) {
 		return nil
 	})
 
-	// Fire 5 distinct tokens — exactly the FailureThreshold. Breaker should
-	// trip on the 5th. Subsequent calls return ErrCircuitOpen → handler
-	// surfaces as Unauthorized but DOES NOT touch upstream.
+	// Fire 10 distinct tokens — well past the 5-failure threshold — all 5xx.
+	// All MUST reach upstream. If breaker was tripping on 5xx, only the first
+	// 5 would land.
+	const N = 10
+	for i := 0; i < N; i++ {
+		req := httptest.NewRequest(http.MethodGet, "/x", nil)
+		req.Header.Set("Authorization", "Bearer bad-"+itoa(i))
+		_ = handler(httptest.NewRecorder(), req)
+	}
+	hits := atomic.LoadInt32(&upstreamHits)
+	if hits != N {
+		t.Fatalf("expected all %d requests to reach upstream (5xx ≠ breaker failure), got %d", N, hits)
+	}
+}
+
+// TestJWTAuth_NetworkErrorTripsBreaker — only transport-level failures
+// (closed server, timeout, refused conn) count as breaker failures.
+func TestJWTAuth_NetworkErrorTripsBreaker(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
+	upstream.Close() // close immediately so all calls get connection refused
+
+	mw := JWTAuthMiddleware(upstream.URL, "production", false, zerolog.Nop())
+	handler := mw(func(w http.ResponseWriter, r *http.Request) error {
+		w.WriteHeader(http.StatusOK)
+		return nil
+	})
+
+	// Issue threshold (5) calls — each fails at transport level.
 	const trip = 5
 	for i := 0; i < trip; i++ {
 		req := httptest.NewRequest(http.MethodGet, "/x", nil)
 		req.Header.Set("Authorization", "Bearer trip-"+itoa(i))
 		_ = handler(httptest.NewRecorder(), req)
 	}
-	beforeProbe := atomic.LoadInt32(&upstreamHits)
-	if beforeProbe != trip {
-		t.Fatalf("expected %d upstream hits while tripping, got %d", trip, beforeProbe)
+	// Next call: breaker open → fast-fail without dialing.
+	start := time.Now()
+	req := httptest.NewRequest(http.MethodGet, "/x", nil)
+	req.Header.Set("Authorization", "Bearer post-trip")
+	err := handler(httptest.NewRecorder(), req)
+	elapsed := time.Since(start)
+	if err == nil {
+		t.Fatalf("expected error after breaker open, got nil")
 	}
-
-	// Post-trip: 5 more calls — none should reach upstream.
-	for i := 0; i < 5; i++ {
-		req := httptest.NewRequest(http.MethodGet, "/x", nil)
-		req.Header.Set("Authorization", "Bearer post-"+itoa(i))
-		err := handler(httptest.NewRecorder(), req)
-		if err == nil {
-			t.Fatalf("expected error after breaker open, got nil")
-		}
-	}
-	afterProbe := atomic.LoadInt32(&upstreamHits)
-	if afterProbe != trip {
-		t.Fatalf("breaker should have prevented upstream calls; got %d (was %d)", afterProbe, trip)
+	if elapsed > 50*time.Millisecond {
+		t.Fatalf("expected fast-fail after breaker open; took %v", elapsed)
 	}
 }
 
