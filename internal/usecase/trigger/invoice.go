@@ -44,7 +44,7 @@ func (t *TriggerService) EvalInvoice(ctx context.Context, c entity.Client, f ent
 		return false, nil
 	}
 
-	if dte <= 14 && !c.Pre14Sent {
+	if dte <= 14 && !f.Pre14Sent {
 		if err := t.sendMessage(ctx, "TPL-PAY-PRE14", "PAY_PRE14_SENT", c, inv); err != nil {
 			return false, err
 		}
@@ -57,7 +57,7 @@ func (t *TriggerService) EvalInvoice(ctx context.Context, c entity.Client, f ent
 		return true, nil
 	}
 
-	if dte <= 7 && !c.Pre7Sent {
+	if dte <= 7 && !f.Pre7Sent {
 		if err := t.sendMessage(ctx, "TPL-PAY-PRE7", "PAY_PRE7_SENT", c, inv); err != nil {
 			return false, err
 		}
@@ -70,7 +70,7 @@ func (t *TriggerService) EvalInvoice(ctx context.Context, c entity.Client, f ent
 		return true, nil
 	}
 
-	if dte <= 3 && !c.Pre3Sent {
+	if dte <= 3 && !f.Pre3Sent {
 		if err := t.sendMessage(ctx, "TPL-PAY-PRE3", "PAY_PRE3_SENT", c, inv); err != nil {
 			return false, err
 		}

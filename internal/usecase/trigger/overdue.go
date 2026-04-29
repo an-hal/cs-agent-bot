@@ -23,7 +23,7 @@ func (t *TriggerService) EvalOverdue(ctx context.Context, c entity.Client, f ent
 
 	daysPast := c.DaysPastDue()
 
-	if daysPast >= 1 && !c.Post1Sent {
+	if daysPast >= 1 && !f.Post1Sent {
 		if err := t.sendMessage(ctx, "TPL-PAY-POST1", "PAY_POST1_SENT", c, inv); err != nil {
 			return false, err
 		}
@@ -36,7 +36,7 @@ func (t *TriggerService) EvalOverdue(ctx context.Context, c entity.Client, f ent
 		return true, nil
 	}
 
-	if daysPast >= 4 && !c.Post4Sent {
+	if daysPast >= 4 && !f.Post4Sent {
 		if err := t.sendMessage(ctx, "TPL-PAY-POST4", "PAY_POST4_SENT", c, inv); err != nil {
 			return false, err
 		}
@@ -49,7 +49,7 @@ func (t *TriggerService) EvalOverdue(ctx context.Context, c entity.Client, f ent
 		return true, nil
 	}
 
-	if daysPast >= 8 && !c.Post8Sent {
+	if daysPast >= 8 && !f.Post8Sent {
 		if err := t.sendMessage(ctx, "TPL-PAY-POST8", "PAY_POST8_SENT", c, inv); err != nil {
 			return false, err
 		}
@@ -62,7 +62,7 @@ func (t *TriggerService) EvalOverdue(ctx context.Context, c entity.Client, f ent
 		return true, nil
 	}
 
-	if daysPast >= 15 && !c.Post15Sent {
+	if daysPast >= 15 && !f.Post15Sent {
 		if err := t.sendMessage(ctx, "TPL-PAY-POST15", "PAY_POST15_SENT", c, inv); err != nil {
 			return false, err
 		}

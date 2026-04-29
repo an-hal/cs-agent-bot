@@ -86,7 +86,7 @@ func newCronRunnerWithDynamicEngine(
 	sentToday bool,
 	engine *trigger.RuleEngine,
 ) ucron.CronRunner {
-	cr := ucron.NewCronRunner(
+	return ucron.NewCronRunner(
 		&stubFullClientRepo{clients: clients},
 		flagsRepo,
 		&stubFullConvStateRepo{},
@@ -94,14 +94,9 @@ func newCronRunnerWithDynamicEngine(
 		&stubFullLogRepo{sentToday: sentToday},
 		&stubFullBgJobRepo{},
 		&stubFullWorkspaceRepo{},
-		nil,
+		engine,
 		zerolog.Nop(),
 	)
-	rwe, ok := cr.(ucron.CronRunnerWithRuleEngine)
-	if ok {
-		rwe.WithRuleEngine(engine, true)
-	}
-	return cr
 }
 
 // ─── Dynamic rule engine: empty rules, no match ───────────────────────────────
@@ -273,14 +268,13 @@ func TestCronRunner_DynamicEngine_FlagsError_PerClientErrorLogged(t *testing.T) 
 	}
 }
 
-// ─── WithRuleEngine sets useDynamic=false, falls through to legacy path ───────
+// ─── Nil rule engine: client gated out before engine is reached ───────────────
 
-func TestCronRunner_WithRuleEngine_FalseFlag_DoesNotUseDynamicPath(t *testing.T) {
+func TestCronRunner_NilRuleEngine_ClientGatedBySentToday_NoError(t *testing.T) {
 	t.Parallel()
 
-	// When useDynamic=false, the runner ignores the engine and uses legacy triggers.
-	// With nil TriggerService, processClient panics after the gates — so we
-	// use sentToday=true to ensure the client is gated out before triggers run.
+	// With sentToday=true the client is skipped at Gate 3 before the engine runs,
+	// so a nil engine must not cause a panic or error.
 	clients := []entity.Client{
 		{CompanyID: "NODYN-001", BotActive: true, Blacklisted: false},
 	}
@@ -289,21 +283,12 @@ func TestCronRunner_WithRuleEngine_FalseFlag_DoesNotUseDynamicPath(t *testing.T)
 		&stubFullFlagsRepo{},
 		&stubFullConvStateRepo{},
 		&stubFullInvoiceRepo{},
-		&stubFullLogRepo{sentToday: true}, // gated out at Gate 4
+		&stubFullLogRepo{sentToday: true},
 		&stubFullBgJobRepo{},
 		&stubFullWorkspaceRepo{},
-		nil,
+		nil, // nil engine — safe because client is gated out before reaching it
 		zerolog.Nop(),
 	)
-	rwe, ok := cr.(ucron.CronRunnerWithRuleEngine)
-	if !ok {
-		t.Skip("CronRunner does not implement CronRunnerWithRuleEngine")
-	}
-	ruleRepoErr := &stubTriggerRuleRepo{err: errors.New("engine should not be called")}
-	engine := trigger.NewRuleEngine(ruleRepoErr, nil, zerolog.Nop())
-	rwe.WithRuleEngine(engine, false) // useDynamic=false
-
-	// SentToday gate ensures the client is never processed past Gate 4.
 	if err := cr.RunAll(context.Background()); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

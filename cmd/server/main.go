@@ -197,12 +197,10 @@ func assembleDeps(
 
 	paymentVerifier := usecasePayment.NewPaymentVerifier(repos.client, repos.flags, repos.log, repos.escalation, telegramNotifier, haloaiClient, templateResolver, logger)
 	escalationHandler := escalation.NewEscalationHandler(repos.flags, repos.log, repos.escalation, telegramNotifier, logger)
-	triggerService := trigger.NewTriggerService(repos.client, repos.invoice, repos.flags, repos.convState, repos.log, repos.systemConfigKV, repos.escalation, templateResolver, haloaiClient, telegramNotifier, escalationHandler, cfg, logger)
 	actionExecutor := trigger.NewActionExecutor(repos.client, repos.invoice, repos.flags, repos.convState, repos.log, repos.systemConfigKV, templateResolver, haloaiClient, telegramNotifier, escalationHandler, cfg, logger)
 	ruleEngine := trigger.NewRuleEngine(repos.triggerRule, actionExecutor, logger)
 
-	cronRunner := cron.NewCronRunner(repos.client, repos.flags, repos.convState, repos.invoice, repos.log, repos.bgJob, repos.workspace, triggerService, logger)
-	cronRunner.(cron.CronRunnerWithRuleEngine).WithRuleEngine(ruleEngine, cfg.UseDynamicRules)
+	cronRunner := cron.NewCronRunner(repos.client, repos.flags, repos.convState, repos.invoice, repos.log, repos.bgJob, repos.workspace, ruleEngine, logger)
 
 	replyHandler := webhook.NewReplyHandler(repos.invoice, repos.client, repos.flags, repos.convState, repos.log, classifier.NewReplyClassifier(), escalationHandler, haloaiClient, telegramNotifier, logger)
 	checkinHandler := webhook.NewCheckinFormHandler(repos.client, repos.flags, repos.log, telegramNotifier, logger)

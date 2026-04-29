@@ -1,37 +1,27 @@
 package entity
 
 import (
+	"fmt"
 	"time"
 )
 
 type Client struct {
-	CompanyID           string     `json:"company_id"`
-	CompanyName         string     `json:"company_name"`
-	PICName             string     `json:"pic_name"`
-	PICWA               string     `json:"pic_wa"`
-	OwnerName           string     `json:"owner_name"`
-	OwnerWA             *string    `json:"owner_wa"`
-	ContractMonths      int        `json:"contract_months"`
-	ContractStart       time.Time  `json:"contract_start"`
-	ContractEnd         time.Time  `json:"contract_end"`
-	ActivationDate      time.Time  `json:"activation_date"`
-	PaymentStatus       string     `json:"payment_status"`
-	BotActive           bool       `json:"bot_active"`
-	Blacklisted         bool       `json:"blacklisted"`
-	OwnerTelegramID     string     `json:"owner_telegram_id"`
-	SequenceCS          string     `json:"sequence_cs"`
-	CheckinReplied      bool       `json:"checkin_replied"`
-	ResponseStatus      string     `json:"response_status"`
-	LastInteractionDate *time.Time `json:"last_interaction_date"`
-
-	// Invoice reminder flags (from Master Client sheet columns 27-33)
-	Pre14Sent  bool `json:"pre14_sent"`
-	Pre7Sent   bool `json:"pre7_sent"`
-	Pre3Sent   bool `json:"pre3_sent"`
-	Post1Sent  bool `json:"post1_sent"`
-	Post4Sent  bool `json:"post4_sent"`
-	Post8Sent  bool `json:"post8_sent"`
-	Post15Sent bool `json:"post15_sent"`
+	CompanyID       string    `json:"company_id"`
+	CompanyName     string    `json:"company_name"`
+	PICName         string    `json:"pic_name"`
+	PICWA           string    `json:"pic_wa"`
+	OwnerName       string    `json:"owner_name"`
+	OwnerWA         *string   `json:"owner_wa"`
+	ContractMonths  int       `json:"contract_months"`
+	ContractStart   time.Time `json:"contract_start"`
+	ContractEnd     time.Time `json:"contract_end"`
+	ActivationDate  time.Time `json:"activation_date"`
+	PaymentStatus   string    `json:"payment_status"`
+	BotActive       bool      `json:"bot_active"`
+	Blacklisted     bool      `json:"blacklisted"`
+	OwnerTelegramID string    `json:"owner_telegram_id"`
+	SequenceCS      string    `json:"sequence_cs"`
+	ResponseStatus  string    `json:"response_status"` // populated from conversation_states at runtime
 
 	// Fields from existing DB columns previously not mapped
 	PICEmail              string     `json:"pic_email"`
@@ -41,13 +31,15 @@ type Client struct {
 	LastPaymentDate       *time.Time `json:"last_payment_date"`
 	Notes                 string     `json:"notes"`
 	CreatedAt             time.Time  `json:"created_at"`
-	FeatureUpdateSent     bool       `json:"feature_update_sent"`
-	DaysSinceCSLastSent   int        `json:"days_since_cs_last_sent"`
 	AEAssigned            bool       `json:"ae_assigned"`
 	BackupOwnerTelegramID string     `json:"backup_owner_telegram_id"`
 	AETelegramID          string     `json:"ae_telegram_id"`
 	WorkspaceID           string     `json:"workspace_id"`
 
+	// CustomFields holds values migrated from dropped native columns
+	// (segment, plan_type, nps_score, usage_score, hc_size, renewed,
+	// rejected, quotation_link, cross_sell_*). Use GetCustomField() to read.
+	CustomFields map[string]any `json:"custom_fields"`
 	// Generic billing model — covers monthly/quarterly/annual subscriptions,
 	// one-time fees, and perpetual licences across SaaS / job-board / hardware
 	// resale verticals. Existing rows default to billing_period='monthly',
@@ -141,8 +133,22 @@ func (c *Client) HasPendingPayment() bool {
 
 func (c *Client) UpdatePaymentStatus(status string) {
 	c.PaymentStatus = status
-	now := time.Now()
-	c.LastInteractionDate = &now
+}
+
+// GetCustomField returns the string value of a custom field, or "" if absent.
+func (c *Client) GetCustomField(key string) string {
+	if c.CustomFields == nil {
+		return ""
+	}
+	if v, ok := c.CustomFields[key]; ok {
+		switch s := v.(type) {
+		case string:
+			return s
+		default:
+			return fmt.Sprintf("%v", v)
+		}
+	}
+	return ""
 }
 
 // GetOwnerWA returns the owner WA number or empty string if nil.

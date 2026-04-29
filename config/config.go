@@ -82,8 +82,6 @@ type AppConfig struct {
 	AngryKeywordsExtra   string
 	SilenceThresholdDays int
 
-	// Dynamic Rule Engine
-	UseDynamicRules bool
 
 	// Workflow Engine
 	UseWorkflowEngine bool
@@ -216,8 +214,6 @@ func LoadConfig() *AppConfig {
 		AngryKeywordsExtra:   getEnv("ANGRY_KEYWORDS_EXTRA", ""),
 		SilenceThresholdDays: getEnvInt("SILENCE_THRESHOLD_DAYS", 30),
 
-		// Dynamic Rule Engine
-		UseDynamicRules: getEnvBool("USE_DYNAMIC_RULES", false),
 
 		// Workflow Engine
 		UseWorkflowEngine: getEnvBool("USE_WORKFLOW_ENGINE", false),

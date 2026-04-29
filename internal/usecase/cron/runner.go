@@ -17,23 +17,16 @@ type CronRunner interface {
 	StartRunAll(ctx context.Context) ([]*entity.BackgroundJob, error)
 }
 
-// CronRunnerWithRuleEngine extends CronRunner with dynamic rule engine support.
-type CronRunnerWithRuleEngine interface {
-	WithRuleEngine(engine *trigger.RuleEngine, useDynamic bool)
-}
-
 type cronRunner struct {
-	clientRepo      repository.ClientRepository
-	flagsRepo       repository.FlagsRepository
-	convStateRepo   repository.ConversationStateRepository
-	invoiceRepo     repository.InvoiceRepository
-	logRepo         repository.LogRepository
-	bgJobRepo       repository.BackgroundJobRepository
-	workspaceRepo   repository.WorkspaceRepository
-	triggers        *trigger.TriggerService
-	ruleEngine      *trigger.RuleEngine
-	useDynamicRules bool
-	logger          zerolog.Logger
+	clientRepo    repository.ClientRepository
+	flagsRepo     repository.FlagsRepository
+	convStateRepo repository.ConversationStateRepository
+	invoiceRepo   repository.InvoiceRepository
+	logRepo       repository.LogRepository
+	bgJobRepo     repository.BackgroundJobRepository
+	workspaceRepo repository.WorkspaceRepository
+	ruleEngine    *trigger.RuleEngine
+	logger        zerolog.Logger
 }
 
 func NewCronRunner(
@@ -44,7 +37,7 @@ func NewCronRunner(
 	logRepo repository.LogRepository,
 	bgJobRepo repository.BackgroundJobRepository,
 	workspaceRepo repository.WorkspaceRepository,
-	triggers *trigger.TriggerService,
+	ruleEngine *trigger.RuleEngine,
 	logger zerolog.Logger,
 ) CronRunner {
 	return &cronRunner{
@@ -55,16 +48,9 @@ func NewCronRunner(
 		logRepo:       logRepo,
 		bgJobRepo:     bgJobRepo,
 		workspaceRepo: workspaceRepo,
-		triggers:      triggers,
+		ruleEngine:    ruleEngine,
 		logger:        logger,
 	}
-}
-
-// WithRuleEngine sets the dynamic rule engine for the cron runner.
-// When useDynamic is true, processClient uses the rule engine instead of hardcoded triggers.
-func (cr *cronRunner) WithRuleEngine(engine *trigger.RuleEngine, useDynamic bool) {
-	cr.ruleEngine = engine
-	cr.useDynamicRules = useDynamic
 }
 
 // StartRunAll fetches all non-holding workspaces, creates one background job per workspace,
@@ -181,7 +167,7 @@ func (cr *cronRunner) RunAll(ctx context.Context) error {
 		if err := cr.processClient(ctx, c); err != nil {
 			cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Error processing client")
 		}
-		time.Sleep(300 * time.Millisecond) // inter-client throttle
+		time.Sleep(300 * time.Millisecond)
 	}
 
 	cr.logger.Info().Msg("Cron run completed")
@@ -189,25 +175,19 @@ func (cr *cronRunner) RunAll(ctx context.Context) error {
 }
 
 func (cr *cronRunner) processClient(ctx context.Context, c entity.Client) error {
-	// Gate 1: blacklisted — checked BEFORE bot_active. Always exit. (Rule 2)
+	// Gate 1: blacklisted — always exit before any further evaluation.
 	if c.Blacklisted {
 		cr.logger.Warn().Str("company_id", c.CompanyID).Msg("Client is blacklisted")
 		return nil
 	}
 
-	// Gate 2: bot suspended by AE or escalation
+	// Gate 2: bot suspended by AE or escalation.
 	if !c.BotActive {
 		cr.logger.Warn().Str("company_id", c.CompanyID).Msg("Client bot is not active")
 		return nil
 	}
 
-	// Gate 3: rejected by client
-	// TODO: post-CRM-refactor — rejected moved to clients.custom_fields.
-	// Re-enable this gate once entity.Client exposes a CustomFields map.
-	// Current behaviour: bot will keep messaging clients flagged as
-	// rejected — operator should manually toggle bot_active=false.
-
-	// Gate 4: max 1 WA per client per calendar day
+	// Gate 3: max 1 WA per client per calendar day.
 	sentToday, err := cr.logRepo.SentTodayAlready(ctx, c.CompanyID)
 	if err != nil {
 		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to check if client already sent today")
@@ -218,27 +198,10 @@ func (cr *cronRunner) processClient(ctx context.Context, c entity.Client) error 
 		return nil
 	}
 
-	f, err := cr.flagsRepo.GetByCompanyID(ctx, c.CompanyID)
+	flags, err := cr.flagsRepo.GetByCompanyID(ctx, c.CompanyID)
 	if err != nil {
 		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to get flags")
 		return err
-	}
-
-	// Check if renewed — triggers resetCycleFlags before evaluation.
-	// TODO: post-CRM-refactor — renewed moved to clients.custom_fields.
-	// Re-enable once entity.Client exposes CustomFields. Current behaviour:
-	// cycle-flag reset must be triggered manually after a renewal.
-	if false {
-		if resetErr := cr.flagsRepo.ResetCycleFlags(ctx, c.CompanyID); resetErr != nil {
-			cr.logger.Error().Err(resetErr).Str("company_id", c.CompanyID).Msg("Failed to reset cycle flags")
-			return resetErr
-		}
-		// Re-fetch flags after reset
-		f, err = cr.flagsRepo.GetByCompanyID(ctx, c.CompanyID)
-		if err != nil {
-			cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Failed to get flags after reset")
-			return err
-		}
 	}
 
 	inv, err := cr.invoiceRepo.GetActiveByCompanyID(ctx, c.CompanyID)
@@ -249,76 +212,23 @@ func (cr *cronRunner) processClient(ctx context.Context, c entity.Client) error 
 	convState, err := cr.convStateRepo.GetByCompanyID(ctx, c.CompanyID)
 	if err != nil {
 		cr.logger.Warn().Err(err).Str("company_id", c.CompanyID).Msg("Failed to get conversation state")
-		// Continue with default state
 		convState = &entity.ConversationState{BotActive: true}
 	}
 
-	// ── Dynamic rule engine path (feature-flagged) ──
-	if cr.useDynamicRules && cr.ruleEngine != nil {
-		clientCtx := &trigger.ClientContext{
-			Client:    c,
-			Flags:     *f,
-			Invoice:   inv,
-			ConvState: convState,
-		}
-		if _, err := cr.ruleEngine.EvaluateAll(ctx, clientCtx); err != nil {
-			cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Dynamic rule engine error")
-			return err
-		}
+	if cr.ruleEngine == nil {
+		cr.logger.Warn().Str("company_id", c.CompanyID).Msg("No rule engine configured — skipping client")
 		return nil
 	}
 
-	// ── Legacy hardcoded path (default) ──
-	// Strict priority order. First match fires and returns — no further evaluation.
-	if sent, err := cr.triggers.EvalHealthRisk(ctx, c, *f); err != nil {
-		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Health risk trigger error")
-		return err
-	} else if sent {
-		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Health risk trigger fired")
-		return nil
+	clientCtx := &trigger.ClientContext{
+		Client:    c,
+		Flags:     *flags,
+		Invoice:   inv,
+		ConvState: convState,
 	}
-	if sent, err := cr.triggers.EvalCheckIn(ctx, c, *f); err != nil {
-		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Check-in trigger error")
+	if _, err := cr.ruleEngine.EvaluateAll(ctx, clientCtx); err != nil {
+		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Rule engine error")
 		return err
-	} else if sent {
-		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Check-in trigger fired")
-		return nil
 	}
-	if sent, err := cr.triggers.EvalNegotiation(ctx, c, *f); err != nil {
-		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Negotiation trigger error")
-		return err
-	} else if sent {
-		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Negotiation trigger fired")
-		return nil
-	}
-	if sent, err := cr.triggers.EvalInvoice(ctx, c, *f, inv, convState); err != nil {
-		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Invoice trigger error")
-		return err
-	} else if sent {
-		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Invoice trigger fired")
-		return nil
-	}
-	if sent, err := cr.triggers.EvalOverdue(ctx, c, *f, inv, convState); err != nil {
-		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Overdue trigger error")
-		return err
-	} else if sent {
-		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Overdue trigger fired")
-		return nil
-	}
-	if sent, err := cr.triggers.EvalExpansion(ctx, c, *f); err != nil {
-		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Expansion trigger error")
-		return err
-	} else if sent {
-		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Expansion trigger fired")
-		return nil
-	}
-	if sent, err := cr.triggers.EvalCrossSell(ctx, c, *f); err != nil {
-		cr.logger.Error().Err(err).Str("company_id", c.CompanyID).Msg("Cross-sell trigger error")
-		return err
-	} else if sent {
-		cr.logger.Info().Str("company_id", c.CompanyID).Msg("Cross-sell trigger fired")
-		return nil
-	}
-
 	return nil
 }

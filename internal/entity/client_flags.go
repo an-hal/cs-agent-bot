@@ -51,7 +51,17 @@ type ClientFlags struct {
 	CSLT3 bool `json:"cs_lt3"`
 
 	// Feature update tracking
-	FeatureUpdateSent     bool   `json:"feature_update_sent"`
-	QuotationAcknowledged bool   `json:"quotation_acknowledged"`
-	WorkspaceID           string `json:"workspace_id"`
+	FeatureUpdateSent     bool `json:"feature_update_sent"`
+	QuotationAcknowledged bool `json:"quotation_acknowledged"`
+
+	// Invoice reminder flags — migrated from clients table (20260427000500)
+	Pre14Sent  bool `json:"pre14_sent"`
+	Pre7Sent   bool `json:"pre7_sent"`
+	Pre3Sent   bool `json:"pre3_sent"`
+	Post1Sent  bool `json:"post1_sent"`
+	Post4Sent  bool `json:"post4_sent"`
+	Post8Sent  bool `json:"post8_sent"`
+	Post15Sent bool `json:"post15_sent"`
+
+	WorkspaceID string `json:"workspace_id"`
 }

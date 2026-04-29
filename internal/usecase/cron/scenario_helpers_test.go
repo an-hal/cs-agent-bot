@@ -60,7 +60,8 @@ func withRenewed(v bool) scenarioOpt {
 }
 
 func withCheckinReplied(v bool) scenarioOpt {
-	return func(c *entity.Client) { c.CheckinReplied = v }
+	// TODO post-CRM-refactor: checkin_replied moved to client_flags, no-op stub
+	return func(c *entity.Client) { _ = v; _ = c }
 }
 
 func withRiskFlag(v bool) scenarioOpt {

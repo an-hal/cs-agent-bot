@@ -57,6 +57,8 @@ var flagsColumns = []string{
 	"cs_h7", "cs_h14", "cs_h21", "cs_h30", "cs_h45", "cs_h60", "cs_h75", "cs_h90",
 	"cs_lt1", "cs_lt2", "cs_lt3",
 	"feature_update_sent",
+	"pre14_sent", "pre7_sent", "pre3_sent",
+	"post1_sent", "post4_sent", "post8_sent", "post15_sent",
 	"workspace_id",
 }
 
@@ -77,6 +79,8 @@ func scanFlags(scanner interface {
 		&f.CSH7, &f.CSH14, &f.CSH21, &f.CSH30, &f.CSH45, &f.CSH60, &f.CSH75, &f.CSH90,
 		&f.CSLT1, &f.CSLT2, &f.CSLT3,
 		&f.FeatureUpdateSent,
+		&f.Pre14Sent, &f.Pre7Sent, &f.Pre3Sent,
+		&f.Post1Sent, &f.Post4Sent, &f.Post8Sent, &f.Post15Sent,
 		&f.WorkspaceID,
 	)
 	if err != nil {
@@ -99,6 +103,8 @@ func flagValues(f entity.ClientFlags) []interface{} {
 		f.CSH7, f.CSH14, f.CSH21, f.CSH30, f.CSH45, f.CSH60, f.CSH75, f.CSH90,
 		f.CSLT1, f.CSLT2, f.CSLT3,
 		f.FeatureUpdateSent,
+		f.Pre14Sent, f.Pre7Sent, f.Pre3Sent,
+		f.Post1Sent, f.Post4Sent, f.Post8Sent, f.Post15Sent,
 		f.WorkspaceID,
 	}
 }
@@ -210,6 +216,8 @@ var cycleFlagColumns = map[string]interface{}{
 	"referral_sent_this_cycle": false,
 	"low_usage_msg_sent":       false,
 	"low_nps_msg_sent":         false,
+	"pre14_sent": false, "pre7_sent": false, "pre3_sent": false,
+	"post1_sent": false, "post4_sent": false, "post8_sent": false, "post15_sent": false,
 }
 
 func (r *flagsRepo) ResetCycleFlags(ctx context.Context, companyID string) error {

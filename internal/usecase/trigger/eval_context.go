@@ -15,18 +15,13 @@ type ClientContext struct {
 
 // GetField returns the value of a named field for condition evaluation.
 // Field names match what is stored in the trigger_rules condition JSON.
+// Core client fields are resolved from entity.Client/ClientFlags directly.
+// Any unrecognized field falls through to clients.custom_fields JSONB,
+// so custom_field_definitions fields (nps_score, usage_score, segment, etc.)
+// are accessible without explicit cases here.
 func (c *ClientContext) GetField(name string) (interface{}, bool) {
 	switch name {
-	// Client fields
-	// TODO: post-CRM-refactor — fields below moved to clients.custom_fields
-	// (usage_score, nps_score, segment, quotation_link, rejected,
-	// cross_sell_*). Until entity.Client exposes a CustomFields map,
-	// these stubs return zero values so trigger rules referencing them
-	// cleanly no-op instead of crashing.
-	case "usage_score":
-		return 0, true
-	case "nps_score":
-		return 0, true
+	// Core client fields (direct DB columns)
 	case "days_to_expiry":
 		return c.Client.DaysToExpiry(), true
 	case "days_past_due":
@@ -35,46 +30,36 @@ func (c *ClientContext) GetField(name string) (interface{}, bool) {
 		return c.Client.DaysSinceActivation(), true
 	case "contract_months":
 		return c.Client.ContractMonths, true
-	case "segment":
-		return "", true
 	case "payment_status":
 		return c.Client.PaymentStatus, true
 	case "response_status":
 		return c.Client.ResponseStatus, true
-	case "quotation_link":
-		return "", true
 	case "sequence_cs":
 		return c.Client.SequenceCS, true
 	case "bot_active":
 		return c.Client.BotActive, true
 	case "blacklisted":
 		return c.Client.Blacklisted, true
-	case "rejected":
-		return false, true
-	case "cross_sell_rejected":
-		return false, true
-	case "cross_sell_interested":
-		return false, true
 	case "is_payment_overdue":
 		return c.Client.IsPaymentOverdue(), true
 	case "activation_date_set":
 		return !c.Client.ActivationDate.IsZero(), true
 
-	// Invoice reminder flags (on client)
+	// Invoice reminder flags (on client_flags)
 	case "pre14_sent":
-		return c.Client.Pre14Sent, true
+		return c.Flags.Pre14Sent, true
 	case "pre7_sent":
-		return c.Client.Pre7Sent, true
+		return c.Flags.Pre7Sent, true
 	case "pre3_sent":
-		return c.Client.Pre3Sent, true
+		return c.Flags.Pre3Sent, true
 	case "post1_sent":
-		return c.Client.Post1Sent, true
+		return c.Flags.Post1Sent, true
 	case "post4_sent":
-		return c.Client.Post4Sent, true
+		return c.Flags.Post4Sent, true
 	case "post8_sent":
-		return c.Client.Post8Sent, true
+		return c.Flags.Post8Sent, true
 	case "post15_sent":
-		return c.Client.Post15Sent, true
+		return c.Flags.Post15Sent, true
 
 	// Conversation state
 	case "conv_should_send":
@@ -88,6 +73,17 @@ func (c *ClientContext) GetField(name string) (interface{}, bool) {
 		return c.Invoice != nil, true
 	}
 
+	// Fallback: read from clients.custom_fields JSONB.
+	// Handles migrated columns (nps_score, usage_score, segment, quotation_link,
+	// rejected, cross_sell_*, renewed, plan_type, hc_size, etc.) and any
+	// workspace-specific custom_field_definitions keys.
+	// JSON numbers unmarshal as float64, strings as string, booleans as bool —
+	// all handled correctly by condition_eval compareNumeric/compareEq/toBool.
+	if c.Client.CustomFields != nil {
+		if v, ok := c.Client.CustomFields[name]; ok {
+			return v, true
+		}
+	}
 	return nil, false
 }
 

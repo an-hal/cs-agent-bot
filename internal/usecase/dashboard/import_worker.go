@@ -104,8 +104,14 @@ func (u *dashboardUsecase) runImport(jobID, workspaceID, actor string, data []by
 			if !updateExisting {
 				skipped++
 			} else {
-				if err := u.clientRepo.UpdateClientFields(ctx, row.CompanyID, importRowToUpdateFields(row)); err != nil {
-					jobErrs = append(jobErrs, entity.JobRowError{Row: i + 2, RefID: row.CompanyID, Reason: "update failed: " + err.Error()})
+				updateErr := u.clientRepo.UpdateClientFields(ctx, row.CompanyID, importRowToUpdateFields(row))
+				if updateErr == nil {
+					if cf := importRowToCustomFields(row); len(cf) > 0 {
+						updateErr = u.clientRepo.UpdateClientCustomFields(ctx, row.CompanyID, cf)
+					}
+				}
+				if updateErr != nil {
+					jobErrs = append(jobErrs, entity.JobRowError{Row: i + 2, RefID: row.CompanyID, Reason: "update failed: " + updateErr.Error()})
 					failed++
 				} else {
 					success++
@@ -177,30 +183,29 @@ func toJobRowErrors(parseErrs []xlsximport.ParseError) []entity.JobRowError {
 
 func importRowToClient(row xlsximport.ClientImportRow, workspaceID string) entity.Client {
 	c := entity.Client{
-		CompanyID:           row.CompanyID,
-		CompanyName:         row.CompanyName,
-		PICName:             row.PICName,
-		PICRole:             row.PICRole,
-		PICWA:               row.PICWA,
-		PICEmail:            row.PICEmail,
-		OwnerName:           row.OwnerName,
-		OwnerTelegramID:     row.OwnerTelegramID,
-		ContractStart:       row.ContractStart,
-		ContractEnd:         row.ContractEnd,
-		ContractMonths:      row.ContractMonths,
-		PaymentTerms:        row.PaymentTerms,
-		FinalPrice:          row.FinalPrice,
-		PaymentStatus:       row.PaymentStatus,
-		SequenceCS:          row.SequenceCS,
-		BotActive:           row.BotActive,
-		Blacklisted:         row.Blacklisted,
-		CheckinReplied:      row.CheckinReplied,
-		Notes:               row.Notes,
-		LastPaymentDate:     row.LastPaymentDate,
-		LastInteractionDate: row.LastInteractionDate,
-		WorkspaceID:         workspaceID,
-		ActivationDate:      row.ContractStart, // default activation to contract start
-		CreatedAt:           time.Now(),
+		CompanyID:       row.CompanyID,
+		CompanyName:     row.CompanyName,
+		PICName:         row.PICName,
+		PICRole:         row.PICRole,
+		PICWA:           row.PICWA,
+		PICEmail:        row.PICEmail,
+		OwnerName:       row.OwnerName,
+		OwnerTelegramID: row.OwnerTelegramID,
+		ContractStart:   row.ContractStart,
+		ContractEnd:     row.ContractEnd,
+		ContractMonths:  row.ContractMonths,
+		PaymentTerms:    row.PaymentTerms,
+		FinalPrice:      row.FinalPrice,
+		PaymentStatus:   row.PaymentStatus,
+		SequenceCS:      row.SequenceCS,
+		BotActive:       row.BotActive,
+		Blacklisted:     row.Blacklisted,
+		Notes:           row.Notes,
+		LastPaymentDate: row.LastPaymentDate,
+		WorkspaceID:     workspaceID,
+		ActivationDate:  row.ContractStart, // default activation to contract start
+		CreatedAt:       time.Now(),
+		CustomFields:    importRowToCustomFields(row),
 	}
 
 	if row.OwnerWA != "" {
@@ -216,35 +221,28 @@ func importRowToClient(row xlsximport.ClientImportRow, workspaceID string) entit
 	return c
 }
 
+// importRowToUpdateFields returns only the direct-column fields safe for UpdateClientFields.
+// Fields migrated to custom_fields JSONB (nps_score, usage_score, segment, etc.) go via
+// importRowToCustomFields + UpdateClientCustomFields instead.
 func importRowToUpdateFields(row xlsximport.ClientImportRow) map[string]interface{} {
 	fields := map[string]interface{}{
-		"company_name":         row.CompanyName,
-		"pic_name":             row.PICName,
-		"pic_role":             row.PICRole,
-		"pic_wa":               row.PICWA,
-		"pic_email":            row.PICEmail,
-		"owner_name":           row.OwnerName,
-		"owner_telegram_id":    row.OwnerTelegramID,
-		"contract_start":       row.ContractStart,
-		"contract_end":         row.ContractEnd,
-		"contract_months":      row.ContractMonths,
-		"hc_size":              row.HCSize,
-		"plan_type":            row.PlanType,
-		"payment_terms":        row.PaymentTerms,
-		"final_price":          row.FinalPrice,
-		"payment_status":       row.PaymentStatus,
-		"quotation_link":       row.QuotationLink,
-		"nps_score":            row.NPSScore,
-		"usage_score":          row.UsageScore,
-		"sequence_cs":          row.SequenceCS,
-		"renewed":              row.Renewed,
-		"bot_active":           row.BotActive,
-		"blacklisted":          row.Blacklisted,
-		"checkin_replied":      row.CheckinReplied,
-		"cross_sell_interested": row.CrossSellInterested,
-		"cross_sell_rejected":  row.CrossSellRejected,
-		"segment":              row.Segment,
-		"notes":                row.Notes,
+		"company_name":      row.CompanyName,
+		"pic_name":          row.PICName,
+		"pic_role":          row.PICRole,
+		"pic_wa":            row.PICWA,
+		"pic_email":         row.PICEmail,
+		"owner_name":        row.OwnerName,
+		"owner_telegram_id": row.OwnerTelegramID,
+		"contract_start":    row.ContractStart,
+		"contract_end":      row.ContractEnd,
+		"contract_months":   row.ContractMonths,
+		"payment_terms":     row.PaymentTerms,
+		"final_price":       row.FinalPrice,
+		"payment_status":    row.PaymentStatus,
+		"sequence_cs":       row.SequenceCS,
+		"bot_active":        row.BotActive,
+		"blacklisted":       row.Blacklisted,
+		"notes":             row.Notes,
 	}
 	if row.OwnerWA != "" {
 		fields["owner_wa"] = row.OwnerWA
@@ -252,11 +250,46 @@ func importRowToUpdateFields(row xlsximport.ClientImportRow) map[string]interfac
 	if row.LastPaymentDate != nil {
 		fields["last_payment_date"] = row.LastPaymentDate
 	}
-	if row.LastInteractionDate != nil {
-		fields["last_interaction_date"] = row.LastInteractionDate
+	return fields
+}
+
+// importRowToCustomFields builds the map of fields that live in clients.custom_fields JSONB.
+// These were migrated from native columns in phase-2/3 migrations.
+func importRowToCustomFields(row xlsximport.ClientImportRow) map[string]any {
+	cf := make(map[string]any)
+	if row.HCSize != "" {
+		cf["hc_size"] = row.HCSize
+	}
+	if row.PlanType != "" {
+		cf["plan_type"] = row.PlanType
+	}
+	if row.QuotationLink != "" {
+		cf["quotation_link"] = row.QuotationLink
+	}
+	if row.NPSScore != 0 {
+		cf["nps_score"] = row.NPSScore
+	}
+	if row.UsageScore != 0 {
+		cf["usage_score"] = row.UsageScore
+	}
+	if row.Renewed {
+		cf["renewed"] = row.Renewed
+	}
+	if row.CrossSellInterested {
+		cf["cross_sell_interested"] = row.CrossSellInterested
+	}
+	if row.CrossSellRejected {
+		cf["cross_sell_rejected"] = row.CrossSellRejected
+	}
+	if row.Segment != "" {
+		cf["segment"] = row.Segment
 	}
 	if row.CrossSellResumeDate != nil {
-		fields["cross_sell_resume_date"] = row.CrossSellResumeDate
+		cf["cross_sell_resume_date"] = row.CrossSellResumeDate
 	}
-	return fields
+	// Merge any extra custom columns parsed from the XLSX (ParseClientSheetWithDefs).
+	for k, v := range row.CustomFields {
+		cf[k] = v
+	}
+	return cf
 }

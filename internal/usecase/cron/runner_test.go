@@ -41,10 +41,10 @@ func (r *stubFullClientRepo) GetByCompanyID(_ context.Context, _ string) (*entit
 func (r *stubFullClientRepo) GetLatestInvoice(_ context.Context, _ string) (*entity.Invoice, error) {
 	return nil, nil
 }
-func (r *stubFullClientRepo) UpdateLastInteraction(_ context.Context, _ string, _ time.Time) error {
+func (r *stubFullClientRepo) CreateClient(_ context.Context, _ entity.Client) error { return nil }
+func (r *stubFullClientRepo) UpdateClientCustomFields(_ context.Context, _ string, _ map[string]any) error {
 	return nil
 }
-func (r *stubFullClientRepo) CreateClient(_ context.Context, _ entity.Client) error { return nil }
 func (r *stubFullClientRepo) UpdateInvoiceReminderFlags(_ context.Context, _ string, _ map[string]bool) error {
 	return nil
 }
@@ -237,7 +237,7 @@ func newTestCronRunner(
 		&stubFullLogRepo{sentToday: sentToday},
 		&stubFullBgJobRepo{},
 		&stubFullWorkspaceRepo{},
-		nil, // triggers — nil is valid; processClient only uses it after the gates
+		nil, // nil ruleEngine — safe for gate-only tests (client never reaches engine)
 		zerolog.Nop(),
 	)
 }
@@ -515,19 +515,6 @@ func TestCronRunner_StartRunAll_BgJobCreateError_SkipsWorkspace(t *testing.T) {
 	}
 }
 
-// ─── WithRuleEngine ───────────────────────────────────────────────────────────
-
-func TestCronRunner_WithRuleEngine_CanBeSetOnRunner(t *testing.T) {
-	t.Parallel()
-
-	cr := newTestCronRunner(nil, false, nil)
-	ruleEngine, ok := cr.(ucron.CronRunnerWithRuleEngine)
-	if !ok {
-		t.Skip("CronRunner does not implement CronRunnerWithRuleEngine in this context")
-	}
-	// Setting nil engine with useDynamic=false should not panic.
-	ruleEngine.WithRuleEngine(nil, false)
-}
 
 
 func (s *stubFullWorkspaceRepo) ListForMember(ctx context.Context, email string) ([]entity.Workspace, error) {

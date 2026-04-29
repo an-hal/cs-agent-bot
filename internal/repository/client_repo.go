@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -22,7 +23,6 @@ type ClientRepository interface {
 	GetByWANumber(ctx context.Context, waNumber string) (*entity.Client, error)
 	GetByCompanyID(ctx context.Context, companyID string) (*entity.Client, error)
 	GetLatestInvoice(ctx context.Context, companyID string) (*entity.Invoice, error)
-	UpdateLastInteraction(ctx context.Context, companyID string, t time.Time) error
 	CreateClient(ctx context.Context, client entity.Client) error
 	UpdateInvoiceReminderFlags(ctx context.Context, companyID string, flags map[string]bool) error
 	UpdatePaymentStatus(ctx context.Context, companyID, status string) error
@@ -31,6 +31,7 @@ type ClientRepository interface {
 	CountByFilter(ctx context.Context, filter entity.ClientFilter) (int64, error)
 	FetchByFilter(ctx context.Context, filter entity.ClientFilter, p pagination.Params) ([]entity.Client, error)
 	UpdateClientFields(ctx context.Context, companyID string, fields map[string]interface{}) error
+	UpdateClientCustomFields(ctx context.Context, companyID string, fields map[string]any) error
 }
 
 type clientRepo struct {
@@ -59,14 +60,27 @@ func (r *clientRepo) withTimeout(ctx context.Context) (context.Context, context.
 	return ctx, func() {}
 }
 
-// clientColumns lists every column in the clients table in a fixed order.
-// This constant is used for SELECT queries to avoid SELECT *.
-// Nullable columns that use Go pointer types (e.g. owner_wa, last_interaction_date) have no COALESCE.
-// Nullable columns that use Go value types still use COALESCE for zero-value defaults.
-// clientColumns lists every field of entity.Client. Bot/CS state lives in
-// client_message_state (1:1 by master_id) since Phase 6, so the SELECT
-// LEFT JOINs that table to keep entity.Client backward-compatible.
-const clientColumns = `c.company_id, c.company_name, c.pic_name, COALESCE(c.pic_wa, '') as pic_wa, c.owner_name, c.owner_wa, COALESCE(c.owner_telegram_id, '') as owner_telegram_id, c.contract_months, c.contract_start, COALESCE(c.contract_end, '9999-12-31'::date) as contract_end, c.activation_date, COALESCE(c.payment_status, 'Paid') as payment_status, COALESCE(cms.bot_active, true) as bot_active, COALESCE(c.blacklisted, false) as blacklisted, COALESCE(cms.sequence_cs, 'ACTIVE') as sequence_cs, COALESCE(cms.checkin_replied, false) as checkin_replied, COALESCE(cms.response_status, 'Pending') as response_status, COALESCE(cms.pre14_sent, false) as pre14_sent, COALESCE(cms.pre7_sent, false) as pre7_sent, COALESCE(cms.pre3_sent, false) as pre3_sent, COALESCE(cms.post1_sent, false) as post1_sent, COALESCE(cms.post4_sent, false) as post4_sent, COALESCE(cms.post8_sent, false) as post8_sent, COALESCE(cms.post15_sent, false) as post15_sent, cms.last_interaction_date, COALESCE(c.pic_email, '') as pic_email, COALESCE(c.pic_role, '') as pic_role, COALESCE(c.payment_terms, '') as payment_terms, COALESCE(c.final_price, 0) as final_price, c.last_payment_date, COALESCE(c.notes, '') as notes, c.created_at, COALESCE(cms.feature_update_sent, false) as feature_update_sent, COALESCE(cms.days_since_cs_last_sent, 0) as days_since_cs_last_sent, COALESCE(c.ae_assigned, false) as ae_assigned, COALESCE(c.backup_owner_telegram_id, '') as backup_owner_telegram_id, COALESCE(c.ae_telegram_id, '') as ae_telegram_id, COALESCE(c.workspace_id::text, '') as workspace_id, COALESCE(c.billing_period, 'monthly') as billing_period, c.quantity, c.unit_price, COALESCE(c.currency, 'IDR') as currency`
+// clientColumns lists every field of entity.Client in the order expected by scanClient.
+// bot_active and sequence_cs live in client_message_state (joined as cms); everything
+// else comes from clients (aliased c).
+const clientColumns = `c.company_id, c.company_name, c.pic_name, COALESCE(c.pic_wa, '') as pic_wa, ` +
+	`c.owner_name, c.owner_wa, COALESCE(c.owner_telegram_id, '') as owner_telegram_id, ` +
+	`c.contract_months, c.contract_start, COALESCE(c.contract_end, '9999-12-31'::date) as contract_end, ` +
+	`c.activation_date, COALESCE(c.payment_status, 'Paid') as payment_status, ` +
+	`COALESCE(cms.bot_active, true) as bot_active, ` +
+	`COALESCE(c.blacklisted, false) as blacklisted, ` +
+	`COALESCE(cms.sequence_cs, 'ACTIVE') as sequence_cs, ` +
+	`COALESCE(c.pic_email, '') as pic_email, COALESCE(c.pic_role, '') as pic_role, ` +
+	`COALESCE(c.payment_terms, '') as payment_terms, ` +
+	`COALESCE(c.final_price, 0) as final_price, c.last_payment_date, ` +
+	`COALESCE(c.notes, '') as notes, c.created_at, ` +
+	`COALESCE(c.ae_assigned, false) as ae_assigned, ` +
+	`COALESCE(c.backup_owner_telegram_id, '') as backup_owner_telegram_id, ` +
+	`COALESCE(c.ae_telegram_id, '') as ae_telegram_id, ` +
+	`COALESCE(c.workspace_id::text, '') as workspace_id, ` +
+	`COALESCE(c.custom_fields, '{}') as custom_fields, ` +
+	`COALESCE(c.billing_period, 'monthly') as billing_period, c.quantity, c.unit_price, ` +
+	`COALESCE(c.currency, 'IDR') as currency`
 
 // clientFromClause is the standard FROM ... JOIN combo. Use as
 // `FROM ` + clientFromClause + ` WHERE ...`.
@@ -80,6 +94,7 @@ func scanClient(scanner interface {
 	Scan(dest ...interface{}) error
 }) (*entity.Client, error) {
 	var c entity.Client
+	var customFieldsRaw []byte
 	err := scanner.Scan(
 		&c.CompanyID,
 		&c.CompanyName,
@@ -96,16 +111,6 @@ func scanClient(scanner interface {
 		&c.BotActive,
 		&c.Blacklisted,
 		&c.SequenceCS,
-		&c.CheckinReplied,
-		&c.ResponseStatus,
-		&c.Pre14Sent,
-		&c.Pre7Sent,
-		&c.Pre3Sent,
-		&c.Post1Sent,
-		&c.Post4Sent,
-		&c.Post8Sent,
-		&c.Post15Sent,
-		&c.LastInteractionDate,
 		&c.PICEmail,
 		&c.PICRole,
 		&c.PaymentTerms,
@@ -113,17 +118,19 @@ func scanClient(scanner interface {
 		&c.LastPaymentDate,
 		&c.Notes,
 		&c.CreatedAt,
-		&c.FeatureUpdateSent,
-		&c.DaysSinceCSLastSent,
 		&c.AEAssigned,
 		&c.BackupOwnerTelegramID,
 		&c.AETelegramID,
 		&c.WorkspaceID,
+		&customFieldsRaw,
 		&c.BillingPeriod,
 		&c.Quantity,
 		&c.UnitPrice,
 		&c.Currency,
 	)
+	if err == nil && len(customFieldsRaw) > 0 {
+		_ = json.Unmarshal(customFieldsRaw, &c.CustomFields)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -285,10 +292,7 @@ func (r *clientRepo) UpdatePaymentStatus(ctx context.Context, companyID, status 
 
 	query, args, err := database.PSQL.
 		Update("clients").
-		SetMap(map[string]interface{}{
-			"payment_status":        status,
-			"last_interaction_date": sq.Expr("NOW()"),
-		}).
+		Set("payment_status", status).
 		Where(sq.Eq{"company_id": companyID}).
 		ToSql()
 	if err != nil {
@@ -344,7 +348,7 @@ func (r *clientRepo) UpdateInvoiceReminderFlags(ctx context.Context, companyID s
 	}
 
 	query, args, err := database.PSQL.
-		Update("clients").
+		Update("client_flags").
 		SetMap(sets).
 		Where(sq.Eq{"company_id": companyID}).
 		ToSql()
@@ -376,42 +380,34 @@ func (r *clientRepo) CreateClient(ctx context.Context, client entity.Client) err
 	ctx, cancel := r.withTimeout(ctx)
 	defer cancel()
 
-	upsertSuffix := fmt.Sprintf(
-		"ON CONFLICT (company_id) DO UPDATE SET " +
-			"company_name = EXCLUDED.company_name, " +
-			"pic_name = EXCLUDED.pic_name, " +
-			"pic_wa = EXCLUDED.pic_wa, " +
-			"pic_email = EXCLUDED.pic_email, " +
-			"pic_role = EXCLUDED.pic_role, " +
-			"owner_name = EXCLUDED.owner_name, " +
-			"owner_wa = EXCLUDED.owner_wa, " +
-			"owner_telegram_id = EXCLUDED.owner_telegram_id, " +
-			"payment_terms = EXCLUDED.payment_terms, " +
-			"contract_months = EXCLUDED.contract_months, " +
-			"contract_start = EXCLUDED.contract_start, " +
-			"contract_end = EXCLUDED.contract_end, " +
-			"activation_date = EXCLUDED.activation_date, " +
-			"final_price = EXCLUDED.final_price, " +
-			"notes = EXCLUDED.notes, " +
-			"payment_status = EXCLUDED.payment_status, " +
-			"last_payment_date = EXCLUDED.last_payment_date, " +
-			"bot_active = EXCLUDED.bot_active, " +
-			"blacklisted = EXCLUDED.blacklisted, " +
-			"response_status = EXCLUDED.response_status, " +
-			"sequence_cs = EXCLUDED.sequence_cs, " +
-			"feature_update_sent = EXCLUDED.feature_update_sent, " +
-			"days_since_cs_last_sent = EXCLUDED.days_since_cs_last_sent, " +
-			"checkin_replied = EXCLUDED.checkin_replied, " +
-			"pre14_sent = EXCLUDED.pre14_sent, " +
-			"pre7_sent = EXCLUDED.pre7_sent, " +
-			"pre3_sent = EXCLUDED.pre3_sent, " +
-			"post1_sent = EXCLUDED.post1_sent, " +
-			"post4_sent = EXCLUDED.post4_sent, " +
-			"post8_sent = EXCLUDED.post8_sent, " +
-			"post15_sent = EXCLUDED.post15_sent, " +
-			"last_interaction_date = EXCLUDED.last_interaction_date, " +
-			"workspace_id = EXCLUDED.workspace_id",
-	)
+	upsertSuffix := "ON CONFLICT (company_id) DO UPDATE SET " +
+		"company_name = EXCLUDED.company_name, " +
+		"pic_name = EXCLUDED.pic_name, " +
+		"pic_wa = EXCLUDED.pic_wa, " +
+		"pic_email = EXCLUDED.pic_email, " +
+		"pic_role = EXCLUDED.pic_role, " +
+		"owner_name = EXCLUDED.owner_name, " +
+		"owner_wa = EXCLUDED.owner_wa, " +
+		"owner_telegram_id = EXCLUDED.owner_telegram_id, " +
+		"payment_terms = EXCLUDED.payment_terms, " +
+		"contract_months = EXCLUDED.contract_months, " +
+		"contract_start = EXCLUDED.contract_start, " +
+		"contract_end = EXCLUDED.contract_end, " +
+		"activation_date = EXCLUDED.activation_date, " +
+		"final_price = EXCLUDED.final_price, " +
+		"notes = EXCLUDED.notes, " +
+		"payment_status = EXCLUDED.payment_status, " +
+		"last_payment_date = EXCLUDED.last_payment_date, " +
+		"bot_active = EXCLUDED.bot_active, " +
+		"blacklisted = EXCLUDED.blacklisted, " +
+		"sequence_cs = EXCLUDED.sequence_cs, " +
+		"ae_assigned = EXCLUDED.ae_assigned, " +
+		"backup_owner_telegram_id = EXCLUDED.backup_owner_telegram_id, " +
+		"ae_telegram_id = EXCLUDED.ae_telegram_id, " +
+		"custom_fields = EXCLUDED.custom_fields, " +
+		"workspace_id = EXCLUDED.workspace_id"
+
+	customFieldsJSON, _ := json.Marshal(client.CustomFields)
 
 	query, args, err := database.PSQL.
 		Insert("clients").
@@ -425,11 +421,8 @@ func (r *clientRepo) CreateClient(ctx context.Context, client entity.Client) err
 			"last_payment_date",
 			"bot_active", "blacklisted",
 			"sequence_cs",
-			"feature_update_sent", "days_since_cs_last_sent",
-			"checkin_replied", "response_status",
-			"pre14_sent", "pre7_sent", "pre3_sent",
-			"post1_sent", "post4_sent", "post8_sent", "post15_sent",
-			"last_interaction_date",
+			"ae_assigned", "backup_owner_telegram_id", "ae_telegram_id",
+			"custom_fields",
 			"workspace_id",
 		).
 		Values(
@@ -442,11 +435,8 @@ func (r *clientRepo) CreateClient(ctx context.Context, client entity.Client) err
 			client.LastPaymentDate,
 			client.BotActive, client.Blacklisted,
 			client.SequenceCS,
-			client.FeatureUpdateSent, client.DaysSinceCSLastSent,
-			client.CheckinReplied, client.ResponseStatus,
-			client.Pre14Sent, client.Pre7Sent, client.Pre3Sent,
-			client.Post1Sent, client.Post4Sent, client.Post8Sent, client.Post15Sent,
-			client.LastInteractionDate,
+			client.AEAssigned, client.BackupOwnerTelegramID, client.AETelegramID,
+			customFieldsJSON,
 			client.WorkspaceID,
 		).
 		Suffix(upsertSuffix).
@@ -458,39 +448,6 @@ func (r *clientRepo) CreateClient(ctx context.Context, client entity.Client) err
 	_, err = r.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return fmt.Errorf("exec CreateClient: %w", err)
-	}
-
-	return nil
-}
-
-// UpdateLastInteraction sets the last_interaction_date for a client.
-func (r *clientRepo) UpdateLastInteraction(ctx context.Context, companyID string, t time.Time) error {
-	ctx, span := r.tracer.Start(ctx, "client.repository.UpdateLastInteraction")
-	defer span.End()
-
-	ctx, cancel := r.withTimeout(ctx)
-	defer cancel()
-
-	query, args, err := database.PSQL.
-		Update("clients").
-		Set("last_interaction_date", t).
-		Where(sq.Eq{"company_id": companyID}).
-		ToSql()
-	if err != nil {
-		return fmt.Errorf("build query UpdateLastInteraction: %w", err)
-	}
-
-	result, err := r.db.ExecContext(ctx, query, args...)
-	if err != nil {
-		return fmt.Errorf("exec UpdateLastInteraction: %w", err)
-	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("rows affected: %w", err)
-	}
-	if rowsAffected == 0 {
-		return fmt.Errorf("client not found: %s", companyID)
 	}
 
 	return nil
@@ -654,11 +611,17 @@ func buildClientFilter(filter entity.ClientFilter) sq.And {
 			sq.ILike{"c.company_id": pattern},
 		})
 	}
+	if filter.Segment != "" {
+		where = append(where, sq.Expr("custom_fields->>'segment' = ?", filter.Segment))
+	}
 	if filter.PaymentStatus != "" {
 		where = append(where, sq.Eq{"c.payment_status": filter.PaymentStatus})
 	}
 	if filter.SequenceCS != "" {
 		where = append(where, sq.Eq{"cms.sequence_cs": filter.SequenceCS})
+	}
+	if filter.PlanType != "" {
+		where = append(where, sq.Expr("custom_fields->>'plan_type' = ?", filter.PlanType))
 	}
 	if filter.BotActive != nil {
 		where = append(where, sq.Eq{"cms.bot_active": *filter.BotActive})
@@ -670,6 +633,42 @@ func buildClientFilter(filter entity.ClientFilter) sq.And {
 	return where
 }
 
+// UpdateClientCustomFields merges the provided key-value pairs into clients.custom_fields JSONB.
+func (r *clientRepo) UpdateClientCustomFields(ctx context.Context, companyID string, fields map[string]any) error {
+	ctx, span := r.tracer.Start(ctx, "client.repository.UpdateClientCustomFields")
+	defer span.End()
+
+	ctx, cancel := r.withTimeout(ctx)
+	defer cancel()
+
+	if len(fields) == 0 {
+		return nil
+	}
+
+	raw, err := json.Marshal(fields)
+	if err != nil {
+		return fmt.Errorf("marshal custom fields: %w", err)
+	}
+
+	result, err := r.db.ExecContext(ctx,
+		"UPDATE clients SET custom_fields = COALESCE(custom_fields, '{}'::jsonb) || $1::jsonb WHERE company_id = $2",
+		string(raw), companyID,
+	)
+	if err != nil {
+		return fmt.Errorf("exec UpdateClientCustomFields: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return fmt.Errorf("client not found: %s", companyID)
+	}
+
+	return nil
+}
+
 // validUpdateColumns lists columns that are safe to update via the dashboard API.
 var validUpdateColumns = map[string]bool{
 	"pic_name": true, "pic_wa": true, "pic_email": true, "pic_role": true,
@@ -678,8 +677,8 @@ var validUpdateColumns = map[string]bool{
 	"contract_start": true, "contract_end": true,
 	"activation_date": true, "payment_status": true,
 	"final_price": true,
-	"notes":         true,
-	"bot_active":    true, "blacklisted": true,
+	"notes":       true,
+	"bot_active":  true, "blacklisted": true,
 	"sequence_cs": true,
 }
 
