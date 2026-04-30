@@ -15,3 +15,4 @@ coverage.out
 coverage.html
 *_test.go
 docs/
+!docs/docs.go
