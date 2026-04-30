@@ -1,20 +1,12 @@
 version: "3"
 
 services:
-  cs-agent-bot:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
+  app:
+    build: .
+    image: cs-agent-bot:latest
+    container_name: cs-agent-bot
+    restart: unless-stopped
     ports:
-      - 3456:3456
+      - "8080:8080"
     env_file:
-      - ./environment_variables.env
-    volumes:
-      - ./:/app/
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.${APP_NAME}.rule=PathPrefix(`${APP_ROUTE_PREFIX}`)"
-      - "traefik.http.routers.${APP_NAME}.entrypoints=http"
-      - "traefik.http.routers.${APP_NAME}.service=${APP_NAME}"
-      - "traefik.http.services.${APP_NAME}.loadbalancer.server.port=3000"
-    restart: on-failure
+      - .env
