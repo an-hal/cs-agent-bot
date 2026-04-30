@@ -78,6 +78,11 @@ type MasterDataStats struct {
 	OverduePayment int64            `json:"overdue_payment"`
 	Expiring30d    int64            `json:"expiring_30d"`
 	BotActiveCount int64            `json:"bot_active"`
+	// CrossSellCount counts clients with an active cross-sell pursuit
+	// (custom_fields.cross_sell_status set to anything other than '' or
+	// 'NONE'). Per FE spec features/03-master-data/09-stats-endpoint-extension.md.
+	// Returns 0 for workspaces that don't track this custom field.
+	CrossSellCount int64 `json:"cross_sell_count"`
 }
 
 // QueryCondition is one row of the flexible workflow query DSL.
@@ -657,6 +662,17 @@ func (r *masterDataRepo) Stats(ctx context.Context, workspaceID string) (*Master
 		"SELECT COUNT(*) FROM master_data WHERE workspace_id::text = $1 AND bot_active = TRUE",
 		workspaceID,
 	).Scan(&stats.BotActiveCount)
+
+	// cross_sell_status lives in custom_fields JSONB (workspace-defined CFD)
+	// rather than as a top-level column. Workspaces without a cross_sell_status
+	// custom field naturally get 0.
+	_ = r.db.QueryRowContext(ctx, `
+SELECT COUNT(*) FROM master_data
+WHERE workspace_id::text = $1
+  AND custom_fields->>'cross_sell_status' IS NOT NULL
+  AND custom_fields->>'cross_sell_status' NOT IN ('', 'NONE')`,
+		workspaceID,
+	).Scan(&stats.CrossSellCount)
 
 	return stats, nil
 }
