@@ -16537,6 +16537,10 @@ const docTemplate = `{
                         "format": "int64"
                     }
                 },
+                "cross_sell_count": {
+                    "description": "CrossSellCount counts clients with an active cross-sell pursuit\n(custom_fields.cross_sell_status set to anything other than '' or\n'NONE'). Per FE spec features/03-master-data/09-stats-endpoint-extension.md.\nReturns 0 for workspaces that don't track this custom field.",
+                    "type": "integer"
+                },
                 "expiring_30d": {
                     "type": "integer"
                 },
