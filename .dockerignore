@@ -1,0 +1,17 @@
+.git
+.github
+*.env
+environment_variables.env
+*.env.local
+*.env.*.local
+Dockerfile.dev
+docker-compose.yml
+docker-compose.*.yml
+tmp/
+.vscode/
+.idea/
+*.md
+coverage.out
+coverage.html
+*_test.go
+docs/
